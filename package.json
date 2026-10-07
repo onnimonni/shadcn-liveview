@@ -6,7 +6,8 @@
     "vendor": "node tools/vendor.mjs",
     "generate": "tsx tools/generate.tsx",
     "test:converter": "tsx --test test/*.test.ts",
-    "test:parity": "tsx tools/parity.tsx",
+    "dump:phoenix": "mix run -e 'File.write!(\"priv/phoenix_ssr.json\", ShadcnLiveview.Gallery.dump_all())'",
+    "test:parity": "npm run dump:phoenix && tsx tools/parity.tsx",
     "test": "npm run test:converter && mix test && npm run test:parity",
     "build:assets": "node tools/build-assets.mjs"
   },
