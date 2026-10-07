@@ -1,0 +1,11 @@
+/node_modules/
+/deps/
+/_build/
+/priv/static/assets/
+/parity/actual/
+/parity/failures/
+*.beam
+.playwright-mcp/
+login-preview/node_modules/
+login-preview/dist/
+.elixir_ls/

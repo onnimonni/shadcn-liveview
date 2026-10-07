@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2023","module":"ESNext","moduleResolution":"Bundler","jsx":"react-jsx","esModuleInterop":true,"skipLibCheck":true,"paths":{"@/*":["./vendor/shadcn/*"]}},"include":["tools","test","vendor/shadcn"]}
