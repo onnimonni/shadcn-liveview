@@ -644,6 +644,7 @@ function generateFunction(
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
+  @doc "Renders the initial Radix scroll-area viewport and scrollbar-hiding CSS. Scrollbars are absent in SSR."
   def scroll_area(assigns) do
     ~H"""
     <div
@@ -653,21 +654,14 @@ function generateFunction(
       style="position:relative;--radix-scroll-area-corner-width:0px;--radix-scroll-area-corner-height:0px"
       {@rest}
     >
+      <style><%= Phoenix.HTML.raw("[data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}") %></style>
       <div
+        data-radix-scroll-area-viewport=""
         data-slot="scroll-area-viewport"
         class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
-        style="overflow-x:hidden;overflow-y:scroll"
-        tabindex="0"
+        style="overflow-x:hidden;overflow-y:hidden"
       >
-        {render_slot(@inner_block)}
-      </div>
-      <div
-        data-slot="scroll-area-scrollbar"
-        data-state="hidden"
-        data-orientation="vertical"
-        class="flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent"
-      >
-        <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border" />
+        <div style="min-width:100%;display:table">{render_slot(@inner_block)}</div>
       </div>
     </div>
     """

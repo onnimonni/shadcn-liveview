@@ -1709,13 +1709,11 @@
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
         <div data-slot="scroll-area" dir="ltr" class="relative h-32 w-48 rounded-md border p-4" style="position:relative;--radix-scroll-area-corner-width:0px;--radix-scroll-area-corner-height:0px">
-  <div data-slot="scroll-area-viewport" class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1" style="overflow-x:hidden;overflow-y:scroll" tabindex="0">
-    
+  <style>[data-radix-scroll-area-viewport]{scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;}[data-radix-scroll-area-viewport]::-webkit-scrollbar{display:none}</style>
+  <div data-radix-scroll-area-viewport="" data-slot="scroll-area-viewport" class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1" style="overflow-x:hidden;overflow-y:hidden">
+    <div style="min-width:100%;display:table">
   Long scrolling text item list inside scroll area.
-
-  </div>
-  <div data-slot="scroll-area-scrollbar" data-state="hidden" data-orientation="vertical" class="flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent">
-    <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border"></div>
+</div>
   </div>
 </div>
       </div>
