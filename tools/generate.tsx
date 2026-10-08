@@ -74,6 +74,8 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
     messagescrollerprovider: true,
   }
   if (passthrough[lowerName]) return "slot_only"
+  if (lowerName === "inputgroupinput") return "input"
+  if (lowerName === "inputgrouptextarea") return "textarea"
 
   if (lowerName.includes("group") || lowerName.includes("button_group") || lowerName.includes("buttongroup")) {
     return "div"
@@ -1311,6 +1313,9 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
       specialAttrs.push({ name: "state", type: "string", default: '"done"' })
       staticAttrsList.push('data-state={@state} data-orientation={@orientation}')
     }
+    if (fnSnakeName === "input_group_addon") {
+      staticAttrsList.push('data-align={@align}')
+    }
     if (fnSnakeName === "chart_container") {
       specialAttrs.push({ name: "config", type: "map", default: "%{}" })
     }
@@ -1572,11 +1577,22 @@ export async function generateAllComponents(): Promise<void> {
   console.log(`Found ${files.length} vendored UI component files.`)
 
   const moduleNames: string[] = []
+  const controlClasses = new Map<string, string>()
+  for (const control of ["input", "textarea"]) {
+    const source = await fs.readFile(path.join("vendor/shadcn/ui", control + ".tsx"), "utf8")
+    const controlSpec = parseComponentAST(control, source)
+    controlClasses.set("input_group_" + control, controlSpec.functions.find((fn) => fn.name === control)!.baseClasses)
+  }
 
   for (const f of files) {
     const compName = f.replace(/\.tsx$/, "")
     const code = await fs.readFile(path.join("vendor/shadcn/ui", f), "utf8")
     const spec = parseComponentAST(compName, code)
+    // InputGroup controls compose the upstream Input/Textarea styles before overrides.
+    for (const fn of spec.functions) {
+      const inherited = controlClasses.get(fn.name)
+      if (inherited) fn.baseClasses = cn(inherited, fn.baseClasses)
+    }
     const elixirCode = generateElixirModule(spec)
     const outPath = path.join(outDir, `${compName.replace(/-/g, "_")}.ex`)
     await fs.writeFile(outPath, elixirCode, "utf8")

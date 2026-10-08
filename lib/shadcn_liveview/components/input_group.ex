@@ -27,7 +27,7 @@ defmodule ShadcnLiveview.Components.InputGroup do
   def input_group_addon(assigns) do
     ~H"""
     <div
-      data-slot="input-group-addon" role="group"
+      data-slot="input-group-addon" role="group" data-align={@align}
       class={classes([input_group_addon_classes(@align), @class])}
       {@rest}
     >
@@ -91,17 +91,14 @@ defmodule ShadcnLiveview.Components.InputGroup do
 
   attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
 
   def input_group_input(assigns) do
     ~H"""
-    <div
+    <input
       data-slot="input-group-control"
-      class={classes(["flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent", @class])}
+      class={classes(["h-8 w-full min-w-0 border-input px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent", @class])}
       {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
+    />
     """
   end
 
@@ -111,13 +108,13 @@ defmodule ShadcnLiveview.Components.InputGroup do
 
   def input_group_textarea(assigns) do
     ~H"""
-    <div
+    <textarea
       data-slot="input-group-control"
-      class={classes(["flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent", @class])}
+      class={classes(["flex field-sizing-content min-h-16 w-full border-input px-2.5 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 flex-1 resize-none rounded-none border-0 bg-transparent py-2 shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </textarea>
     """
   end
 end
