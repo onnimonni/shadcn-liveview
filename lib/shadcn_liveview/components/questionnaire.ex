@@ -14,7 +14,7 @@ defmodule ShadcnLiveview.Components.Questionnaire do
       data-current="0"
       data-total="0"
       novalidate=""
-      class={classes(["", @class])}
+      class={classes(["flex w-full min-w-0 flex-col gap-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -44,13 +44,13 @@ defmodule ShadcnLiveview.Components.Questionnaire do
 
   def questionnaire_item(assigns) do
     ~H"""
-    <div
+    <fieldset
       data-slot="questionnaire-item"
       class={classes(["flex min-w-0 flex-col gap-4 border-0 p-0 outline-none", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </fieldset>
     """
   end
 

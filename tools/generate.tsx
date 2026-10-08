@@ -105,6 +105,7 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
   if (lowerName.includes("navigationmenuitem") || lowerName.includes("navigation_menu_item")) return "li"
   if (lowerName.includes("paginationcontent") || lowerName.includes("pagination_content")) return "ul"
   if (lowerName.includes("paginationitem") || lowerName.includes("pagination_item")) return "li"
+  if (lowerName === "questionnaireitem" || lowerName === "questionnaire_item") return "fieldset"
   if (lowerName.includes("card") || lowerName === "alert" || lowerName === "alerttitle" || lowerName === "alertdescription" || lowerName.includes("itemtitle") || lowerName.includes("item_title")) return "div"
   if (lowerName.endsWith("title")) return "h2"
   if (lowerName.endsWith("description")) return "p"
@@ -292,7 +293,7 @@ function generateFunction(
       data-state={if @checked, do: "checked", else: "unchecked"}
       value="on"
       data-slot="checkbox"
-      class={classes(["peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground", @class])}
+      class={classes(["peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary", @class])}
       {@rest}
     ><%= if @checked do %><span data-slot="checkbox-indicator" class="grid place-content-center text-current transition-none [&>svg]:size-3.5"><ShadcnLiveview.Components.Icon.icon name="check" class="size-3.5" /></span><% end %></button><input
       type="checkbox"
@@ -684,7 +685,7 @@ function generateFunction(
       data-current="0"
       data-total="0"
       novalidate=""
-      class={classes(["", @class])}
+      class={classes(["flex w-full min-w-0 flex-col gap-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -931,7 +932,7 @@ function generateFunction(
       aria-controls="radix-id"
       data-state={if @active, do: "active", else: "inactive"}
       id="radix-id"
-      tabindex={if @active, do: "0", else: "-1"}
+      tabindex="-1"
       data-orientation="horizontal"
       data-slot="tabs-trigger"
       class={classes(["relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100", @class])}
@@ -954,19 +955,18 @@ function generateFunction(
     assigns = assign(assigns, :active, active)
     ~H"""
     <div
-      data-slot="tabs-content"
-      tabindex="0"
+      data-state={if @active, do: "active", else: "inactive"}
+      data-orientation="horizontal"
       role="tabpanel"
       aria-labelledby="radix-id"
       id="radix-id"
-      data-state={if @active, do: "active", else: "inactive"}
-      data-orientation="horizontal"
-      data-value={@value}
+      tabindex="0"
+      data-slot="tabs-content"
       class={classes(["flex-1 text-sm outline-none", @class])}
+      hidden={not @active}
+      {if @active, do: %{style: "animation-duration:0s"}, else: %{}}
       {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
+    ><%= if @active do %>{render_slot(@inner_block)}<% end %></div>
     """
   end`
   }
@@ -981,17 +981,19 @@ function generateFunction(
     <div
       data-state="open"
       data-slot="drawer-overlay"
-      class="fixed inset-0 z-50 bg-black/80"
+      class="fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+      style="pointer-events:auto"
     />
     <div
       role="dialog"
+      id="radix-id"
       data-state="open"
       data-slot="drawer-content"
       tabindex="-1"
-      class={classes(["fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background", @class])}
+      class={classes(["group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-sm text-popover-foreground data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[80vh] data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:rounded-r-xl data-[vaul-drawer-direction=left]:border-r data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:rounded-l-xl data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-xl data-[vaul-drawer-direction=top]:border-b data-[vaul-drawer-direction=left]:sm:max-w-sm data-[vaul-drawer-direction=right]:sm:max-w-sm", @class])}
       {@rest}
     >
-      <div class="mx-auto mt-4 h-2 w-[100px] rounded-full bg-muted" />
+      <div class="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
       {render_slot(@inner_block)}
     </div>
     """
@@ -1029,7 +1031,7 @@ function generateFunction(
           class="absolute bg-primary select-none data-horizontal:h-full data-vertical:w-full"
         />
       </span>
-      <span style="transform:var(--radix-slider-thumb-transform);position:absolute;left:50%">
+      <span style="transform:var(--radix-slider-thumb-transform);position:absolute;left:calc(0% + 0px)">
         <span
           data-slot="slider-thumb"
           data-orientation="horizontal"
@@ -1041,6 +1043,7 @@ function generateFunction(
           class="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
         />
       </span>
+      <input style="display:none" />
     </span>
     """
   end`

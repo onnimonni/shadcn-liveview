@@ -34,7 +34,7 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
   let classes = new Set<string>()
 
   for (const attr of node.attrs) {
-    if (attr.name.startsWith("phx-")) continue
+    if (attr.name.startsWith("phx-") || attr.name.startsWith("data-vaul-")) continue
     let attrName = attr.name === "htmlFor" ? "for" : attr.name
     const ignored: Record<string, true> = {
       tabler: true,
@@ -49,6 +49,14 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
     if (attrName === "class") {
       classes = new Set(val.split(/\s+/).filter(Boolean))
       attrs[attrName] = [...classes].sort().join(" ")
+    } else if (attrName === "style") {
+      const decls = val
+        .split(";")
+        .map((s) => s.trim().replace(/\s*:\s*/g, ":"))
+        .filter(Boolean)
+        .sort()
+        .join(";")
+      attrs[attrName] = decls
     } else {
       if (
         (attrName === "id" || attrName === "aria-controls" || attrName === "aria-describedby" || attrName === "aria-labelledby" || attrName === "for") &&
