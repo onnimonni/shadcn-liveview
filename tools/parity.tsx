@@ -42,6 +42,7 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
       phosphor: true,
       remixicon: true,
       lucide: true,
+      "data-radix-collection-item": true,
     }
     if (ignored[attrName]) continue
     let val = attr.value.trim()
@@ -50,8 +51,8 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
       attrs[attrName] = [...classes].sort().join(" ")
     } else {
       if (
-        (attrName === "id" || attrName === "aria-controls" || attrName === "aria-describedby" || attrName === "for") &&
-        (val.includes("radix-") || /^:r[0-9a-z]+:$/.test(val))
+        (attrName === "id" || attrName === "aria-controls" || attrName === "aria-describedby" || attrName === "aria-labelledby" || attrName === "for") &&
+        (val.includes("radix-") || /^:r[0-9a-z]+:$/.test(val) || /^radix-/.test(val))
       ) {
         val = "radix-id"
       }

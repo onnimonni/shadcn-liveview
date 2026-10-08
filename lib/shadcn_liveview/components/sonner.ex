@@ -9,13 +9,15 @@ defmodule ShadcnLiveview.Components.Sonner do
 
   def toaster(assigns) do
     ~H"""
-    <div
-      data-slot="toaster"
-      class={classes(["size-4 animate-spin", @class])}
+    <section
+      aria-label="Notifications alt+T"
+      tabindex="-1"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+      data-react-aria-top-layer="true"
       {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
+    />
     """
   end
 end

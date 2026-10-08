@@ -9,13 +9,17 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   def navigation_menu(assigns) do
     ~H"""
-    <div
+    <nav
+      aria-label="Main"
+      data-orientation="horizontal"
+      dir="ltr"
       data-slot="navigation-menu"
+      data-viewport="true"
       class={classes(["group/navigation-menu relative flex max-w-max flex-1 items-center justify-center", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </nav>
     """
   end
 

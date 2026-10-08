@@ -309,17 +309,23 @@ function generateFunction(
       role="switch"
       aria-checked={to_string(@checked)}
       data-state={if @checked, do: "checked", else: "unchecked"}
+      value="on"
       data-slot="switch"
       data-size={@size}
       class={classes(["peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50", @class])}
       {@rest}
-    >
-      <span
+    ><span
         data-slot="switch-thumb"
         data-state={if @checked, do: "checked", else: "unchecked"}
         class="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
-      />
-    </button>
+      /></button><input
+      type="checkbox"
+      aria-hidden="true"
+      tabindex="-1"
+      style="position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)"
+      value="on"
+      checked={@checked}
+    />
     """
   end`
   }
@@ -488,6 +494,70 @@ function generateFunction(
         <span class="sr-only">Close</span>
       </button>
     </div>
+    """
+  end`
+  }
+
+  if (fn.name === "toggle") {
+    return `  attr :pressed, :boolean, default: false
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def toggle(assigns) do
+    ~H"""
+    <button
+      type="button"
+      aria-pressed={to_string(@pressed)}
+      data-state={if @pressed, do: "on", else: "off"}
+      data-slot="toggle"
+      class={classes(["group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground dark:data-[state=on]:bg-accent/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 size-8", @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </button>
+    """
+  end`
+  }
+
+  if (fn.name === "navigation_menu") {
+    return `  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def navigation_menu(assigns) do
+    ~H"""
+    <nav
+      aria-label="Main"
+      data-orientation="horizontal"
+      dir="ltr"
+      data-slot="navigation-menu"
+      data-viewport="true"
+      class={classes(["group/navigation-menu relative flex max-w-max flex-1 items-center justify-center", @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </nav>
+    """
+  end`
+  }
+
+  if (fn.name === "sonner" || fn.name === "toaster") {
+    return `  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def ${fn.name}(assigns) do
+    ~H"""
+    <section
+      aria-label="Notifications alt+T"
+      tabindex="-1"
+      aria-live="polite"
+      aria-relevant="additions text"
+      aria-atomic="false"
+      data-react-aria-top-layer="true"
+      {@rest}
+    />
     """
   end`
   }

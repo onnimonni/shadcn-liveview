@@ -1513,7 +1513,7 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">navigation-menu</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <div data-slot="navigation-menu" class="group/navigation-menu relative flex max-w-max flex-1 items-center justify-center">
+        <nav aria-label="Main" data-orientation="horizontal" dir="ltr" data-slot="navigation-menu" data-viewport="true" class="group/navigation-menu relative flex max-w-max flex-1 items-center justify-center">
   
   <div data-slot="navigation-menu-list" class="group flex flex-1 list-none items-center justify-center gap-0">
   
@@ -1527,7 +1527,7 @@
   
 </div>
 
-</div>
+</nav>
       </div>
     </section>
 
@@ -1867,9 +1867,7 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">sonner</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <div data-slot="toaster" class="size-4 animate-spin">
-  
-</div>
+        <section aria-label="Notifications alt+T" tabindex="-1" aria-live="polite" aria-relevant="additions text" aria-atomic="false" data-react-aria-top-layer="true"></section>
       </div>
     </section>
 
@@ -1897,9 +1895,7 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">switch</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <button type="button" role="switch" aria-checked="false" data-state="unchecked" data-slot="switch" data-size="default" class="peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50" id="airplane-mode">
-  <span data-slot="switch-thumb" data-state="unchecked" class="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"></span>
-</button>
+        <button type="button" role="switch" aria-checked="false" data-state="unchecked" value="on" data-slot="switch" data-size="default" class="peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50" id="airplane-mode"><span data-slot="switch-thumb" data-state="unchecked" class="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"></span></button><input type="checkbox" aria-hidden="true" tabindex="-1" style="position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)" value="on">
       </div>
     </section>
 
@@ -2037,9 +2033,9 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">toggle</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <div data-slot="toggle" class="group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*=&#39;size-&#39;])]:size-4 bg-transparent h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2" aria-label="Toggle italic">
+        <button type="button" aria-pressed="false" data-state="off" data-slot="toggle" class="group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground dark:data-[state=on]:bg-accent/50 [&amp;_svg]:pointer-events-none [&amp;_svg]:shrink-0 [&amp;_svg:not([class*=&#39;size-&#39;])]:size-4 size-8" aria-label="Toggle italic">
   B
-</div>
+</button>
       </div>
     </section>
 
