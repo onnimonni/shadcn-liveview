@@ -18,13 +18,13 @@ defmodule ShadcnLiveview.Components.AlertDialog do
 
   def alert_dialog_trigger(assigns) do
     ~H"""
-    <button
+    <div
       data-slot="alert-dialog-trigger"
       class={classes(["", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </button>
+    </div>
     """
   end
 
@@ -143,13 +143,13 @@ defmodule ShadcnLiveview.Components.AlertDialog do
 
   def alert_dialog_title(assigns) do
     ~H"""
-    <h2
+    <div
       data-slot="alert-dialog-title" id="radix-id"
       class={classes(["cn-font-heading text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </h2>
+    </div>
     """
   end
 
@@ -159,13 +159,13 @@ defmodule ShadcnLiveview.Components.AlertDialog do
 
   def alert_dialog_description(assigns) do
     ~H"""
-    <p
+    <div
       data-slot="alert-dialog-description" id="radix-id"
       class={classes(["text-sm text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </p>
+    </div>
     """
   end
 

@@ -116,13 +116,13 @@ defmodule ShadcnLiveview.Components.Item do
 
   def item_title(assigns) do
     ~H"""
-    <h2
+    <div
       data-slot="item-title"
       class={classes(["line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </h2>
+    </div>
     """
   end
 

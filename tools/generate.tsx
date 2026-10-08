@@ -101,7 +101,11 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
   if (lowerName.includes("breadcrumbitem") || lowerName.includes("breadcrumbseparator")) return "li"
   if (lowerName.includes("breadcrumblink")) return "a"
   if (lowerName.includes("breadcrumbpage") || lowerName.includes("badge")) return "span"
-  if (lowerName.includes("card") || lowerName.includes("alerttitle") || lowerName.includes("alertdescription") || lowerName.includes("alert_")) return "div"
+  if (lowerName.includes("navigationmenulist") || lowerName.includes("navigation_menu_list")) return "ul"
+  if (lowerName.includes("navigationmenuitem") || lowerName.includes("navigation_menu_item")) return "li"
+  if (lowerName.includes("paginationcontent") || lowerName.includes("pagination_content")) return "ul"
+  if (lowerName.includes("paginationitem") || lowerName.includes("pagination_item")) return "li"
+  if (lowerName.includes("card") || lowerName.includes("alert") || lowerName.includes("itemtitle") || lowerName.includes("item_title")) return "div"
   if (lowerName.endsWith("title")) return "h2"
   if (lowerName.endsWith("description")) return "p"
   if (
@@ -239,7 +243,7 @@ function generateFunction(
       >
         {render_slot(@inner_block)}
         <ShadcnLiveview.Components.Icon.icon name="chevron-down" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
-        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-not-aria-expanded/accordion-trigger:hidden" />
+        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline hidden" />
       </button>
     </h3>
     """
@@ -529,9 +533,7 @@ function generateFunction(
       <div style="position:relative">
         {render_slot(@inner_block)}
       </div>
-      <div class="absolute top-full left-0 isolate z-50 flex justify-center">
-        <div data-slot="navigation-menu-viewport" class="origin-top-center relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-open:animate-in data-closed:animate-out data-closed:zoom-out-95 data-open:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)" />
-      </div>
+      <div class="absolute top-full left-0 isolate z-50 flex justify-center" />
     </nav>
     """
   end`
@@ -618,7 +620,7 @@ function generateFunction(
       class={classes(["overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down", @class])}
       {@rest}
     >
-      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 text-sm [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
+      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
         {render_slot(@inner_block)}
       </div>
     </div>

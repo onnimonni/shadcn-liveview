@@ -66,13 +66,13 @@ defmodule ShadcnLiveview.Components.Alert do
 
   def alert_action(assigns) do
     ~H"""
-    <button
+    <div
       data-slot="alert-action"
       class={classes(["absolute top-2 right-2", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </button>
+    </div>
     """
   end
 end

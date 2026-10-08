@@ -64,7 +64,7 @@ defmodule ShadcnLiveview.Components.Accordion do
       >
         {render_slot(@inner_block)}
         <ShadcnLiveview.Components.Icon.icon name="chevron-down" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
-        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-not-aria-expanded/accordion-trigger:hidden" />
+        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline hidden" />
       </button>
     </h3>
     """
@@ -87,7 +87,7 @@ defmodule ShadcnLiveview.Components.Accordion do
       class={classes(["overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down", @class])}
       {@rest}
     >
-      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 text-sm [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
+      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
         {render_slot(@inner_block)}
       </div>
     </div>

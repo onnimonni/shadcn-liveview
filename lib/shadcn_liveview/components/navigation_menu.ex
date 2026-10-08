@@ -21,9 +21,7 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
       <div style="position:relative">
         {render_slot(@inner_block)}
       </div>
-      <div class="absolute top-full left-0 isolate z-50 flex justify-center">
-        <div data-slot="navigation-menu-viewport" class="origin-top-center relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-open:animate-in data-closed:animate-out data-closed:zoom-out-95 data-open:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)" />
-      </div>
+      <div class="absolute top-full left-0 isolate z-50 flex justify-center" />
     </nav>
     """
   end
@@ -34,13 +32,13 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   def navigation_menu_list(assigns) do
     ~H"""
-    <div
+    <ul
       data-slot="navigation-menu-list"
       class={classes(["group flex flex-1 list-none items-center justify-center gap-0", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </ul>
     """
   end
 
@@ -50,13 +48,13 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   def navigation_menu_item(assigns) do
     ~H"""
-    <div
+    <li
       data-slot="navigation-menu-item"
       class={classes(["relative", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </li>
     """
   end
 

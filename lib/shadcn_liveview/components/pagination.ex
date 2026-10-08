@@ -25,13 +25,13 @@ defmodule ShadcnLiveview.Components.Pagination do
 
   def pagination_content(assigns) do
     ~H"""
-    <div
+    <ul
       data-slot="pagination-content"
       class={classes(["flex items-center gap-0.5", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </ul>
     """
   end
 

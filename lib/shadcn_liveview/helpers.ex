@@ -39,8 +39,8 @@ defmodule ShadcnLiveview.Helpers do
       token =~ ~r/^rounded(-[a-z0-9]+)?$/ ->
         :rounded
 
-      token =~ ~r/^size-[0-9.]+$/ ->
-        :size
+      token =~ ~r/^(size|w)-[0-9a-z\/.-]+$/ ->
+        :width_size
 
       true ->
         token

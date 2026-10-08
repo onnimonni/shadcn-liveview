@@ -560,13 +560,13 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" aria-hidden="true" data-slot="accordion-trigger-icon">
   <path d="m6 9 6 6 6-6"></path>
 </svg>
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up pointer-events-none shrink-0 group-not-aria-expanded/accordion-trigger:hidden" aria-hidden="true" data-slot="accordion-trigger-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-up pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline hidden" aria-hidden="true" data-slot="accordion-trigger-icon">
   <path d="m18 15-6-6-6 6"></path>
 </svg>
   </button>
 </h3>
     <div data-slot="accordion-content" data-state="open" data-orientation="vertical" role="region" id="radix-id" aria-labelledby="radix-id" style="--radix-accordion-content-height:var(--radix-collapsible-content-height);--radix-accordion-content-width:var(--radix-collapsible-content-width)" class="overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down">
-  <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 text-sm [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
+  <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
     Yes. It adheres to the WAI-ARIA design pattern.
   </div>
 </div>
@@ -592,14 +592,14 @@
   
     <div data-slot="alert-dialog-header" class="grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]">
   
-      <h2 data-slot="alert-dialog-title" id="radix-id" class="cn-font-heading text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2">
+      <div data-slot="alert-dialog-title" id="radix-id" class="cn-font-heading text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2">
   Are you absolutely sure?
-</h2>
-      <p data-slot="alert-dialog-description" id="radix-id" class="text-sm text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
+</div>
+      <div data-slot="alert-dialog-description" id="radix-id" class="text-sm text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground">
   
         This action cannot be undone. This will permanently delete your account.
       
-</p>
+</div>
     
 </div>
     <div data-slot="alert-dialog-footer" class="-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end">
@@ -1267,7 +1267,7 @@
 </button>
   
 </div>
-  <div data-slot="hover-card-content" class="z-50 w-64 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 w-80">
+  <div data-slot="hover-card-content" class="z-50 origin-(--radix-hover-card-content-transform-origin) rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 w-80">
   
     <p class="text-sm">The React Framework for the Web.</p>
   
@@ -1356,9 +1356,9 @@
   
   <div data-slot="item-content" class="flex flex-1 flex-col gap-1 group-data-[size=xs]/item:gap-0 [&amp;+[data-slot=item-content]]:flex-none">
   
-    <h2 data-slot="item-title" class="line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4">
+    <div data-slot="item-title" class="line-clamp-1 flex w-fit items-center gap-2 text-sm leading-snug font-medium underline-offset-4">
   Basic Item
-</h2>
+</div>
     <p data-slot="item-description" class="line-clamp-2 text-left text-sm leading-normal font-normal text-muted-foreground group-data-[size=xs]/item:text-xs [&amp;&gt;a]:underline [&amp;&gt;a]:underline-offset-4 [&amp;&gt;a:hover]:text-primary">
   Item description text
 </p>
@@ -1408,7 +1408,7 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">marker</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <div data-slot="marker" data-variant="default" class="group/marker relative flex min-h-4 w-full items-center gap-2 text-left text-sm text-muted-foreground [&amp;_svg:not([class*=&#39;size-&#39;])]:size-4 [a]:underline [a]:underline-offset-3 [a]:hover:text-foreground size-2 bg-emerald-500 rounded-full">
+        <div data-slot="marker" data-variant="default" class="group/marker relative flex min-h-4 items-center gap-2 text-left text-sm text-muted-foreground [&amp;_svg:not([class*=&#39;size-&#39;])]:size-4 [a]:underline [a]:underline-offset-3 [a]:hover:text-foreground size-2 bg-emerald-500 rounded-full">
   
 </div>
       </div>
@@ -1519,22 +1519,20 @@
         <nav aria-label="Main" data-orientation="horizontal" dir="ltr" data-slot="navigation-menu" data-viewport="true" class="group/navigation-menu relative flex max-w-max flex-1 items-center justify-center">
   <div style="position:relative">
     
-  <div data-slot="navigation-menu-list" class="group flex flex-1 list-none items-center justify-center gap-0">
+  <ul data-slot="navigation-menu-list" class="group flex flex-1 list-none items-center justify-center gap-0">
   
-    <div data-slot="navigation-menu-item" class="relative">
+    <li data-slot="navigation-menu-item" class="relative">
   
       <div data-slot="navigation-menu-link" class="flex items-center gap-2 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-md data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&amp;_svg:not([class*=&#39;size-&#39;])]:size-4" href="/docs">
   Documentation
 </div>
     
-</div>
+</li>
   
-</div>
+</ul>
 
   </div>
-  <div class="absolute top-full left-0 isolate z-50 flex justify-center">
-    <div data-slot="navigation-menu-viewport" class="origin-top-center relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-open:animate-in data-closed:animate-out data-closed:zoom-out-95 data-open:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)"></div>
-  </div>
+  <div class="absolute top-full left-0 isolate z-50 flex justify-center"></div>
 </nav>
       </div>
     </section>
@@ -1550,7 +1548,7 @@
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
         <nav data-slot="pagination" role="navigation" class="mx-auto flex w-full justify-center">
   
-  <div data-slot="pagination-content" class="flex items-center gap-0.5">
+  <ul data-slot="pagination-content" class="flex items-center gap-0.5">
   
     <li data-slot="pagination-item" class="">
   
@@ -1574,7 +1572,7 @@
     
 </li>
   
-</div>
+</ul>
 
 </nav>
       </div>
@@ -1597,7 +1595,7 @@
 </button>
   
 </button>
-  <div data-slot="popover-content" class="z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 w-80">
+  <div data-slot="popover-content" class="z-50 flex origin-(--radix-popover-content-transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 w-80">
   
     <p class="text-sm">Dimensions settings.</p>
   
@@ -1710,7 +1708,7 @@
         <span class="rounded bg-muted px-2 py-0.5 text-xs font-mono text-muted-foreground">scroll-area</span>
       </div>
       <div class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6">
-        <div data-slot="scroll-area-viewport" class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 h-32 w-48 rounded-md border p-4">
+        <div data-slot="scroll-area-viewport" class="rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 h-32 w-48 rounded-md border p-4">
   
   Long scrolling text item list inside scroll area.
 
