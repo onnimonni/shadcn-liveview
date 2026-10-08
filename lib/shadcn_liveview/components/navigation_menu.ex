@@ -33,7 +33,7 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
   def navigation_menu_list(assigns) do
     ~H"""
     <ul
-      data-slot="navigation-menu-list"
+      data-slot="navigation-menu-list" data-orientation="horizontal" dir="ltr"
       class={classes(["group flex flex-1 list-none items-center justify-center gap-0", @class])}
       {@rest}
     >
@@ -128,13 +128,13 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   def navigation_menu_link(assigns) do
     ~H"""
-    <div
+    <a
       data-slot="navigation-menu-link"
       class={classes(["flex items-center gap-2 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-md data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_svg:not([class*='size-'])]:size-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </a>
     """
   end
 

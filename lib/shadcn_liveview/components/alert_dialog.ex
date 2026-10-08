@@ -75,8 +75,6 @@ defmodule ShadcnLiveview.Components.AlertDialog do
     <div
       role="alertdialog"
       id="radix-id"
-      aria-describedby="radix-id"
-      aria-labelledby="radix-id"
       data-state="open"
       data-slot="alert-dialog-content"
       data-size="default"

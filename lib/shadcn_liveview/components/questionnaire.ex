@@ -9,13 +9,13 @@ defmodule ShadcnLiveview.Components.Questionnaire do
 
   def questionnaire(assigns) do
     ~H"""
-    <div
+    <form
       data-slot="questionnaire"
       class={classes(["flex w-full min-w-0 flex-col gap-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </div>
+    </form>
     """
   end
 

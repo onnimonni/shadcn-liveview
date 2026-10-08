@@ -99,7 +99,7 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
   if (lowerName === "breadcrumb") return "nav"
   if (lowerName === "breadcrumblist") return "ol"
   if (lowerName.includes("breadcrumbitem") || lowerName.includes("breadcrumbseparator")) return "li"
-  if (lowerName.includes("breadcrumblink")) return "a"
+  if (lowerName.includes("link") && !lowerName.includes("input")) return "a"
   if (lowerName.includes("breadcrumbpage") || lowerName.includes("badge")) return "span"
   if (lowerName.includes("navigationmenulist") || lowerName.includes("navigation_menu_list")) return "ul"
   if (lowerName.includes("navigationmenuitem") || lowerName.includes("navigation_menu_item")) return "li"
@@ -384,8 +384,6 @@ function generateFunction(
     <div
       role="dialog"
       id="radix-id"
-      aria-describedby="radix-id"
-      aria-labelledby="radix-id"
       data-state="open"
       data-slot="dialog-content"
       tabindex="-1"
@@ -393,7 +391,7 @@ function generateFunction(
       {@rest}
     >
       {render_slot(@inner_block)}
-      <button type="button" data-slot="dialog-close" class="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-[min(var(--radius-md),12px)] text-muted-foreground transition-opacity hover:opacity-100">
+      <button type="button" data-slot="dialog-close" data-variant="ghost" data-size="icon-sm" class="group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg absolute top-2 right-2">
         <ShadcnLiveview.Components.Icon.icon name="x" class="size-4" />
         <span class="sr-only">Close</span>
       </button>
@@ -418,8 +416,6 @@ function generateFunction(
     <div
       role="alertdialog"
       id="radix-id"
-      aria-describedby="radix-id"
-      aria-labelledby="radix-id"
       data-state="open"
       data-slot="alert-dialog-content"
       data-size="default"
@@ -495,7 +491,6 @@ function generateFunction(
     <div
       role="dialog"
       id="radix-id"
-      aria-describedby="radix-id"
       data-state="open"
       data-slot="sheet-content"
       data-side="right"
@@ -504,7 +499,7 @@ function generateFunction(
       {@rest}
     >
       {render_slot(@inner_block)}
-      <button type="button" data-slot="sheet-close" class="absolute top-3 right-3 inline-flex size-7 items-center justify-center rounded-[min(var(--radius-md),12px)] text-muted-foreground transition-opacity hover:opacity-100">
+      <button type="button" data-slot="sheet-close" data-variant="ghost" data-size="icon-sm" class="group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg absolute top-3 right-3">
         <ShadcnLiveview.Components.Icon.icon name="x" class="size-4" />
         <span class="sr-only">Close</span>
       </button>
@@ -535,6 +530,107 @@ function generateFunction(
       </div>
       <div class="absolute top-full left-0 isolate z-50 flex justify-center" />
     </nav>
+    """
+  end`
+  }
+  if (fn.name === "pagination_link") {
+    return `  attr :is_active, :boolean, default: false
+  attr :size, :string, default: "icon"
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def pagination_link(assigns) do
+    ~H"""
+    <a
+      data-slot="pagination-link"
+      aria-current={if @is_active, do: "page"}
+      data-active={if @is_active, do: "true"}
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        if(@is_active, do: "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50", else: "border-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50"),
+        if(@size == "default", do: "h-8 gap-1.5 px-2.5", else: "size-8"),
+        @class
+      ])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </a>
+    """
+  end`
+  }
+
+  if (fn.name === "pagination_previous") {
+    return `  attr :text, :string, default: "Previous"
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def pagination_previous(assigns) do
+    ~H"""
+    <a
+      aria-label="Go to previous page"
+      data-slot="pagination-link"
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pl-1.5!",
+        @class
+      ])}
+      {@rest}
+    >
+      <ShadcnLiveview.Components.Icon.icon name="chevron-left" data-icon="inline-start" class="cn-rtl-flip" />
+      <span class="hidden sm:block">{@text}</span>
+    </a>
+    """
+  end`
+  }
+
+  if (fn.name === "pagination_next") {
+    return `  attr :text, :string, default: "Next"
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def pagination_next(assigns) do
+    ~H"""
+    <a
+      aria-label="Go to next page"
+      data-slot="pagination-link"
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pr-1.5!",
+        @class
+      ])}
+      {@rest}
+    >
+      <span class="hidden sm:block">{@text}</span>
+      <ShadcnLiveview.Components.Icon.icon name="chevron-right" data-icon="inline-end" class="cn-rtl-flip" />
+    </a>
+    """
+  end`
+  }
+
+  if (fn.name === "scroll_area") {
+    return `  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def scroll_area(assigns) do
+    ~H"""
+    <div
+      data-slot="scroll-area"
+      dir="ltr"
+      class={classes(["relative", @class])}
+      style="position:relative;--radix-scroll-area-corner-width:0px;--radix-scroll-area-corner-height:0px"
+      {@rest}
+    >
+      <div
+        data-slot="scroll-area-viewport"
+        class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        style="overflow-x:hidden;overflow-y:scroll"
+        tabindex="0"
+      >
+        {render_slot(@inner_block)}
+      </div>
+    </div>
     """
   end`
   }
@@ -1202,6 +1298,13 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     }
     if (fnSnakeName === "breadcrumb_page") {
       staticAttrsList.push('aria-disabled="true" aria-current="page"')
+    }
+    if (fnSnakeName === "navigation_menu_list") {
+      finalTag = "ul"
+      staticAttrsList.push('data-orientation="horizontal" dir="ltr"')
+    }
+    if (fnSnakeName === "questionnaire") {
+      finalTag = "form"
     }
     if (fnSnakeName === "toggle") {
       specialAttrs.push({ name: "pressed", type: "boolean", default: "false" })

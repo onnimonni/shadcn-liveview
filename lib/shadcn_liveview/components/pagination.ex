@@ -51,6 +51,8 @@ defmodule ShadcnLiveview.Components.Pagination do
     """
   end
 
+  attr :is_active, :boolean, default: false
+  attr :size, :string, default: "icon"
   attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
@@ -59,7 +61,14 @@ defmodule ShadcnLiveview.Components.Pagination do
     ~H"""
     <a
       data-slot="pagination-link"
-      class={classes(["", @class])}
+      aria-current={if @is_active, do: "page"}
+      data-active={if @is_active, do: "true"}
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        if(@is_active, do: "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50", else: "border-transparent hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50"),
+        if(@size == "default", do: "h-8 gap-1.5 px-2.5", else: "size-8"),
+        @class
+      ])}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -67,35 +76,47 @@ defmodule ShadcnLiveview.Components.Pagination do
     """
   end
 
+  attr :text, :string, default: "Previous"
   attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
   def pagination_previous(assigns) do
     ~H"""
-    <div
-      data-slot="pagination-previous"
-      class={classes(["hidden sm:block", @class])}
+    <a
+      aria-label="Go to previous page"
+      data-slot="pagination-link"
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pl-1.5!",
+        @class
+      ])}
       {@rest}
     >
-      {render_slot(@inner_block)}
-    </div>
+      <ShadcnLiveview.Components.Icon.icon name="chevron-left" data-icon="inline-start" class="cn-rtl-flip" />
+      <span class="hidden sm:block">{@text}</span>
+    </a>
     """
   end
 
+  attr :text, :string, default: "Next"
   attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
   def pagination_next(assigns) do
     ~H"""
-    <div
-      data-slot="pagination-next"
-      class={classes(["cn-rtl-flip", @class])}
+    <a
+      aria-label="Go to next page"
+      data-slot="pagination-link"
+      class={classes([
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pr-1.5!",
+        @class
+      ])}
       {@rest}
     >
-      {render_slot(@inner_block)}
-    </div>
+      <span class="hidden sm:block">{@text}</span>
+      <ShadcnLiveview.Components.Icon.icon name="chevron-right" data-icon="inline-end" class="cn-rtl-flip" />
+    </a>
     """
   end
 

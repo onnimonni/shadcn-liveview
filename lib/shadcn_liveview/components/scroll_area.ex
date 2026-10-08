@@ -10,11 +10,20 @@ defmodule ShadcnLiveview.Components.ScrollArea do
   def scroll_area(assigns) do
     ~H"""
     <div
-      data-slot="scroll-area-viewport"
-      class={classes(["size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1", @class])}
+      data-slot="scroll-area"
+      dir="ltr"
+      class={classes(["relative", @class])}
+      style="position:relative;--radix-scroll-area-corner-width:0px;--radix-scroll-area-corner-height:0px"
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <div
+        data-slot="scroll-area-viewport"
+        class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        style="overflow-x:hidden;overflow-y:scroll"
+        tabindex="0"
+      >
+        {render_slot(@inner_block)}
+      </div>
     </div>
     """
   end
