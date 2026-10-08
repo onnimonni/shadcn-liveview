@@ -301,11 +301,12 @@ async function runCli(): Promise<void> {
   console.log("  - React SSR:   priv/static/preview/react-ssr.html")
   console.log("  - Phoenix SSR: priv/static/preview/phoenix-ssr.html\n")
 
-  if (summary.passedCount < summary.totalCount) {
-    console.log(`Parity suite completed with ${summary.totalCount - summary.passedCount} component diffs to resolve.`)
-  } else {
-    console.log("All components achieved 100% SSR parity!")
-  }
+  const discrepancies = summary.totalCount - summary.passedCount
+  const matchRate = ((summary.passedCount / summary.totalCount) * 100).toFixed(1)
+
+  console.log(`\nMETRIC parity_score=${summary.passedCount}`)
+  console.log(`METRIC discrepancies=${discrepancies}`)
+  console.log(`METRIC match_rate=${matchRate}`)
 }
 
 const isDirect = process.argv[1]?.endsWith("parity.tsx") || process.argv[1]?.endsWith("parity.ts")
