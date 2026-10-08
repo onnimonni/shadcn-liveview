@@ -1316,6 +1316,9 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     if (fnSnakeName === "input_group_addon") {
       staticAttrsList.push('data-align={@align}')
     }
+    if (fnSnakeName === "field") {
+      staticAttrsList.push('data-orientation={@orientation}')
+    }
     if (fnSnakeName === "chart_container") {
       specialAttrs.push({ name: "config", type: "map", default: "%{}" })
     }
@@ -1577,20 +1580,20 @@ export async function generateAllComponents(): Promise<void> {
   console.log(`Found ${files.length} vendored UI component files.`)
 
   const moduleNames: string[] = []
-  const controlClasses = new Map<string, string>()
-  for (const control of ["input", "textarea"]) {
+  const inheritedClasses = new Map<string, string>()
+  for (const [control, target] of [["input", "input_group_input"], ["textarea", "input_group_textarea"], ["label", "field_label"]]) {
     const source = await fs.readFile(path.join("vendor/shadcn/ui", control + ".tsx"), "utf8")
     const controlSpec = parseComponentAST(control, source)
-    controlClasses.set("input_group_" + control, controlSpec.functions.find((fn) => fn.name === control)!.baseClasses)
+    inheritedClasses.set(target, controlSpec.functions.find((fn) => fn.name === control)!.baseClasses)
   }
 
   for (const f of files) {
     const compName = f.replace(/\.tsx$/, "")
     const code = await fs.readFile(path.join("vendor/shadcn/ui", f), "utf8")
     const spec = parseComponentAST(compName, code)
-    // InputGroup controls compose the upstream Input/Textarea styles before overrides.
+    // Compound controls compose upstream primitive styles before local overrides.
     for (const fn of spec.functions) {
-      const inherited = controlClasses.get(fn.name)
+      const inherited = inheritedClasses.get(fn.name)
       if (inherited) fn.baseClasses = cn(inherited, fn.baseClasses)
     }
     const elixirCode = generateElixirModule(spec)
