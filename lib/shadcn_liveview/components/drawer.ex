@@ -140,7 +140,7 @@ defmodule ShadcnLiveview.Components.Drawer do
   def drawer_title(assigns) do
     ~H"""
     <h2
-      data-slot="drawer-title"
+      data-slot="drawer-title" id="radix-id"
       class={classes(["cn-font-heading text-base font-medium text-foreground", @class])}
       {@rest}
     >
@@ -156,7 +156,7 @@ defmodule ShadcnLiveview.Components.Drawer do
   def drawer_description(assigns) do
     ~H"""
     <p
-      data-slot="drawer-description"
+      data-slot="drawer-description" id="radix-id"
       class={classes(["text-sm text-muted-foreground", @class])}
       {@rest}
     >

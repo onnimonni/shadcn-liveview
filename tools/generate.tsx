@@ -110,7 +110,8 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
     lowerName.endsWith("_button") ||
     lowerName.includes("action") ||
     lowerName.includes("cancel") ||
-    lowerName.includes("close")
+    lowerName.includes("close") ||
+    lowerName === "toggle"
   ) {
     return "button"
   }
@@ -230,6 +231,7 @@ function generateFunction(
         data-state="open"
         aria-expanded="true"
         aria-disabled="true"
+        data-radix-collection-item=""
         id="radix-id"
         aria-controls="radix-id"
         class={["group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground", @class]}
@@ -237,6 +239,7 @@ function generateFunction(
       >
         {render_slot(@inner_block)}
         <ShadcnLiveview.Components.Icon.icon name="chevron-down" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
+        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-not-aria-expanded/accordion-trigger:hidden" />
       </button>
     </h3>
     """
@@ -376,6 +379,9 @@ function generateFunction(
     />
     <div
       role="dialog"
+      id="radix-id"
+      aria-describedby="radix-id"
+      aria-labelledby="radix-id"
       data-state="open"
       data-slot="dialog-content"
       tabindex="-1"
@@ -407,6 +413,9 @@ function generateFunction(
     />
     <div
       role="alertdialog"
+      id="radix-id"
+      aria-describedby="radix-id"
+      aria-labelledby="radix-id"
       data-state="open"
       data-slot="alert-dialog-content"
       data-size="default"
@@ -481,15 +490,17 @@ function generateFunction(
     />
     <div
       role="dialog"
+      id="radix-id"
+      aria-describedby="radix-id"
       data-state="open"
       data-slot="sheet-content"
       data-side="right"
       tabindex="-1"
-      class={classes(["fixed z-50 flex flex-col gap-4 bg-popover text-popover-foreground shadow-lg transition duration-200 ease-in-out data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 inset-y-0 right-0 h-full w-3/4 border-l data-closed:slide-out-to-right data-open:slide-in-from-right sm:max-w-sm", @class])}
+      class={classes(["fixed z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-10 data-[side=left]:data-open:slide-in-from-left-10 data-[side=right]:data-open:slide-in-from-right-10 data-[side=top]:data-open:slide-in-from-top-10 data-closed:animate-out data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-10 data-[side=left]:data-closed:slide-out-to-left-10 data-[side=right]:data-closed:slide-out-to-right-10 data-[side=top]:data-closed:slide-out-to-top-10", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-      <button type="button" data-slot="sheet-close" class="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-[min(var(--radius-md),12px)] text-muted-foreground transition-opacity hover:opacity-100">
+      <button type="button" data-slot="sheet-close" class="absolute top-3 right-3 inline-flex size-7 items-center justify-center rounded-[min(var(--radius-md),12px)] text-muted-foreground transition-opacity hover:opacity-100">
         <ShadcnLiveview.Components.Icon.icon name="x" class="size-4" />
         <span class="sr-only">Close</span>
       </button>
@@ -498,27 +509,6 @@ function generateFunction(
   end`
   }
 
-  if (fn.name === "toggle") {
-    return `  attr :pressed, :boolean, default: false
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def toggle(assigns) do
-    ~H"""
-    <button
-      type="button"
-      aria-pressed={to_string(@pressed)}
-      data-state={if @pressed, do: "on", else: "off"}
-      data-slot="toggle"
-      class={classes(["group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground dark:data-[state=on]:bg-accent/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 size-8", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
-    """
-  end`
-  }
 
   if (fn.name === "navigation_menu") {
     return `  attr :class, :string, default: nil
@@ -536,7 +526,12 @@ function generateFunction(
       class={classes(["group/navigation-menu relative flex max-w-max flex-1 items-center justify-center", @class])}
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <div style="position:relative">
+        {render_slot(@inner_block)}
+      </div>
+      <div class="absolute top-full left-0 isolate z-50 flex justify-center">
+        <div data-slot="navigation-menu-viewport" class="origin-top-center relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-open:animate-in data-closed:animate-out data-closed:zoom-out-95 data-open:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)" />
+      </div>
     </nav>
     """
   end`
@@ -619,10 +614,11 @@ function generateFunction(
       role="region"
       id="radix-id"
       aria-labelledby="radix-id"
+      style="--radix-accordion-content-height:var(--radix-collapsible-content-height);--radix-accordion-content-width:var(--radix-collapsible-content-width)"
       class={classes(["overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down", @class])}
       {@rest}
     >
-      <div class="pt-0 pb-4">
+      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 text-sm [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
         {render_slot(@inner_block)}
       </div>
     </div>
@@ -782,8 +778,7 @@ function generateFunction(
       tabindex={if @active, do: "0", else: "-1"}
       data-orientation="horizontal"
       data-slot="tabs-trigger"
-      data-value={@value}
-      class={classes(["relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100", @class])}
+      class={classes(["relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -1206,7 +1201,23 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     if (fnSnakeName === "breadcrumb_page") {
       staticAttrsList.push('aria-disabled="true" aria-current="page"')
     }
-
+    if (fnSnakeName === "toggle") {
+      specialAttrs.push({ name: "pressed", type: "boolean", default: "false" })
+      staticAttrsList.push('type="button" aria-pressed={to_string(@pressed)} data-state={if @pressed, do: "on", else: "off"}')
+    }
+    const radixTextComponents: Record<string, true> = {
+      dialog_title: true,
+      alert_dialog_title: true,
+      sheet_title: true,
+      drawer_title: true,
+      dialog_description: true,
+      alert_dialog_description: true,
+      sheet_description: true,
+      drawer_description: true,
+    }
+    if (radixTextComponents[fnSnakeName]) {
+      staticAttrsList.push('id="radix-id"')
+    }
     functions.push({
       name: fnSnakeName,
       tag: finalTag,

@@ -90,6 +90,9 @@ defmodule ShadcnLiveview.Components.Dialog do
     />
     <div
       role="dialog"
+      id="radix-id"
+      aria-describedby="radix-id"
+      aria-labelledby="radix-id"
       data-state="open"
       data-slot="dialog-content"
       tabindex="-1"
@@ -144,7 +147,7 @@ defmodule ShadcnLiveview.Components.Dialog do
   def dialog_title(assigns) do
     ~H"""
     <h2
-      data-slot="dialog-title"
+      data-slot="dialog-title" id="radix-id"
       class={classes(["cn-font-heading text-base leading-none font-medium", @class])}
       {@rest}
     >
@@ -160,7 +163,7 @@ defmodule ShadcnLiveview.Components.Dialog do
   def dialog_description(assigns) do
     ~H"""
     <p
-      data-slot="dialog-description"
+      data-slot="dialog-description" id="radix-id"
       class={classes(["text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground", @class])}
       {@rest}
     >

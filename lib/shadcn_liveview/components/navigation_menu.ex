@@ -18,7 +18,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
       class={classes(["group/navigation-menu relative flex max-w-max flex-1 items-center justify-center", @class])}
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <div style="position:relative">
+        {render_slot(@inner_block)}
+      </div>
+      <div class="absolute top-full left-0 isolate z-50 flex justify-center">
+        <div data-slot="navigation-menu-viewport" class="origin-top-center relative mt-1.5 h-(--radix-navigation-menu-viewport-height) w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-open:animate-in data-closed:animate-out data-closed:zoom-out-95 data-open:zoom-in-90 md:w-(--radix-navigation-menu-viewport-width)" />
+      </div>
     </nav>
     """
   end

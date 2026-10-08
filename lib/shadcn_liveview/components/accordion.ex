@@ -56,6 +56,7 @@ defmodule ShadcnLiveview.Components.Accordion do
         data-state="open"
         aria-expanded="true"
         aria-disabled="true"
+        data-radix-collection-item=""
         id="radix-id"
         aria-controls="radix-id"
         class={["group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground", @class]}
@@ -63,6 +64,7 @@ defmodule ShadcnLiveview.Components.Accordion do
       >
         {render_slot(@inner_block)}
         <ShadcnLiveview.Components.Icon.icon name="chevron-down" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
+        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-not-aria-expanded/accordion-trigger:hidden" />
       </button>
     </h3>
     """
@@ -81,10 +83,11 @@ defmodule ShadcnLiveview.Components.Accordion do
       role="region"
       id="radix-id"
       aria-labelledby="radix-id"
+      style="--radix-accordion-content-height:var(--radix-collapsible-content-height);--radix-accordion-content-width:var(--radix-collapsible-content-width)"
       class={classes(["overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down", @class])}
       {@rest}
     >
-      <div class="pt-0 pb-4">
+      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 text-sm [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
         {render_slot(@inner_block)}
       </div>
     </div>

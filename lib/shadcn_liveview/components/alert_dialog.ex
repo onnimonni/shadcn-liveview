@@ -74,6 +74,9 @@ defmodule ShadcnLiveview.Components.AlertDialog do
     />
     <div
       role="alertdialog"
+      id="radix-id"
+      aria-describedby="radix-id"
+      aria-labelledby="radix-id"
       data-state="open"
       data-slot="alert-dialog-content"
       data-size="default"
@@ -141,7 +144,7 @@ defmodule ShadcnLiveview.Components.AlertDialog do
   def alert_dialog_title(assigns) do
     ~H"""
     <h2
-      data-slot="alert-dialog-title"
+      data-slot="alert-dialog-title" id="radix-id"
       class={classes(["cn-font-heading text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2", @class])}
       {@rest}
     >
@@ -157,7 +160,7 @@ defmodule ShadcnLiveview.Components.AlertDialog do
   def alert_dialog_description(assigns) do
     ~H"""
     <p
-      data-slot="alert-dialog-description"
+      data-slot="alert-dialog-description" id="radix-id"
       class={classes(["text-sm text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground", @class])}
       {@rest}
     >
