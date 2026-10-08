@@ -3,30 +3,48 @@ defmodule ShadcnLiveview.Components.Progress do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :value, :integer, default: 0
+  @doc """
+  Progress matching the upstream wrapper: `value` controls only the indicator's
+  visual percentage (nil/absent means zero). It is not passed to the Radix root,
+  so both root and indicator remain indeterminate and omit aria-valuenow.
+  `max` sets root/indicator data-max and aria-valuemax, defaulting to 100
+  unless it is a positive number; it does not scale the visual percentage.
+  `class` styles the root; global/ARIA attributes are forwarded to the root.
+  """
+  attr :value, :any, default: nil
+  attr :max, :any, default: 100
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  attr :rest, :global
 
   def progress(assigns) do
-    state = if (assigns.value || 0) == 100, do: "complete", else: "loading"
-    assigns = assign(assigns, :state, state)
+    max = if is_number(assigns.max) and assigns.max > 0, do: assigns.max, else: 100
+    max = if is_float(max) and max == trunc(max), do: trunc(max), else: max
+    offset = 100 - (assigns.value || 0)
+    offset = if is_float(offset) and offset == trunc(offset), do: trunc(offset), else: offset
+    assigns = assign(assigns, max: max, offset: offset)
+
     ~H"""
     <div
       data-slot="progress"
       role="progressbar"
-      aria-valuemax="100"
+      aria-valuemax={@max}
       aria-valuemin="0"
-      aria-valuenow={to_string(@value || 0)}
-      data-state={@state}
-      class={classes(["relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted", @class])}
+      data-state="indeterminate"
+      data-max={@max}
+      class={
+        classes([
+          "relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted",
+          @class
+        ])
+      }
       {@rest}
     >
       <div
         data-slot="progress-indicator"
-        data-state={@state}
+        data-state="indeterminate"
+        data-max={@max}
         class="size-full flex-1 bg-primary transition-all"
-        style={"transform:translateX(-#{100 - (@value || 0)}%)"}
+        style={"transform:translateX(-#{@offset}%)"}
       />
     </div>
     """

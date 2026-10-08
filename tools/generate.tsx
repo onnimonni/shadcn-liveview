@@ -3,15 +3,23 @@ import path from "node:path"
 import ts from "typescript"
 import { fixtures } from "./fixtures"
 import { cn } from "cn"
+import { generateIcons } from "./icons"
+import { generateComponent as linked } from "./converters/linked"
+import { generateComponent as modals } from "./converters/modals"
+import { generateComponent as popups } from "./converters/popups"
+import { generateComponent as command } from "./converters/command"
+import { generateComponent as calendar } from "./converters/calendar"
+import { generateComponent as layout } from "./converters/layout"
+import { generateComponent as chart } from "./converters/chart"
+import { generateComponent as conversation } from "./converters/conversation"
+import { generateComponent as selections } from "./converters/selections"
+import { generateComponent as controls } from "./converters/controls"
+import { generateComponent as toggle } from "./converters/toggle"
 
 export interface ComponentSpec {
   name: string
   moduleName: string
   functions: ComponentFunctionSpec[]
-  hook?: {
-    name: string
-    js: string
-  }
 }
 
 export interface ComponentFunctionSpec {
@@ -131,11 +139,14 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
 }
 
 export function generateElixirModule(spec: ComponentSpec): string {
-  const primaryName = spec.name.replace(/-/g, "_")
+  for (const convert of [linked, modals, popups, command, calendar, layout, chart, conversation, selections, controls, toggle]) {
+    const component = convert(spec)
+    if (component !== undefined) return component
+  }
   const funcsCode = spec.functions
-    .map((fn) => generateFunction(fn, spec.hook, fn.name === primaryName))
+    .map(generateFunction)
     .join("\n\n")
-  const helpersImport = spec.name.replace(/-/g, "_") !== "aspect_ratio" ? "  import ShadcnLiveview.Helpers\n" : ""
+  const helpersImport = funcsCode.includes("classes(") ? "  import ShadcnLiveview.Helpers\n" : ""
 
   return `defmodule ShadcnLiveview.Components.${spec.moduleName} do
   @moduledoc false
@@ -146,11 +157,7 @@ end
 `
 }
 
-function generateFunction(
-  fn: ComponentFunctionSpec,
-  hook?: { name: string; js: string },
-  isPrimary = false
-): string {
+function generateFunction(fn: ComponentFunctionSpec): string {
   if (fn.tag === "slot_only") {
     return `  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
@@ -225,35 +232,7 @@ function generateFunction(
   end`
   }
 
-  if (fn.name === "accordion_trigger") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def accordion_trigger(assigns) do
-    ~H"""
-    <h3 class="flex" data-orientation="vertical" data-state="open">
-      <button
-        type="button"
-        data-slot="accordion-trigger"
-        data-orientation="vertical"
-        data-state="open"
-        aria-expanded="true"
-        aria-disabled="true"
-        data-radix-collection-item=""
-        id="radix-id"
-        aria-controls="radix-id"
-        class={["group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground", @class]}
-        {@rest}
-      >
-        {render_slot(@inner_block)}
-        <ShadcnLiveview.Components.Icon.icon name="chevron-down" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
-        <ShadcnLiveview.Components.Icon.icon name="chevron-up" data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:inline hidden" />
-      </button>
-    </h3>
-    """
-  end`
-  }
+  
   if (fn.name === "spinner") {
     return `  attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
@@ -282,266 +261,140 @@ function generateFunction(
     """
   end`
   }
-  if (fn.name === "checkbox") {
-    return `  attr :checked, :boolean, default: false
+  
+
+  
+
+  if (fn.name === "native_select") {
+    return `  @doc """
+  Native select with a wrapper and decorative icon. \`class\` styles the wrapper;
+  \`size\` is "default" or "sm". Native attributes (name, id, disabled,
+  multiple, required, form, autocomplete and ARIA attributes) go on the select.
+
+  \`value\` (controlled initial selection) takes precedence over \`default_value\`.
+  Both accept a scalar or, for multiple selection, a list. Use
+  \`:let={selection}\` on the inner slot and \`selected={value in selection}\`
+  on each option to apply this normalized string list, including inside optgroups.
+
+      <.native_select :let={selection} name="fruit" default_value="pear">
+        <.native_select_option value="apple" selected={"apple" in selection}>Apple</.native_select_option>
+        <.native_select_option value="pear" selected={"pear" in selection}>Pear</.native_select_option>
+      </.native_select>
+
+  Without a selection prop, the browser selects its native default.
+  Subsequent user selection and form submission are handled by the native element;
+  LiveView callers can supply phx-change and update value on subsequent renders.
+  """
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  attr :size, :string, default: "default", values: ~w(default sm)
+  attr :value, :any, default: nil
+  attr :default_value, :any, default: nil
+  attr :rest, :global, include: ~w(name disabled multiple required form autofocus autocomplete)
   slot :inner_block, required: false
 
-  def checkbox(assigns) do
-    ~H"""
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={to_string(@checked)}
-      data-state={if @checked, do: "checked", else: "unchecked"}
-      value="on"
-      data-slot="checkbox"
-      class={classes(["peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground group-has-[:focus-visible]/field-label:data-checked:border-primary dark:data-checked:bg-primary", @class])}
-      {@rest}
-    ><%= if @checked do %><span data-slot="checkbox-indicator" class="grid place-content-center text-current transition-none [&>svg]:size-3.5"><ShadcnLiveview.Components.Icon.icon name="check" class="size-3.5" /></span><% end %></button><input
-      type="checkbox"
-      aria-hidden="true"
-      tabindex="-1"
-      style="position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)"
-      value="on"
-      checked={@checked}
-    />
-    """
-  end`
-  }
-
-  if (fn.name === "switch") {
-    return `  attr :checked, :boolean, default: false
-  attr :size, :string, default: "default"
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def switch(assigns) do
-    ~H"""
-    <button
-      type="button"
-      role="switch"
-      aria-checked={to_string(@checked)}
-      data-state={if @checked, do: "checked", else: "unchecked"}
-      value="on"
-      data-slot="switch"
-      data-size={@size}
-      class={classes(["peer group/switch relative inline-flex shrink-0 items-center rounded-full border border-transparent transition-all outline-none group-has-[:focus-visible]/field-label:border-transparent group-has-[:focus-visible]/field-label:ring-0 after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-[18.4px] data-[size=default]:w-[32px] data-[size=sm]:h-[14px] data-[size=sm]:w-[24px] dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:bg-primary data-unchecked:bg-input dark:data-unchecked:bg-input/80 data-disabled:cursor-not-allowed data-disabled:opacity-50", @class])}
-      {@rest}
-    ><span
-        data-slot="switch-thumb"
-        data-state={if @checked, do: "checked", else: "unchecked"}
-        class="pointer-events-none block rounded-full bg-background ring-0 transition-transform group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] dark:data-checked:bg-primary-foreground group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 dark:data-unchecked:bg-foreground"
-      /></button><input
-      type="checkbox"
-      aria-hidden="true"
-      tabindex="-1"
-      style="position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)"
-      value="on"
-      checked={@checked}
-    />
-    """
-  end`
-  }
-
-  if (fn.name === "progress") {
-    return `  attr :value, :integer, default: 0
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def progress(assigns) do
-    state = if (assigns.value || 0) == 100, do: "complete", else: "loading"
-    assigns = assign(assigns, :state, state)
+  def native_select(assigns) do
+    selection = if is_nil(assigns.value), do: assigns.default_value, else: assigns.value
+    assigns = assign(assigns, :selection, Enum.map(List.wrap(selection), &to_string/1))
     ~H"""
     <div
-      data-slot="progress"
-      role="progressbar"
-      aria-valuemax="100"
-      aria-valuemin="0"
-      aria-valuenow={to_string(@value || 0)}
-      data-state={@state}
-      class={classes(["relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted", @class])}
-      {@rest}
+      class={classes(["group/native-select relative w-fit has-[select:disabled]:opacity-50", @class])}
+      data-slot="native-select-wrapper"
+      data-size={@size}
     >
-      <div
-        data-slot="progress-indicator"
-        data-state={@state}
-        class="size-full flex-1 bg-primary transition-all"
-        style={"transform:translateX(-#{100 - (@value || 0)}%)"}
+      <select
+        data-slot="native-select"
+        data-size={@size}
+        class="h-8 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-sm transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-[size=sm]:py-0.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+        {@rest}
+      >{render_slot(@inner_block, @selection)}</select>
+      <ShadcnLiveview.Components.Icon.icon
+        name="chevron-down"
+        class="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground select-none"
+        aria-hidden="true"
+        data-slot="native-select-icon"
       />
     </div>
     """
   end`
   }
 
-  if (fn.name === "dialog_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def dialog_content(assigns) do
-    ~H"""
-    <div
-      data-state="open"
-      data-slot="dialog-overlay"
-      class="fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      style="pointer-events:auto"
-    />
-    <div
-      role="dialog"
-      id="radix-id"
-      data-state="open"
-      data-slot="dialog-content"
-      tabindex="-1"
-      class={classes(["fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-      <button type="button" data-slot="dialog-close" data-variant="ghost" data-size="icon-sm" class="group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium text-sm whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg absolute top-2 right-2">
-        <ShadcnLiveview.Components.Icon.icon name="x" />
-        <span class="sr-only">Close</span>
-      </button>
-    </div>
-    """
-  end`
-  }
-
-  if (fn.name === "alert_dialog_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def alert_dialog_content(assigns) do
-    ~H"""
-    <div
-      data-state="open"
-      data-slot="alert-dialog-overlay"
-      class="fixed inset-0 z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      style="pointer-events:auto"
-    />
-    <div
-      role="alertdialog"
-      id="radix-id"
-      data-state="open"
-      data-slot="alert-dialog-content"
-      data-size="default"
-      tabindex="-1"
-      class={classes(["group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
-
-  if (fn.name === "alert_dialog_action") {
-    return `  attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
+  if (fn.name === "native_select_option" || fn.name === "native_select_opt_group") {
+    const option = fn.name === "native_select_option"
+    const tag = option ? "option" : "optgroup"
+    return `  @doc """
+  Native ${tag}; forwards ${option ? "value, selected, disabled and label" : "label and disabled"}.
+  ${option ? "Set selected from the native_select slot selection list when using value/default_value." : "Nested options can use the enclosing native_select slot selection list."}
+  """
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  attr :rest, :global, include: ~w(${option ? "value selected disabled label" : "label disabled"})
   slot :inner_block, required: false
 
-  def alert_dialog_action(assigns) do
+  def ${fn.name}(assigns) do
     ~H"""
-    <button
-      type="button"
-      data-slot="alert-dialog-action"
-      data-variant={@variant}
-      data-size={@size}
-      class={classes(["group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 bg-primary text-primary-foreground hover:bg-primary/80 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2", @class])}
+    <${tag}
+      data-slot="${option ? "native-select-option" : "native-select-optgroup"}"
+      class={classes(["bg-[Canvas] text-[CanvasText]", @class])}
       {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
+    >{render_slot(@inner_block)}</${tag}>
     """
   end`
   }
 
-  if (fn.name === "alert_dialog_cancel") {
-    return `  attr :variant, :string, default: "outline"
-  attr :size, :string, default: "default"
+  if (fn.name === "progress") {
+    return `  @doc """
+  Progress matching the upstream wrapper: \`value\` controls only the indicator's
+  visual percentage (nil/absent means zero). It is not passed to the Radix root,
+  so both root and indicator remain indeterminate and omit aria-valuenow.
+  \`max\` sets root/indicator data-max and aria-valuemax, defaulting to 100
+  unless it is a positive number; it does not scale the visual percentage.
+  \`class\` styles the root; global/ARIA attributes are forwarded to the root.
+  """
+  attr :value, :any, default: nil
+  attr :max, :any, default: 100
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  attr :rest, :global
 
-  def alert_dialog_cancel(assigns) do
-    ~H"""
-    <button
-      type="button"
-      data-slot="alert-dialog-cancel"
-      data-variant={@variant}
-      data-size={@size}
-      class={classes(["group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
-    """
-  end`
-  }
-
-  if (fn.name === "sheet_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def sheet_content(assigns) do
+  def progress(assigns) do
+    max = if is_number(assigns.max) and assigns.max > 0, do: assigns.max, else: 100
+    max = if is_float(max) and max == trunc(max), do: trunc(max), else: max
+    offset = 100 - (assigns.value || 0)
+    offset = if is_float(offset) and offset == trunc(offset), do: trunc(offset), else: offset
+    assigns = assign(assigns, max: max, offset: offset)
     ~H"""
     <div
-      data-state="open"
-      data-slot="sheet-overlay"
-      class="fixed inset-0 z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      style="pointer-events:auto"
-    />
-    <div
-      role="dialog"
-      id="radix-id"
-      data-state="open"
-      data-slot="sheet-content"
-      data-side="right"
-      tabindex="-1"
-      class={classes(["fixed z-50 flex flex-col gap-4 bg-popover bg-clip-padding text-sm text-popover-foreground shadow-lg transition duration-200 ease-in-out data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-r data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-10 data-[side=left]:data-open:slide-in-from-left-10 data-[side=right]:data-open:slide-in-from-right-10 data-[side=top]:data-open:slide-in-from-top-10 data-closed:animate-out data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-10 data-[side=left]:data-closed:slide-out-to-left-10 data-[side=right]:data-closed:slide-out-to-right-10 data-[side=top]:data-closed:slide-out-to-top-10", @class])}
+      data-slot="progress"
+      role="progressbar"
+      aria-valuemax={@max}
+      aria-valuemin="0"
+      data-state="indeterminate"
+      data-max={@max}
+      class={classes(["relative flex h-1 w-full items-center overflow-x-hidden rounded-full bg-muted", @class])}
       {@rest}
     >
-      {render_slot(@inner_block)}
-      <button type="button" data-slot="sheet-close" data-variant="ghost" data-size="icon-sm" class="group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding font-medium text-sm whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg absolute top-3 right-3">
-        <ShadcnLiveview.Components.Icon.icon name="x" />
-        <span class="sr-only">Close</span>
-      </button>
+      <div
+        data-slot="progress-indicator"
+        data-state="indeterminate"
+        data-max={@max}
+        class="size-full flex-1 bg-primary transition-all"
+        style={"transform:translateX(-#{@offset}%)"}
+      />
     </div>
     """
   end`
   }
 
+  
 
-  if (fn.name === "navigation_menu") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def navigation_menu(assigns) do
-    ~H"""
-    <nav
-      aria-label="Main"
-      data-orientation="horizontal"
-      dir="ltr"
-      data-slot="navigation-menu"
-      data-viewport="true"
-      class={classes(["group/navigation-menu relative flex max-w-max flex-1 items-center justify-center", @class])}
-      {@rest}
-    >
-      <div style="position:relative">
-        {render_slot(@inner_block)}
-      </div>
-      <div class="absolute top-full left-0 isolate z-50 flex justify-center" />
-    </nav>
-    """
-  end`
-  }
+  
+
+  
+
+  
+
+
+  
   if (fn.name === "pagination") {
     return `  attr :class, :string, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
@@ -672,26 +525,7 @@ function generateFunction(
   end`
   }
 
-  if (fn.name === "questionnaire") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def questionnaire(assigns) do
-    ~H"""
-    <form
-      data-slot="questionnaire"
-      data-current="0"
-      data-total="0"
-      novalidate=""
-      class={classes(["flex w-full min-w-0 flex-col gap-4", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </form>
-    """
-  end`
-  }
+  
 
   if (fn.name === "sonner" || fn.name === "toaster") {
     return `  attr :class, :string, default: nil
@@ -713,342 +547,28 @@ function generateFunction(
   end`
   }
 
-  if (fn.name === "accordion") {
-    return `  attr :orientation, :string, default: "vertical"
-  attr :type, :string, default: "single"
-  attr :default_value, :string, default: nil
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def accordion(assigns) do
-    ~H"""
-    <div
-      data-slot="accordion"
-      data-orientation={@orientation}
-      class={classes(["flex w-full flex-col", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
+  
 
-  if (fn.name === "accordion_item") {
-    return `  attr :value, :string, required: true
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def accordion_item(assigns) do
-    ~H"""
-    <div
-      data-slot="accordion-item"
-      data-state="open"
-      data-orientation="vertical"
-      class={classes(["not-last:border-b", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
+  
+  
 
-  if (fn.name === "accordion_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def accordion_content(assigns) do
-    ~H"""
-    <div
-      data-slot="accordion-content"
-      data-state="open"
-      data-orientation="vertical"
-      role="region"
-      id="radix-id"
-      aria-labelledby="radix-id"
-      style="--radix-accordion-content-height:var(--radix-collapsible-content-height);--radix-accordion-content-width:var(--radix-collapsible-content-width)"
-      class={classes(["overflow-hidden text-sm data-closed:animate-accordion-up data-open:animate-accordion-down", @class])}
-      {@rest}
-    >
-      <div class="h-(--radix-accordion-content-height) pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4">
-        {render_slot(@inner_block)}
-      </div>
-    </div>
-    """
-  end`
-  }
+  
 
-  if (fn.name === "collapsible") {
-    return `  attr :open, :boolean, default: false
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def collapsible(assigns) do
-    ~H"""
-    <div
-      data-slot="collapsible"
-      data-state={if @open, do: "open", else: "closed"}
-      class={classes(["", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
-  if (fn.name === "collapsible_trigger") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def collapsible_trigger(assigns) do
-    ~H"""
-    <button
-      type="button"
-      aria-controls="radix-id"
-      aria-expanded="true"
-      data-state="open"
-      data-slot="collapsible-trigger"
-      class={classes(["", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
-    """
-  end`
-  }
+  
 
-  if (fn.name === "collapsible_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
+  
 
-  def collapsible_content(assigns) do
-    ~H"""
-    <div
-      id="radix-id"
-      data-state="open"
-      data-slot="collapsible-content"
-      class={classes(["", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
-
-  if (fn.name === "tabs") {
-    return `  attr :dir, :string, default: "ltr"
-  attr :orientation, :string, default: "horizontal"
-  attr :default_value, :string, default: nil
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def tabs(assigns) do
-    ~H"""
-    <div
-      dir={@dir}
-      data-orientation={@orientation}
-      data-slot="tabs"
-      phx-hook=".Tabs"
-      class={classes(["group/tabs flex gap-2 data-horizontal:flex-col", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    <script :type={Phoenix.LiveView.ColocatedHook} name=".Tabs">
-      export default {
-        mounted() {
-          this.el.addEventListener("click", (e) => {
-            const trigger = e.target.closest("[data-slot=tabs-trigger]");
-            if (!trigger) return;
-            const val = trigger.getAttribute("data-value") || trigger.getAttribute("value");
-            this.el.querySelectorAll("[data-slot=tabs-trigger]").forEach((t) => {
-              const match = (t.getAttribute("data-value") || t.getAttribute("value")) === val;
-              t.setAttribute("data-state", match ? "active" : "inactive");
-              t.setAttribute("aria-selected", match ? "true" : "false");
-            });
-            this.el.querySelectorAll("[data-slot=tabs-content]").forEach((c) => {
-              const match = (c.getAttribute("data-value") || c.getAttribute("value")) === val;
-              c.setAttribute("data-state", match ? "active" : "inactive");
-              c.hidden = !match;
-            });
-          });
-        }
-      }
-    </script>
-    """
-  end`
-  }
-
-  if (fn.name === "tabs_list") {
-    return `  attr :variant, :string, default: "default"
-  attr :orientation, :string, default: "horizontal"
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def tabs_list(assigns) do
-    ~H"""
-    <div
-      role="tablist"
-      aria-orientation={@orientation}
-      tabindex="-1"
-      data-orientation={@orientation}
-      data-slot="tabs-list"
-      data-variant={@variant}
-      style="outline:none"
-      class={classes(["group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none bg-muted", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
-
-  if (fn.name === "tabs_trigger") {
-    return `  attr :value, :string, required: true
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def tabs_trigger(assigns) do
-    active = (assigns.value == "account")
-    assigns = assign(assigns, :active, active)
-    ~H"""
-    <button
-      type="button"
-      role="tab"
-      aria-selected={to_string(@active)}
-      aria-controls="radix-id"
-      data-state={if @active, do: "active", else: "inactive"}
-      id="radix-id"
-      tabindex="-1"
-      data-orientation="horizontal"
-      data-slot="tabs-trigger"
-      class={classes(["relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100", @class])}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
-    """
-  end`
-  }
-
-  if (fn.name === "tabs_content") {
-    return `  attr :value, :string, required: true
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def tabs_content(assigns) do
-    active = (assigns.value == "account")
-    assigns = assign(assigns, :active, active)
-    ~H"""
-    <div
-      data-state={if @active, do: "active", else: "inactive"}
-      data-orientation="horizontal"
-      role="tabpanel"
-      aria-labelledby="radix-id"
-      id="radix-id"
-      tabindex="0"
-      data-slot="tabs-content"
-      class={classes(["flex-1 text-sm outline-none", @class])}
-      hidden={not @active}
-      {if @active, do: %{style: "animation-duration:0s"}, else: %{}}
-      {@rest}
-    ><%= if @active do %>{render_slot(@inner_block)}<% end %></div>
-    """
-  end`
-  }
-
-  if (fn.name === "drawer_content") {
-    return `  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def drawer_content(assigns) do
-    ~H"""
-    <div
-      data-state="open"
-      data-slot="drawer-overlay"
-      class="fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      style="pointer-events:auto"
-    />
-    <div
-      role="dialog"
-      id="radix-id"
-      data-state="open"
-      data-slot="drawer-content"
-      tabindex="-1"
-      class={classes(["group/drawer-content fixed z-50 flex h-auto flex-col bg-popover text-sm text-popover-foreground data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[80vh] data-[vaul-drawer-direction=bottom]:rounded-t-xl data-[vaul-drawer-direction=bottom]:border-t data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:rounded-r-xl data-[vaul-drawer-direction=left]:border-r data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:rounded-l-xl data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-xl data-[vaul-drawer-direction=top]:border-b data-[vaul-drawer-direction=left]:sm:max-w-sm data-[vaul-drawer-direction=right]:sm:max-w-sm", @class])}
-      {@rest}
-    >
-      <div class="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />
-      {render_slot(@inner_block)}
-    </div>
-    """
-  end`
-  }
-
-  if (fn.name === "slider") {
-    return `  attr :default_value, :list, default: [50]
-  attr :max, :integer, default: 100
-  attr :step, :integer, default: 1
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-  slot :inner_block, required: false
-
-  def slider(assigns) do
-    ~H"""
-    <span
-      dir="ltr"
-      data-orientation="horizontal"
-      aria-disabled="false"
-      data-slot="slider"
-      style="--radix-slider-thumb-transform:translateX(-50%)"
-      class={classes(["relative flex touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col", @class])}
-      {@rest}
-    >
-      <span
-        data-slot="slider-track"
-        data-orientation="horizontal"
-        class="relative grow overflow-hidden rounded-full bg-muted data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1"
-      >
-        <span
-          data-slot="slider-range"
-          data-orientation="horizontal"
-          style="left:0%;right:50%"
-          class="absolute bg-primary select-none data-horizontal:h-full data-vertical:w-full"
-        />
-      </span>
-      <span style="transform:var(--radix-slider-thumb-transform);position:absolute;left:calc(0% + 0px)">
-        <span
-          role="slider"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-orientation="horizontal"
-          data-orientation="horizontal"
-          tabindex="0"
-          data-slot="slider-thumb"
-          class="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
-          style="display:none"
-          data-radix-collection-item=""
-        />
-      </span>
-      <input style="display:none" />
-    </span>
-    """
-  end`
-  }
+  
 
   const attrsLines: string[] = []
 
@@ -1072,7 +592,7 @@ function generateFunction(
     }
   }
 
-  attrsLines.push(`  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)`)
+  attrsLines.push(`  attr :rest, :global, include: ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)`)
   const voidMap: Record<string, true> = { input: true, img: true, hr: true, br: true, meta: true, link: true }
   const isVoid = Boolean(voidMap[fn.tag])
   if (!isVoid) {
@@ -1087,49 +607,27 @@ function generateFunction(
     const [var2, map2] = variantEntries[1]
     const def1 = fn.defaultVariants?.[var1] ?? Object.keys(map1)[0] ?? "default"
     const def2 = fn.defaultVariants?.[var2] ?? Object.keys(map2)[0] ?? "default"
-
     classExpr = `[${fn.name}_classes(@${var1}, @${var2}), @class]`
-
-    const cases: string[] = []
-    for (const [k1, c1] of Object.entries(map1)) {
-      for (const [k2, c2] of Object.entries(map2)) {
-        const merged = cn(fn.baseClasses, c1, c2)
-        cases.push(`      {"${k1}", "${k2}"} -> "${merged.replace(/"/g, '\\"')}"`)
-      }
-    }
-    const defMerged = cn(fn.baseClasses, map1[def1] || "", map2[def2] || "")
-    cases.push(`      _ -> "${defMerged.replace(/"/g, '\\"')}"`)
-
-    variantHelpers.push(`  defp ${fn.name}_classes(${var1}, ${var2}) do\n    case {to_string(${var1} || "${def1}"), to_string(${var2} || "${def2}")} do\n${cases.join("\n")}\n    end\n  end`)
+    const styles = Object.entries(map1).map(([key, classes1]) => {
+      const sizes = Object.entries(map2).map(([size, classes2]) =>
+        `${JSON.stringify(size)} => ${JSON.stringify(cn(fn.baseClasses, classes1, classes2))}`)
+      return `    ${JSON.stringify(key)} => %{${sizes.join(", ")}}`
+    })
+    const fallback = JSON.stringify(cn(fn.baseClasses, map1[def1] || "", map2[def2] || ""))
+    variantHelpers.push(`  @${fn.name}_styles %{\n${styles.join(",\n")}\n  }\n\n  defp ${fn.name}_classes(${var1}, ${var2}) do\n    @${fn.name}_styles\n    |> Map.get(${var1} || "${def1}", %{})\n    |> Map.get(${var2} || "${def2}", ${fallback})\n  end`)
   } else if (variantEntries.length === 1) {
     const [var1, map1] = variantEntries[0]
     const def1 = fn.defaultVariants?.[var1] ?? Object.keys(map1)[0] ?? "default"
-
     classExpr = `[${fn.name}_classes(@${var1}), @class]`
-
-    const cases: string[] = []
-    for (const [k1, c1] of Object.entries(map1)) {
-      const merged = cn(fn.baseClasses, c1)
-      cases.push(`      "${k1}" -> "${merged.replace(/"/g, '\\"')}"`)
-    }
-    const defMerged = cn(fn.baseClasses, map1[def1] || "")
-    cases.push(`      _ -> "${defMerged.replace(/"/g, '\\"')}"`)
-
-    variantHelpers.push(`  defp ${fn.name}_classes(${var1}) do\n    case to_string(${var1} || "${def1}") do\n${cases.join("\n")}\n    end\n  end`)
+    const styles = Object.entries(map1).map(([key, value]) =>
+      `    ${JSON.stringify(key)} => ${JSON.stringify(cn(fn.baseClasses, value))}`)
+    const fallback = JSON.stringify(cn(fn.baseClasses, map1[def1] || ""))
+    variantHelpers.push(`  @${fn.name}_styles %{\n${styles.join(",\n")}\n  }\n\n  defp ${fn.name}_classes(${var1}) do\n    Map.get(@${fn.name}_styles, ${var1} || "${def1}", ${fallback})\n  end`)
   } else {
     classExpr = `[${classExpr}, @class]`
   }
   classExpr = `classes(${classExpr})`
 
-  let hookTag = ""
-  let hookAttr = ""
-  if (hook && isPrimary) {
-    hookAttr = ` phx-hook=".${hook.name}"`
-    hookTag = `
-    <script :type={Phoenix.LiveView.ColocatedHook} name=".${hook.name}">
-      ${hook.js.trim()}
-    </script>`
-  }
 
   let dataVariantAttrs = ""
   if (fn.hasDataVariant) {
@@ -1142,25 +640,29 @@ function generateFunction(
     dataVariantAttrs += ` ${fn.staticAttrs.join(" ")}`
   }
 
+  const dataSlot = fn.name === "button" ? "{@data_slot}" : `"${fn.slotName}"`
+  const prepare = fn.name === "button"
+    ? `    assigns = assign(assigns, data_slot: Map.get(assigns.rest, :"data-slot", Map.get(assigns.rest, "data-slot", "button")), rest: Map.drop(assigns.rest, [:"data-slot", "data-slot"]))\n`
+    : ""
   const template = isVoid
     ? `  def ${fn.name}(assigns) do
-    ~H"""
+${prepare}    ~H"""
     <${fn.tag}
-      data-slot="${fn.slotName}"${dataVariantAttrs}${hookAttr}
+      data-slot=${dataSlot}${dataVariantAttrs}
       class={${classExpr}}
       {@rest}
-    />${hookTag}
+    />
     """
   end`
     : `  def ${fn.name}(assigns) do
-    ~H"""
+${prepare}    ~H"""
     <${fn.tag}
-      data-slot="${fn.slotName}"${dataVariantAttrs}${hookAttr}
+      data-slot=${dataSlot}${dataVariantAttrs}
       class={${classExpr}}
       {@rest}
     >${fn.extraInnerMarkup ?? ""}
       {render_slot(@inner_block)}
-    </${fn.tag}>${hookTag}
+    </${fn.tag}>
     """
   end`
 
@@ -1258,53 +760,49 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     let hasDataVariant = false
     let hasDataSize = false
     const staticAttrsList: string[] = []
+    const openings: (ts.JsxOpeningElement | ts.JsxSelfClosingElement)[] = []
+    function collectJsx(n: ts.Node) {
+      if (ts.isJsxElement(n)) openings.push(n.openingElement)
+      else if (ts.isJsxSelfClosingElement(n)) openings.push(n)
+      ts.forEachChild(n, collectJsx)
+    }
+    collectJsx(node)
+    const hasAttribute = (opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement, name: string) =>
+      opening.attributes.properties.some(prop => ts.isJsxAttribute(prop) && prop.name.getText(sf) === name)
+    const opening = openings.find(candidate => candidate.attributes.properties.some(prop =>
+      ts.isJsxAttribute(prop) && prop.name.getText(sf) === "data-slot" &&
+      prop.initializer && ts.isStringLiteral(prop.initializer) && prop.initializer.text === foundSlot))
+      ?? openings.find(candidate => hasAttribute(candidate, "className"))
+      ?? openings.find(candidate => hasAttribute(candidate, "data-slot") || hasAttribute(candidate, "role"))
 
-    function walkJsx(n: ts.Node) {
-      if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n)) {
-        const opening = ts.isJsxElement(n) ? n.openingElement : n
-        const rawTag = opening.tagName.getText(sf)
-
-        for (const prop of opening.attributes.properties) {
-          if (ts.isJsxAttribute(prop) && prop.name) {
-            const attrName = prop.name.text
-            if (attrName === "data-slot" && prop.initializer && ts.isStringLiteral(prop.initializer)) {
-              foundSlot = prop.initializer.text
-              foundTag = rawTag
-            }
-            if (attrName === "data-variant") {
-              hasDataVariant = true
-            }
-            if (attrName === "data-size") {
-              hasDataSize = true
-            }
-            if (attrName === "role" && prop.initializer && ts.isStringLiteral(prop.initializer)) {
-              staticAttrsList.push(`role="${prop.initializer.text}"`)
-            }
-            if (attrName === "className" && prop.initializer) {
-              if (ts.isJsxExpression(prop.initializer) && prop.initializer.expression) {
-                const expr = prop.initializer.expression
-                if (ts.isCallExpression(expr)) {
-                  const arg0 = expr.arguments[0]
-                  if (arg0 && (ts.isStringLiteral(arg0) || ts.isNoSubstitutionTemplateLiteral(arg0))) {
-                    foundClasses = expr.arguments
-                      .filter((arg): arg is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
-                        ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))
-                      .map((arg) => arg.text)
-                      .join(" ").replace(/\s+/g, " ").trim()
-                  }
-                } else if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
-                  foundClasses = expr.text.replace(/\s+/g, " ").trim()
-                }
-              } else if (ts.isStringLiteral(prop.initializer) || ts.isNoSubstitutionTemplateLiteral(prop.initializer)) {
-                foundClasses = prop.initializer.text.replace(/\s+/g, " ").trim()
-              }
-            }
+    if (opening) {
+      foundTag = opening.tagName.getText(sf)
+      for (const prop of opening.attributes.properties) {
+        if (!ts.isJsxAttribute(prop)) continue
+        const attrName = prop.name.getText(sf)
+        if (attrName === "data-slot" && prop.initializer && ts.isStringLiteral(prop.initializer)) {
+          foundSlot = prop.initializer.text
+        }
+        if (attrName === "data-variant") hasDataVariant = true
+        if (attrName === "data-size") hasDataSize = true
+        if (attrName === "role" && prop.initializer && ts.isStringLiteral(prop.initializer)) {
+          staticAttrsList.push(`role="${prop.initializer.text}"`)
+        }
+        if (attrName !== "className" || !prop.initializer) continue
+        const expr = ts.isJsxExpression(prop.initializer) ? prop.initializer.expression : prop.initializer
+        if (!expr) continue
+        if (ts.isCallExpression(expr)) {
+          if (expr.arguments[0] && (ts.isStringLiteral(expr.arguments[0]) || ts.isNoSubstitutionTemplateLiteral(expr.arguments[0]))) {
+            foundClasses = expr.arguments
+              .filter((arg): arg is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+                ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))
+              .map(arg => arg.text).join(" ").replace(/\s+/g, " ").trim()
           }
+        } else if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+          foundClasses = expr.text.replace(/\s+/g, " ").trim()
         }
       }
-      ts.forEachChild(n, walkJsx)
     }
-    walkJsx(node)
 
     let finalTag = resolveHtmlTag(name, foundTag)
 
@@ -1387,19 +885,6 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
       specialAttrs.push({ name: "pressed", type: "boolean", default: "false" })
       staticAttrsList.push('type="button" aria-pressed={to_string(@pressed)} data-state={if @pressed, do: "on", else: "off"}')
     }
-    const radixTextComponents: Record<string, true> = {
-      dialog_title: true,
-      alert_dialog_title: true,
-      sheet_title: true,
-      drawer_title: true,
-      dialog_description: true,
-      alert_dialog_description: true,
-      sheet_description: true,
-      drawer_description: true,
-    }
-    if (radixTextComponents[fnSnakeName]) {
-      staticAttrsList.push('id="radix-id"')
-    }
     functions.push({
       name: fnSnakeName,
       tag: finalTag,
@@ -1440,144 +925,28 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     })
   }
 
-  const hook = getInteractiveHook(fileName)
-
   return {
     name: fileName,
     moduleName,
     functions,
-    hook,
   }
 }
 
 
-function getInteractiveHook(name: string): { name: string; js: string } | undefined {
-  switch (name) {
-    case "accordion":
-      return {
-        name: "Accordion",
-        js: `export default {
-          mounted() {
-            this.el.addEventListener("click", (e) => {
-              const trigger = e.target.closest("[data-slot=accordion-trigger]");
-              if (!trigger) return;
-              const item = trigger.closest("[data-slot=accordion-item]");
-              if (!item) return;
-              const isOpen = item.getAttribute("data-state") === "open";
-              item.setAttribute("data-state", isOpen ? "closed" : "open");
-              trigger.setAttribute("aria-expanded", isOpen ? "false" : "true");
-              trigger.setAttribute("data-state", isOpen ? "closed" : "open");
-              const content = item.querySelector("[data-slot=accordion-content]");
-              if (content) {
-                content.setAttribute("data-state", isOpen ? "closed" : "open");
-                content.hidden = isOpen;
-              }
-            });
-          }
-        }`,
-      }
-    case "tabs":
-      return {
-        name: "Tabs",
-        js: `export default {
-          mounted() {
-            this.el.addEventListener("click", (e) => {
-              const trigger = e.target.closest("[data-slot=tabs-trigger]");
-              if (!trigger) return;
-              const val = trigger.getAttribute("data-value") || trigger.getAttribute("value");
-              this.el.querySelectorAll("[data-slot=tabs-trigger]").forEach((t) => {
-                const match = (t.getAttribute("data-value") || t.getAttribute("value")) === val;
-                t.setAttribute("data-state", match ? "active" : "inactive");
-                t.setAttribute("aria-selected", match ? "true" : "false");
-              });
-              this.el.querySelectorAll("[data-slot=tabs-content]").forEach((c) => {
-                const match = (c.getAttribute("data-value") || c.getAttribute("value")) === val;
-                c.setAttribute("data-state", match ? "active" : "inactive");
-                c.hidden = !match;
-              });
-            });
-          }
-        }`,
-      }
-    case "dialog":
-    case "alert-dialog":
-    case "sheet":
-      return {
-        name: toPascalCase(name),
-        js: `export default {
-          mounted() {
-            this.el.addEventListener("click", (e) => {
-              if (e.target.closest("[data-slot$=-close]") || e.target.closest("[data-slot$=-cancel]")) {
-                this.el.style.display = "none";
-              }
-            });
-            window.addEventListener("keydown", (e) => {
-              if (e.key === "Escape" && this.el.style.display !== "none") {
-                this.el.style.display = "none";
-              }
-            });
-          }
-        }`,
-      }
-    case "dropdown-menu":
-    case "popover":
-      return {
-        name: toPascalCase(name),
-        js: `export default {
-          mounted() {
-            const trigger = this.el.querySelector("[data-slot$=-trigger]");
-            const content = this.el.querySelector("[data-slot$=-content]");
-            if (trigger && content) {
-              trigger.addEventListener("click", () => {
-                const isOpen = content.getAttribute("data-state") === "open";
-                content.setAttribute("data-state", isOpen ? "closed" : "open");
-                content.style.display = isOpen ? "none" : "";
-              });
-            }
-          }
-        }`,
-      }
-    case "switch":
-      return {
-        name: "Switch",
-        js: `export default {
-          mounted() {
-            this.el.addEventListener("click", () => {
-              const checked = this.el.getAttribute("data-state") === "checked";
-              this.el.setAttribute("data-state", checked ? "unchecked" : "checked");
-              this.el.setAttribute("aria-checked", checked ? "false" : "true");
-            });
-          }
-        }`,
-      }
-    case "collapsible":
-      return {
-        name: "Collapsible",
-        js: `export default {
-          mounted() {
-            const trigger = this.el.querySelector("[data-slot=collapsible-trigger]");
-            const content = this.el.querySelector("[data-slot=collapsible-content]");
-            if (trigger && content) {
-              trigger.addEventListener("click", () => {
-                const isOpen = this.el.getAttribute("data-state") === "open";
-                this.el.setAttribute("data-state", isOpen ? "closed" : "open");
-                content.hidden = isOpen;
-              });
-            }
-          }
-        }`,
-      }
-    default:
-      return undefined
-  }
-}
+
 
 export async function generateAllComponents(): Promise<void> {
   const outDir = path.resolve("lib/shadcn_liveview/components")
   await fs.mkdir(outDir, { recursive: true })
+  await generateIcons()
 
   const files = (await fs.readdir("vendor/shadcn/ui")).filter((f) => f.endsWith(".tsx")).sort()
   console.log(`Found ${files.length} vendored UI component files.`)
+  const coveredFamilies = new Set(fixtures.map(fixture => fixture.family ?? fixture.name))
+  const missingFamilies = files.map(file => file.replace(/\.tsx$/, "")).filter(family => !coveredFamilies.has(family))
+  if (missingFamilies.length) throw new Error(`Missing family fixtures: ${missingFamilies.join(", ")}`)
+  const names = fixtures.map(fixture => fixture.name)
+  if (new Set(names).size !== names.length) throw new Error("Duplicate fixture names")
 
   const moduleNames: string[] = []
   const inheritedClasses = new Map<string, string>()
@@ -1609,6 +978,25 @@ export async function generateAllComponents(): Promise<void> {
   @moduledoc """
   Shadcn component library for Phoenix LiveView.
   Provides all 61 Radix-Nova shadcn components as Phoenix function components.
+
+  Run \`mix assets.build\` before SSR previews. The CSS pipeline bundles imports and
+  embeds fonts, then compiles Tailwind utilities; asset failures stop parity runs.
+
+  Run \`bun run generate\` to convert the pinned upstream source and format emitted
+  Elixir/HEEx. Complex components use dedicated structural converters with explicit
+  attrs, slots, stable caller IDs and controlled state; no hidden rendering context.
+  Register \`hooks\` exported from the compiled colocated manifest in your LiveSocket.
+
+  \`mix quality\` enforces formatter checks, warning-free HEEx/Elixir compilation,
+  strict Credo and the LiveView assign/change-tracking rules on generated modules.
+  \`bun run test\` regenerates components, runs that quality gate, behavior tests and
+  SSR comparison. Every fixture and every covered family must pass; failures exit
+  nonzero. IDs may differ only for generated identities; reference graphs remain strict.
+
+  Start \`SHADCN_PREVIEW=1 mix run --no-halt\` and visit
+  \`http://127.0.0.1:4000/live-preview/accordion\` to exercise real LiveView patches
+  and colocated hooks. \`bun run test:parity\` compares all 309 initial-render cases.
+  SSR parity alone does not prove every prop or browser interaction.
   """
 
   defmacro __using__(_opts) do
@@ -1632,19 +1020,24 @@ end
       return `  def render_fixture("${f.name}") do\n    assigns = %{}\n    ~H"""\n${indented}\n    """\n  end`
     })
     .join("\n\n")
+  const liveGalleryCases = fixtures.map((f) => {
+    const indented = (f.liveHeex ?? f.heex).split("\n").map((line) => "    " + line).join("\n")
+    return `  def live_fixture(%{fixture: "${f.name}"} = assigns) do\n    ~H"""\n${indented}\n    """\n  end`
+  }).join("\n\n")
 
   const namesList = fixtures.map((f) => `"${f.name}"`).join(", ")
   const galleryCode = `defmodule ShadcnLiveview.Gallery do
   @moduledoc false
   use Phoenix.Component
   use ShadcnLiveview
+  alias Phoenix.HTML.Safe
 
   def names, do: [${namesList}]
 
   def render_html(name) do
     case render_fixture(name) do
       nil -> nil
-      rendered -> Phoenix.HTML.Safe.to_iodata(rendered) |> IO.iodata_to_binary()
+      rendered -> Safe.to_iodata(rendered) |> IO.iodata_to_binary()
     end
   end
 
@@ -1658,6 +1051,15 @@ end
 ${galleryCases}
 
   def render_fixture(_), do: nil
+
+  attr :fixture, :string, required: true
+  attr :state, :map, required: true
+  @doc "Renders a connected fixture using the caller's tracked LiveView assigns."
+
+${liveGalleryCases}
+
+  def live_fixture(%{fixture: fixture}),
+    do: raise(ArgumentError, "Unknown component fixture: #{inspect(fixture)}")
 end
 `
   await fs.writeFile("lib/shadcn_liveview/gallery.ex", galleryCode, "utf8")

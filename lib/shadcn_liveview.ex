@@ -2,6 +2,25 @@ defmodule ShadcnLiveview do
   @moduledoc """
   Shadcn component library for Phoenix LiveView.
   Provides all 61 Radix-Nova shadcn components as Phoenix function components.
+
+  Run `mix assets.build` before SSR previews. The CSS pipeline bundles imports and
+  embeds fonts, then compiles Tailwind utilities; asset failures stop parity runs.
+
+  Run `bun run generate` to convert the pinned upstream source and format emitted
+  Elixir/HEEx. Complex components use dedicated structural converters with explicit
+  attrs, slots, stable caller IDs and controlled state; no hidden rendering context.
+  Register `hooks` exported from the compiled colocated manifest in your LiveSocket.
+
+  `mix quality` enforces formatter checks, warning-free HEEx/Elixir compilation,
+  strict Credo and the LiveView assign/change-tracking rules on generated modules.
+  `bun run test` regenerates components, runs that quality gate, behavior tests and
+  SSR comparison. Every fixture and every covered family must pass; failures exit
+  nonzero. IDs may differ only for generated identities; reference graphs remain strict.
+
+  Start `SHADCN_PREVIEW=1 mix run --no-halt` and visit
+  `http://127.0.0.1:4000/live-preview/accordion` to exercise real LiveView patches
+  and colocated hooks. `bun run test:parity` compares all 309 initial-render cases.
+  SSR parity alone does not prove every prop or browser interaction.
   """
 
   defmacro __using__(_opts) do

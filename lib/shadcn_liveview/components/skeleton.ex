@@ -4,7 +4,11 @@ defmodule ShadcnLiveview.Components.Skeleton do
   import ShadcnLiveview.Helpers
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def skeleton(assigns) do

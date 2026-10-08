@@ -4,7 +4,11 @@ defmodule ShadcnLiveview.Components.Table do
   import ShadcnLiveview.Helpers
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
   slot :inner_block, required: false
 
   def table(assigns) do
@@ -22,7 +26,11 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_header(assigns) do
@@ -38,7 +46,11 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_body(assigns) do
@@ -54,7 +66,11 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_footer(assigns) do
@@ -70,14 +86,23 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_row(assigns) do
     ~H"""
     <tr
       data-slot="table-row"
-      class={classes(["border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted", @class])}
+      class={
+        classes([
+          "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+          @class
+        ])
+      }
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -86,14 +111,23 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_head(assigns) do
     ~H"""
     <th
       data-slot="table-head"
-      class={classes(["h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0", @class])}
+      class={
+        classes([
+          "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+          @class
+        ])
+      }
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -102,7 +136,11 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_cell(assigns) do
@@ -118,7 +156,11 @@ defmodule ShadcnLiveview.Components.Table do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def table_caption(assigns) do

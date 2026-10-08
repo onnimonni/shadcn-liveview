@@ -6,7 +6,6 @@
 @source "../../vendor/shadcn/ui";
 @source "../../lib/shadcn_liveview";
 @source "../../tools";
-@source "../../priv/static";
 
 @custom-variant dark (&:is(.dark *));
 

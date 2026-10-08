@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "vendor": "node tools/vendor.mjs",
-    "generate": "tsx tools/generate.tsx",
-    "test:converter": "tsx --test test/*.test.ts",
+    "vendor": "bun tools/vendor.mjs",
+    "generate": "bash tools/generate.sh",
+    "test:tools": "tsx --test test/*.test.ts",
     "dump:phoenix": "mix run -e 'File.write!(\"priv/phoenix_ssr.json\", ShadcnLiveview.Gallery.dump_all())'",
-    "test:parity": "npm run dump:phoenix && tsx tools/parity.tsx",
-    "test": "npm run test:converter && mix test && npm run test:parity",
-    "build:assets": "node tools/build-assets.mjs"
+    "test:parity": "mix assets.build && bun run dump:phoenix && tsx tools/parity.tsx",
+    "test": "bun run generate && mix quality && bun run test:tools && mix test && bun run test:parity",
+    "build:assets": "mix assets.build",
+    "check:elixir": "mix quality"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0", "@shadcn/react": "0.3.1",

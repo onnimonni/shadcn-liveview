@@ -1,8 +1,10 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import * as parse5 from "parse5"
+import { isValidElement, type ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { fixtures, type ComponentFixture } from "./fixtures"
+import { buildSSRPreviewPage } from "./ssr"
 
 export interface ParityResult {
   name: string
@@ -58,12 +60,7 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
         .join(";")
       attrs[attrName] = decls
     } else {
-      if (
-        (attrName === "id" || attrName === "aria-controls" || attrName === "aria-describedby" || attrName === "aria-labelledby" || attrName === "for") &&
-        (val.includes("radix-") || /^:r[0-9a-z]+:$/.test(val) || /^radix-/.test(val))
-      ) {
-        val = "radix-id"
-      }
+      // IDs are resolved document-wide after cleaning, not independently per attribute.
       attrs[attrName] = val
     }
   }
@@ -81,6 +78,114 @@ function cleanDom(node: parse5.DefaultTreeAdapterMap["node"]): CleanNode | null 
     classes,
     children,
   }
+}
+
+const idReferenceAttributes = new Set([
+  "aria-controls",
+  "aria-describedby",
+  "aria-labelledby",
+  "aria-activedescendant",
+  "aria-details",
+  "aria-errormessage",
+  "aria-flowto",
+  "aria-owns",
+  "for",
+  "form",
+  "list",
+  "headers",
+  "itemref",
+  "popovertarget",
+  "commandfor",
+])
+
+function explicitFixtureIds(node: ReactNode, ids = new Set<string>()): Set<string> {
+  if (Array.isArray(node)) {
+    for (const child of node) explicitFixtureIds(child, ids)
+  } else if (isValidElement<{ id?: string; children?: ReactNode }>(node)) {
+    if (typeof node.props.id === "string") ids.add(node.props.id.trim())
+    // Caller-supplied references can target elements outside this SSR fragment.
+    for (const [prop, value] of Object.entries(node.props)) {
+      if (typeof value !== "string") continue
+      const attribute = prop === "htmlFor" ? "for" : prop.toLowerCase()
+      if (idReferenceAttributes.has(attribute)) {
+        for (const id of value.split(/\s+/).filter(Boolean)) ids.add(id)
+      } else if ((attribute === "href" || attribute === "xlinkhref") && value.startsWith("#")) {
+        ids.add(value.slice(1))
+      }
+    }
+    explicitFixtureIds(node.props.children, ids)
+  }
+  return ids
+}
+
+function isGeneratedId(id: string, explicitIds: Set<string>): boolean {
+  if (explicitIds.has(id)) return false
+  return /^radix-\S+$/.test(id) ||
+    /^:[Rr][0-9a-zA-Z]+:(?:-\S+)?$/.test(id) ||
+    /^_[Rr]_[0-9a-zA-Z]+_(?:-\S+)?$/.test(id)
+}
+
+function cleanDocument(
+  fragment: parse5.DefaultTreeAdapterMap["documentFragment"],
+  explicitIds: Set<string>,
+  source: string,
+  diffs: string[]
+): CleanNode[] {
+  const roots = fragment.childNodes.map(cleanDom).filter((node): node is CleanNode => node !== null)
+  const elements: { node: CleanNode; path: string }[] = []
+  function visit(node: CleanNode, nodePath: string): void {
+    if (node.type === "element") elements.push({ node, path: nodePath })
+    node.children.forEach((child, i) => visit(child, `${nodePath}/${child.tag || "text"}[${i}]`))
+  }
+  roots.forEach((node, i) => visit(node, `${source}[${i}]`))
+
+  // Anchor generated identities to declarations first, so a forward reference cannot
+  // disguise a swapped target. Literal IDs stay literal, including supplied radix IDs.
+  const declarations = new Map<string, string>()
+  const generated = new Map<string, string>()
+  for (const { node, path: nodePath } of elements) {
+    const id = node.attrs.id
+    if (id === undefined) continue
+    const firstPath = declarations.get(id)
+    if (firstPath !== undefined) {
+      diffs.push(`${nodePath}: duplicate ID "${id}" in ${source} (first declared at ${firstPath})`)
+    } else {
+      declarations.set(id, nodePath)
+      if (isGeneratedId(id, explicitIds)) {
+        generated.set(id, JSON.stringify(["generated", generated.size]))
+      }
+    }
+  }
+
+  // Closed portals can reference generated identities absent from SSR. Keep those
+  // distinct and shared across references, but never equate them to mounted targets.
+  const unmounted = new Map<string, string>()
+  function identity(id: string): string {
+    const declared = generated.get(id)
+    if (declared !== undefined) return declared
+    if (isGeneratedId(id, explicitIds)) {
+      let absent = unmounted.get(id)
+      if (absent === undefined) {
+        absent = JSON.stringify(["unmounted-generated", unmounted.size])
+        unmounted.set(id, absent)
+      }
+      return absent
+    }
+    return JSON.stringify(["literal", id])
+  }
+
+  for (const { node } of elements) {
+    for (const [name, value] of Object.entries(node.attrs)) {
+      if (name === "id") {
+        node.attrs[name] = identity(value)
+      } else if (idReferenceAttributes.has(name)) {
+        node.attrs[name] = JSON.stringify(value.split(/\s+/).filter(Boolean).map(identity))
+      } else if ((name === "href" || name === "xlink:href") && value.startsWith("#")) {
+        node.attrs[name] = `#${identity(value.slice(1))}`
+      }
+    }
+  }
+  return roots
 }
 
 function compareDom(r: CleanNode, p: CleanNode, diffs: string[], pathStr = ""): void {
@@ -145,14 +250,16 @@ export async function compareComponentParity(
   fixture: ComponentFixture,
   phoenixHtml: string
 ): Promise<ParityResult> {
-  const reactHtml = renderToStaticMarkup(fixture.renderReact())
+  const reactElement = fixture.renderReact()
+  const explicitIds = explicitFixtureIds(reactElement)
+  const reactHtml = renderToStaticMarkup(reactElement)
   const diffs: string[] = []
 
   const rFrag = parse5.parseFragment(reactHtml)
   const pFrag = parse5.parseFragment(phoenixHtml)
 
-  const rNodes = (rFrag.childNodes || []).map(cleanDom).filter((n): n is CleanNode => n !== null)
-  const pNodes = (pFrag.childNodes || []).map(cleanDom).filter((n): n is CleanNode => n !== null)
+  const rNodes = cleanDocument(rFrag, explicitIds, "React", diffs)
+  const pNodes = cleanDocument(pFrag, explicitIds, "Phoenix", diffs)
 
   if (rNodes.length !== pNodes.length) {
     diffs.push(`Root node count mismatch: ${rNodes.length} in React vs ${pNodes.length} in Phoenix`)
@@ -173,6 +280,8 @@ export async function compareComponentParity(
 export async function runParitySuite(): Promise<{
   passedCount: number
   totalCount: number
+  passedFamilyCount: number
+  totalFamilyCount: number
   results: ParityResult[]
 }> {
   const jsonPath = path.resolve("priv/phoenix_ssr.json")
@@ -187,12 +296,7 @@ export async function runParitySuite(): Promise<{
 
   // Build Phoenix SSR preview HTML page for visual comparison
   const cssPath = path.resolve("priv/static/assets/css/app.css")
-  let cssContent = ""
-  try {
-    cssContent = await fs.readFile(cssPath, "utf8")
-  } catch {
-    // optional
-  }
+  const cssContent = await fs.readFile(cssPath, "utf8")
 
   const sectionsHtml = fixtures
     .map((f) => {
@@ -239,7 +343,7 @@ ${cssContent}
         <p class="text-sm text-muted-foreground">Server-rendered static HTML via Phoenix LiveView with Tailwind v4 styling &bull; Zero client-side JavaScript</p>
       </div>
       <div class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        ${fixtures.length} Components Rendered
+        ${fixtures.length} Fixture Cases Rendered
       </div>
     </div>
   </header>
@@ -277,20 +381,30 @@ ${cssContent}
     results.push(res)
   }
 
+  const families = new Map<string, boolean>()
+  fixtures.forEach((fixture, i) => {
+    const family = fixture.family ?? fixture.name
+    families.set(family, (families.get(family) ?? true) && results[i].passed)
+  })
+
   return {
     passedCount,
     totalCount: fixtures.length,
+    passedFamilyCount: [...families.values()].filter(Boolean).length,
+    totalFamilyCount: families.size,
     results,
   }
 }
 
 async function runCli(): Promise<void> {
+  await buildSSRPreviewPage()
   const summary = await runParitySuite()
 
   console.log("\n========================================================")
   console.log(`  SHADCN vs PHOENIX LIVEVIEW SSR PARITY RESULTS`)
   console.log("========================================================")
-  console.log(`  Overall: ${summary.passedCount} / ${summary.totalCount} passed parity`)
+  console.log(`  Cases: ${summary.passedCount} / ${summary.totalCount} passed parity`)
+  console.log(`  Families: ${summary.passedFamilyCount} / ${summary.totalFamilyCount} passed all cases`)
   console.log("--------------------------------------------------------\n")
 
   for (const res of summary.results) {
@@ -310,12 +424,20 @@ async function runCli(): Promise<void> {
   console.log("  - React SSR:   priv/static/preview/react-ssr.html")
   console.log("  - Phoenix SSR: priv/static/preview/phoenix-ssr.html\n")
 
-  const discrepancies = summary.totalCount - summary.passedCount
-  const matchRate = ((summary.passedCount / summary.totalCount) * 100).toFixed(1)
+  const caseDiscrepancies = summary.totalCount - summary.passedCount
+  const caseMatchRate = ((summary.passedCount / summary.totalCount) * 100).toFixed(1)
+  const familyDiscrepancies = summary.totalFamilyCount - summary.passedFamilyCount
+  const familyMatchRate = ((summary.passedFamilyCount / summary.totalFamilyCount) * 100).toFixed(1)
 
-  console.log(`\nMETRIC parity_score=${summary.passedCount}`)
-  console.log(`METRIC discrepancies=${discrepancies}`)
-  console.log(`METRIC match_rate=${matchRate}`)
+  console.log(`\nMETRIC parity_case_score=${summary.passedCount}`)
+  console.log(`METRIC case_discrepancies=${caseDiscrepancies}`)
+  console.log(`METRIC case_match_rate=${caseMatchRate}`)
+  console.log(`METRIC parity_family_score=${summary.passedFamilyCount}`)
+  console.log(`METRIC family_discrepancies=${familyDiscrepancies}`)
+  console.log(`METRIC family_match_rate=${familyMatchRate}`)
+  if (summary.passedCount !== summary.totalCount || summary.passedFamilyCount !== summary.totalFamilyCount) {
+    process.exitCode = 1
+  }
 }
 
 const isDirect = process.argv[1]?.endsWith("parity.tsx") || process.argv[1]?.endsWith("parity.ts")

@@ -4,30 +4,39 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   import ShadcnLiveview.Helpers
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb(assigns) do
     ~H"""
-    <nav
-      data-slot="breadcrumb" aria-label="breadcrumb"
-      class={classes(["", @class])}
-      {@rest}
-    >
+    <nav data-slot="breadcrumb" aria-label="breadcrumb" class={classes(["", @class])} {@rest}>
       {render_slot(@inner_block)}
     </nav>
     """
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb_list(assigns) do
     ~H"""
     <ol
       data-slot="breadcrumb-list"
-      class={classes(["flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground", @class])}
+      class={
+        classes([
+          "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground",
+          @class
+        ])
+      }
       {@rest}
     >
       {render_slot(@inner_block)}
@@ -36,7 +45,11 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb_item(assigns) do
@@ -52,7 +65,11 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb_link(assigns) do
@@ -68,13 +85,20 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb_page(assigns) do
     ~H"""
     <span
-      data-slot="breadcrumb-page" role="link" aria-disabled="true" aria-current="page"
+      data-slot="breadcrumb-page"
+      role="link"
+      aria-disabled="true"
+      aria-current="page"
       class={classes(["font-normal text-foreground", @class])}
       {@rest}
     >
@@ -84,7 +108,11 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
   slot :inner_block, required: false
 
   def breadcrumb_separator(assigns) do
@@ -102,14 +130,19 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
   end
 
   attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+
+  attr :rest, :global,
+    include:
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+
   slot :inner_block, required: false
 
   def breadcrumb_ellipsis(assigns) do
     ~H"""
     <span
-      data-slot="breadcrumb-ellipsis" role="presentation"
-      class={classes(["sr-only", @class])}
+      data-slot="breadcrumb-ellipsis"
+      role="presentation"
+      class={classes(["flex size-5 items-center justify-center [&>svg]:size-4", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}

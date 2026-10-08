@@ -37,12 +37,7 @@ export function renderAllReactFixtures(): SSRRenderResult[] {
 export async function buildSSRPreviewPage(): Promise<string> {
   const results = renderAllReactFixtures()
   const cssPath = path.resolve("priv/static/assets/css/app.css")
-  let cssContent = ""
-  try {
-    cssContent = await fs.readFile(cssPath, "utf8")
-  } catch {
-    console.warn("priv/static/assets/css/app.css not found, reading assets/css/app.css")
-  }
+  const cssContent = await fs.readFile(cssPath, "utf8")
 
   const sectionsHtml = results
     .map(
@@ -88,7 +83,7 @@ ${cssContent}
         <p class="text-sm text-muted-foreground">Server-rendered static HTML with Tailwind v4 styling &bull; Zero client-side JavaScript</p>
       </div>
       <div class="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-        ${results.length} Components Rendered
+        ${results.length} Fixture Cases Rendered
       </div>
     </div>
   </header>
