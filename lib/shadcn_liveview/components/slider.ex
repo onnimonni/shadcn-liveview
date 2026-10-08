@@ -35,14 +35,16 @@ defmodule ShadcnLiveview.Components.Slider do
       </span>
       <span style="transform:var(--radix-slider-thumb-transform);position:absolute;left:calc(0% + 0px)">
         <span
-          data-slot="slider-thumb"
-          data-orientation="horizontal"
           role="slider"
-          aria-valuenow="50"
           aria-valuemin="0"
           aria-valuemax="100"
+          aria-orientation="horizontal"
+          data-orientation="horizontal"
           tabindex="0"
+          data-slot="slider-thumb"
           class="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
+          style="display:none"
+          data-radix-collection-item=""
         />
       </span>
       <input style="display:none" />

@@ -1718,19 +1718,6 @@
     <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border"></div>
   </div>
 </div>
-end
-
-attr :class, :string, default: nil
-attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
-slot :inner_block, required: false
-
-def scroll_bar(assigns) do
-~H"""
-<div data-slot="scroll-area-thumb" class="relative flex-1 bg-border h-32 w-48 rounded-md border p-4">
-  
-  Long scrolling text item list inside scroll area.
-
-</div>
       </div>
     </section>
 
@@ -1876,7 +1863,7 @@ def scroll_bar(assigns) do
     <span data-slot="slider-range" data-orientation="horizontal" style="left:0%;right:50%" class="absolute bg-primary select-none data-horizontal:h-full data-vertical:w-full"></span>
   </span>
   <span style="transform:var(--radix-slider-thumb-transform);position:absolute;left:calc(0% + 0px)">
-    <span data-slot="slider-thumb" data-orientation="horizontal" role="slider" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" tabindex="0" class="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"></span>
+    <span role="slider" aria-valuemin="0" aria-valuemax="100" aria-orientation="horizontal" data-orientation="horizontal" tabindex="0" data-slot="slider-thumb" class="relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50" style="display:none" data-radix-collection-item=""></span>
   </span>
   <input style="display:none">
 </span>

@@ -33,6 +33,7 @@ defmodule ShadcnLiveview.Components.ScrollArea do
         <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border" />
       </div>
     </div>
+    """
   end
 
   attr :class, :string, default: nil
