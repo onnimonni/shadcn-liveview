@@ -149,7 +149,6 @@ defmodule ShadcnLiveview.Components.Sidebar do
 
   attr :class, :string, default: nil
   attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
@@ -157,24 +156,12 @@ defmodule ShadcnLiveview.Components.Sidebar do
     ~H"""
     <div
       data-slot="sidebar-inner" data-variant={@variant}
-      class={classes([sidebar_classes(@variant, @size), @class])}
+      class={classes(["flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
     </div>
     """
-  end
-
-  defp sidebar_classes(variant, size) do
-    case {to_string(variant || "default"), to_string(size || "default")} do
-      {"default", "default"} -> "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm"
-      {"default", "sm"} -> "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-7 text-xs"
-      {"default", "lg"} -> "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-12 text-sm group-data-[collapsible=icon]:p-0!"
-      {"outline", "default"} -> "flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)] h-8 text-sm"
-      {"outline", "sm"} -> "flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)] h-7 text-xs"
-      {"outline", "lg"} -> "flex size-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)] h-12 text-sm group-data-[collapsible=icon]:p-0!"
-      _ -> "flex size-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:shadow-sm group-data-[variant=floating]:ring-1 group-data-[variant=floating]:ring-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-8 text-sm"
-    end
   end
 
   attr :class, :string, default: nil

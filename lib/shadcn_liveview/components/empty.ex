@@ -4,7 +4,6 @@ defmodule ShadcnLiveview.Components.Empty do
   import ShadcnLiveview.Helpers
 
   attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
@@ -12,20 +11,12 @@ defmodule ShadcnLiveview.Components.Empty do
     ~H"""
     <div
       data-slot="empty"
-      class={classes([empty_classes(@variant), @class])}
+      class={classes(["flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
     </div>
     """
-  end
-
-  defp empty_classes(variant) do
-    case to_string(variant || "default") do
-      "default" -> "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance bg-transparent"
-      "icon" -> "min-w-0 flex-1 flex-col gap-4 border-dashed p-6 text-center text-balance flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-4"
-      _ -> "flex w-full min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-dashed p-6 text-center text-balance bg-transparent"
-    end
   end
 
   attr :class, :string, default: nil
@@ -75,13 +66,13 @@ defmodule ShadcnLiveview.Components.Empty do
 
   def empty_title(assigns) do
     ~H"""
-    <h2
+    <div
       data-slot="empty-title"
       class={classes(["cn-font-heading text-sm font-medium tracking-tight", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </h2>
+    </div>
     """
   end
 
@@ -91,13 +82,13 @@ defmodule ShadcnLiveview.Components.Empty do
 
   def empty_description(assigns) do
     ~H"""
-    <p
+    <div
       data-slot="empty-description"
       class={classes(["text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </p>
+    </div>
     """
   end
 

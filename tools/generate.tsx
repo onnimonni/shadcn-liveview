@@ -107,6 +107,7 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
   if (lowerName.includes("paginationitem") || lowerName.includes("pagination_item")) return "li"
   if (lowerName === "questionnaireitem" || lowerName === "questionnaire_item") return "fieldset"
   if (lowerName.includes("card") || lowerName === "alert" || lowerName === "alerttitle" || lowerName === "alertdescription" || lowerName.includes("itemtitle") || lowerName.includes("item_title")) return "div"
+  if (lowerName === "emptytitle" || lowerName === "emptydescription") return "div"
   if (lowerName.endsWith("title")) return "h2"
   if (lowerName.endsWith("description")) return "p"
   if (
@@ -1245,7 +1246,8 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
 
     const isPrimary = name.toLowerCase() === fileName.replace(/-/g, "").toLowerCase()
     const primaryName = toSnakeCase(fileName)
-    const matchedCva = cvaByFunction[fnSnakeName] || (isPrimary ? cvaByFunction[primaryName] || Object.values(cvaByFunction)[0] : undefined)
+    // A family's first CVA may belong to a child (e.g. EmptyMedia), not its root.
+    const matchedCva = cvaByFunction[fnSnakeName] || (isPrimary ? cvaByFunction[primaryName] : undefined)
 
     let foundSlot = fnSnakeName.replace(/_/g, "-")
     let foundClasses = matchedCva?.baseClasses || ""
