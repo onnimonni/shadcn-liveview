@@ -11,7 +11,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     ~H"""
     <form
       data-slot="questionnaire"
-      class={classes(["flex w-full min-w-0 flex-col gap-4", @class])}
+      data-current="0"
+      data-total="0"
+      novalidate=""
+      class={classes(["", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}

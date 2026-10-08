@@ -24,8 +24,15 @@ defmodule ShadcnLiveview.Components.ScrollArea do
       >
         {render_slot(@inner_block)}
       </div>
+      <div
+        data-slot="scroll-area-scrollbar"
+        data-state="hidden"
+        data-orientation="vertical"
+        class="flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent"
+      >
+        <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border" />
+      </div>
     </div>
-    """
   end
 
   attr :class, :string, default: nil

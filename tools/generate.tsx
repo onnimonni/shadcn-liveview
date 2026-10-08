@@ -290,14 +290,18 @@ function generateFunction(
       role="checkbox"
       aria-checked={to_string(@checked)}
       data-state={if @checked, do: "checked", else: "unchecked"}
+      value="on"
       data-slot="checkbox"
       class={classes(["peer relative flex size-4 shrink-0 items-center justify-center rounded-[4px] border border-input transition-colors outline-none group-has-disabled/field:opacity-50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 aria-invalid:aria-checked:border-primary dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground", @class])}
       {@rest}
-    >
-      <span data-slot="checkbox-indicator" class="grid place-content-center text-current transition-none [&>svg]:size-3.5">
-        <ShadcnLiveview.Components.Icon.icon name="check" class="size-3.5" />
-      </span>
-    </button>
+    ><%= if @checked do %><span data-slot="checkbox-indicator" class="grid place-content-center text-current transition-none [&>svg]:size-3.5"><ShadcnLiveview.Components.Icon.icon name="check" class="size-3.5" /></span><% end %></button><input
+      type="checkbox"
+      aria-hidden="true"
+      tabindex="-1"
+      style="position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)"
+      value="on"
+      checked={@checked}
+    />
     """
   end`
   }
@@ -533,6 +537,26 @@ function generateFunction(
     """
   end`
   }
+  if (fn.name === "pagination") {
+    return `  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def pagination(assigns) do
+    ~H"""
+    <nav
+      role="navigation"
+      aria-label="pagination"
+      data-slot="pagination"
+      class={classes(["mx-auto flex w-full justify-center", @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </nav>
+    """
+  end`
+  }
+
   if (fn.name === "pagination_link") {
     return `  attr :is_active, :boolean, default: false
   attr :size, :string, default: "icon"
@@ -544,6 +568,8 @@ function generateFunction(
     ~H"""
     <a
       data-slot="pagination-link"
+      data-variant={if @is_active, do: "outline", else: "ghost"}
+      data-size={@size}
       aria-current={if @is_active, do: "page"}
       data-active={if @is_active, do: "true"}
       class={classes([
@@ -571,8 +597,10 @@ function generateFunction(
     <a
       aria-label="Go to previous page"
       data-slot="pagination-link"
+      data-variant="ghost"
+      data-size="default"
       class={classes([
-        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pl-1.5!",
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pl-1.5! has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         @class
       ])}
       {@rest}
@@ -595,8 +623,10 @@ function generateFunction(
     <a
       aria-label="Go to next page"
       data-slot="pagination-link"
+      data-variant="ghost"
+      data-size="default"
       class={classes([
-        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pr-1.5!",
+        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 h-8 gap-1.5 px-2.5 pr-1.5! has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         @class
       ])}
       {@rest}
@@ -630,7 +660,35 @@ function generateFunction(
       >
         {render_slot(@inner_block)}
       </div>
+      <div
+        data-slot="scroll-area-scrollbar"
+        data-state="hidden"
+        data-orientation="vertical"
+        class="flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent"
+      >
+        <div data-slot="scroll-area-thumb" class="relative flex-1 rounded-full bg-border" />
+      </div>
     </div>
+  end`
+  }
+
+  if (fn.name === "questionnaire") {
+    return `  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
+  slot :inner_block, required: false
+
+  def questionnaire(assigns) do
+    ~H"""
+    <form
+      data-slot="questionnaire"
+      data-current="0"
+      data-total="0"
+      novalidate=""
+      class={classes(["", @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </form>
     """
   end`
   }
