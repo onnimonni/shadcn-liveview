@@ -108,6 +108,7 @@ function resolveHtmlTag(origName: string, rawTag: string): string {
   if (lowerName === "questionnaireitem" || lowerName === "questionnaire_item") return "fieldset"
   if (lowerName.includes("card") || lowerName === "alert" || lowerName === "alerttitle" || lowerName === "alertdescription" || lowerName.includes("itemtitle") || lowerName.includes("item_title")) return "div"
   if (lowerName === "emptytitle" || lowerName === "emptydescription") return "div"
+  if (lowerName === "attachmenttitle" || lowerName === "attachmentdescription") return "span"
   if (lowerName.endsWith("title")) return "h2"
   if (lowerName.endsWith("description")) return "p"
   if (
@@ -1283,7 +1284,11 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
                 if (ts.isCallExpression(expr)) {
                   const arg0 = expr.arguments[0]
                   if (arg0 && (ts.isStringLiteral(arg0) || ts.isNoSubstitutionTemplateLiteral(arg0))) {
-                    foundClasses = arg0.text.replace(/\s+/g, " ").trim()
+                    foundClasses = expr.arguments
+                      .filter((arg): arg is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+                        ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))
+                      .map((arg) => arg.text)
+                      .join(" ").replace(/\s+/g, " ").trim()
                   }
                 } else if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
                   foundClasses = expr.text.replace(/\s+/g, " ").trim()
@@ -1302,6 +1307,10 @@ export function parseComponentAST(fileName: string, code: string): ComponentSpec
     let finalTag = resolveHtmlTag(name, foundTag)
 
     const specialAttrs: { name: string; type: string; default?: string }[] = []
+    if (fnSnakeName === "attachment") {
+      specialAttrs.push({ name: "state", type: "string", default: '"done"' })
+      staticAttrsList.push('data-state={@state} data-orientation={@orientation}')
+    }
     if (fnSnakeName === "chart_container") {
       specialAttrs.push({ name: "config", type: "map", default: "%{}" })
     }

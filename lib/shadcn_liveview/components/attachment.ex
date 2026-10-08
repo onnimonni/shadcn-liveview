@@ -6,13 +6,14 @@ defmodule ShadcnLiveview.Components.Attachment do
   attr :class, :string, default: nil
   attr :size, :string, default: "default"
   attr :orientation, :string, default: "horizontal"
+  attr :state, :string, default: "done"
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
   def attachment(assigns) do
     ~H"""
     <div
-      data-slot="attachment" data-size={@size}
+      data-slot="attachment" data-size={@size} data-state={@state} data-orientation={@orientation}
       class={classes([attachment_classes(@size, @orientation), @class])}
       {@rest}
     >
@@ -80,13 +81,13 @@ defmodule ShadcnLiveview.Components.Attachment do
 
   def attachment_title(assigns) do
     ~H"""
-    <h2
+    <span
       data-slot="attachment-title"
       class={classes(["block max-w-full min-w-0 truncate font-medium group-data-[state=processing]/attachment:shimmer group-data-[state=uploading]/attachment:shimmer", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </h2>
+    </span>
     """
   end
 
@@ -96,13 +97,13 @@ defmodule ShadcnLiveview.Components.Attachment do
 
   def attachment_description(assigns) do
     ~H"""
-    <p
+    <span
       data-slot="attachment-description"
-      class={classes(["mt-0.5 block min-w-0 truncate text-xs text-muted-foreground group-data-[state=error]/attachment:text-destructive/80", @class])}
+      class={classes(["mt-0.5 block min-w-0 truncate text-xs text-muted-foreground group-data-[state=error]/attachment:text-destructive/80 max-w-full", @class])}
       {@rest}
     >
       {render_slot(@inner_block)}
-    </p>
+    </span>
     """
   end
 
