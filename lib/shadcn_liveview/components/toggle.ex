@@ -4,6 +4,7 @@ defmodule ShadcnLiveview.Components.Toggle do
   Supply a stable id. With on_change, assign the event's boolean value back to pressed;
   without on_change, the colocated hook owns local pressed state until server state changes.
   Disabled controls remain inert. Arbitrary native button attrs pass through rest.
+  Hook events honor phx-target on the button or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
@@ -56,13 +57,18 @@ defmodule ShadcnLiveview.Components.Toggle do
     </button>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Toggle">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.serverPressed = this.el.getAttribute("phx-pressed");
           this.click = () => {
             if (this.el.disabled) return;
             const value = this.el.getAttribute("aria-pressed") !== "true";
             const event = this.el.getAttribute("phx-change-event");
-            if (event) this.pushEvent(event, {id: this.el.id, value});
+            if (event) this.sendEvent(event, {id: this.el.id, value});
             else this.setPressed(value);
           };
           this.el.addEventListener("click", this.click);

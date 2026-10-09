@@ -1,7 +1,7 @@
 import React from "react"
 import type { ComponentFixture } from "../fixtures"
-import { Area, AreaChart, Bar, BarChart, Line, LineChart } from "recharts"
-import { ChartContainer, ChartLegendContent, ChartTooltipContent } from "../../vendor/shadcn/ui/chart"
+import { Area, AreaChart, Bar, BarChart, Line, LineChart, XAxis } from "recharts"
+import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "../../vendor/shadcn/ui/chart"
 
 const config = {
   desktop: { label: "Desktop", color: "#2563eb" },
@@ -20,6 +20,29 @@ const payload = [
   { dataKey: "mobile", name: "mobile", value: 56, color: "#16a34a" },
 ]
 const payloadHeex = `[%{dataKey: "desktop", name: "desktop", value: 1234, color: "#2563eb", payload: %{month: "January"}}, %{dataKey: "mobile", name: "mobile", value: 56, color: "#16a34a"}]`
+
+const alternateData = [
+  { month: "May", desktop: 45, mobile: 300 },
+  { month: "June", desktop: 240, mobile: -30 },
+]
+
+function LiveBarChart() {
+  const [alternate, setAlternate] = React.useState(false)
+  return (
+    <section className="w-full min-w-0">
+      <button type="button" onClick={() => setAlternate(true)}>Change chart data</button>
+      <ChartContainer id="sales-bars" config={config} className="h-[240px] w-full">
+        <BarChart id="sales-bars-canvas" data={alternate ? alternateData : data}>
+          <XAxis dataKey="month" />
+          <Bar dataKey="desktop" fill="var(--color-desktop)" />
+          <Bar dataKey="mobile" fill="var(--color-mobile)" />
+          <ChartTooltip content={<ChartTooltipContent />} />
+          <ChartLegend content={<ChartLegendContent />} />
+        </BarChart>
+      </ChartContainer>
+    </section>
+  )
+}
 
 export const fixtures: ComponentFixture[] = [
   {
@@ -47,23 +70,27 @@ export const fixtures: ComponentFixture[] = [
   {
     name: "chart-bar-series", family: "chart", title: "Responsive signed multi-series bars", category: "data-display",
     renderReact: () => <ChartContainer id="sales-bars" config={config} className="h-[240px] w-full"><div id="sales-bars-canvas"><BarChart data={data}><Bar dataKey="desktop" fill="var(--color-desktop)" /><Bar dataKey="mobile" fill="var(--color-mobile)" /></BarChart></div></ChartContainer>,
+    renderLiveReact: () => <LiveBarChart />,
     heex: `<.chart_container :let={chart} id="sales-bars" config={${configHeex}} class="h-[240px] w-full"><.chart_canvas id="sales-bars-canvas" context={chart} data={${dataHeex}} series={[:desktop, :mobile]} x_key="month" legend label="Monthly desktop and mobile sales" /></.chart_container>`,
-    liveHeex: `<section><button type="button" phx-click="shadcn:chart-data" phx-value-id="sales-bars" value="alternate">Change chart data</button><.chart_container :let={chart} id="sales-bars" config={${configHeex}} class="h-[240px] w-full"><.chart_canvas id="sales-bars-canvas" context={chart} data={if Map.get(@state, "sales-bars") == "alternate", do: [%{month: "May", desktop: 45, mobile: 300}, %{month: "June", desktop: 240, mobile: -30}], else: ${dataHeex}} series={[:desktop, :mobile]} x_key="month" legend label="Monthly desktop and mobile sales" /></.chart_container></section>`,
+    liveHeex: `<section class="w-full min-w-0"><button type="button" phx-click="shadcn:chart-data" phx-value-id="sales-bars" value="alternate">Change chart data</button><.chart_container :let={chart} id="sales-bars" config={${configHeex}} class="h-[240px] w-full"><.chart_canvas id="sales-bars-canvas" context={chart} data={if Map.get(@state, "sales-bars") == "alternate", do: [%{month: "May", desktop: 45, mobile: 300}, %{month: "June", desktop: 240, mobile: -30}], else: ${dataHeex}} series={[:desktop, :mobile]} x_key="month" legend label="Monthly desktop and mobile sales" /></.chart_container></section>`,
   },
   {
     name: "chart-line-custom-dimensions", family: "chart", title: "Line chart custom initial dimensions", category: "data-display",
     renderReact: () => <ChartContainer id="trend" config={config} initialDimension={{ width: 480, height: 260 }} className="h-[260px] w-full"><div id="trend-canvas"><LineChart data={data}><Line dataKey="desktop" stroke="var(--color-desktop)" /><Line dataKey="mobile" stroke="var(--color-mobile)" /></LineChart></div></ChartContainer>,
+    renderLiveReact: () => <ChartContainer id="trend" config={config} initialDimension={{ width: 480, height: 260 }} className="h-[260px] w-full"><LineChart id="trend-canvas" data={data}><XAxis dataKey="month" /><Line dataKey="desktop" stroke="var(--color-desktop)" /><Line dataKey="mobile" stroke="var(--color-mobile)" /><ChartTooltip content={<ChartTooltipContent />} /></LineChart></ChartContainer>,
     heex: `<.chart_container :let={chart} id="trend" config={${configHeex}} initial_dimension={%{width: 480, height: 260}} class="h-[260px] w-full"><.chart_canvas id="trend-canvas" context={chart} kind="line" data={${dataHeex}} series={[:desktop, :mobile]} x_key="month" label="Monthly trends" /></.chart_container>`,
   },
   {
     name: "chart-area-gaps", family: "chart", title: "Area chart missing samples", category: "data-display",
     renderReact: () => <ChartContainer id="area" config={{ desktop: config.desktop }} className="h-[200px] w-full"><div id="area-canvas"><AreaChart data={[{ month: "January", desktop: 20 }, { month: "February", desktop: null }, { month: "March", desktop: 40 }]}><Area dataKey="desktop" fill="var(--color-desktop)" stroke="var(--color-desktop)" /></AreaChart></div></ChartContainer>,
+    renderLiveReact: () => <ChartContainer id="area" config={{ desktop: config.desktop }} className="h-[200px] w-full"><AreaChart id="area-canvas" data={[{ month: "January", desktop: 20 }, { month: "February", desktop: null }, { month: "March", desktop: 40 }]}><XAxis dataKey="month" /><Area dataKey="desktop" fill="var(--color-desktop)" stroke="var(--color-desktop)" /><ChartTooltip content={<ChartTooltipContent />} /></AreaChart></ChartContainer>,
     heex: `<.chart_container :let={chart} id="area" config={%{desktop: %{label: "Desktop", color: "#2563eb"}}} class="h-[200px] w-full"><.chart_canvas id="area-canvas" context={chart} kind="area" data={[%{month: "January", desktop: 20}, %{month: "February", desktop: nil}, %{month: "March", desktop: 40}]} series={[:desktop]} x_key="month" /></.chart_container>`,
   },
   {
     name: "chart-empty-data", family: "chart", title: "Chart empty dataset", category: "data-display",
     renderReact: () => <ChartContainer id="empty-data" config={{ desktop: config.desktop }} className="h-[200px] w-full"><div id="empty-data-canvas"><BarChart data={[]}><Bar dataKey="desktop" /></BarChart></div></ChartContainer>,
-    heex: `<.chart_container :let={chart} id="empty-data" config={%{desktop: %{label: "Desktop", color: "#2563eb"}}} class="h-[200px] w-full"><.chart_canvas id="empty-data-canvas" context={chart} data={[]} series={[:desktop]} /></.chart_container>`,
+    renderLiveReact: () => <ChartContainer id="empty-data" config={{ desktop: config.desktop }} className="h-[200px] w-full"><BarChart id="empty-data-canvas" data={[]}><Bar dataKey="desktop" /></BarChart></ChartContainer>,
+    heex: `<.chart_container :let={chart} id="empty-data" config={%{desktop: %{label: "Desktop", color: "#2563eb"}}} class="h-[200px] w-full"><.chart_canvas id="empty-data-canvas" context={chart} data={[]} series={[:desktop]} axes={false} tooltip={false} /></.chart_container>`,
   },
   {
     name: "chart-tooltip", family: "chart", title: "Chart active multi-series tooltip", category: "data-display",
@@ -103,6 +130,7 @@ export const fixtures: ComponentFixture[] = [
   {
     name: "chart-multiple-instances", family: "chart", title: "Independent chart styles and canvases", category: "data-display",
     renderReact: () => <section><ChartContainer id="first" config={{ sales: { label: "First sales", color: "#9333ea" } }} className="h-[200px] w-full"><div id="first-canvas"><BarChart data={[{ name: "A", sales: 12 }]}><Bar dataKey="sales" /></BarChart></div></ChartContainer><ChartContainer id="second" config={{ sales: { label: "Second sales", theme: { light: "#dc2626", dark: "#f87171" } } }} className="h-[200px] w-full"><div id="second-canvas"><LineChart data={[{ name: "B", sales: 18 }]}><Line dataKey="sales" /></LineChart></div></ChartContainer></section>,
+    renderLiveReact: () => <section><ChartContainer id="first" config={{ sales: { label: "First sales", color: "#9333ea" } }} className="h-[200px] w-full"><BarChart id="first-canvas" data={[{ name: "A", sales: 12 }]}><XAxis dataKey="name" /><Bar dataKey="sales" fill="var(--color-sales)" /><ChartTooltip content={<ChartTooltipContent />} /></BarChart></ChartContainer><ChartContainer id="second" config={{ sales: { label: "Second sales", theme: { light: "#dc2626", dark: "#f87171" } } }} className="h-[200px] w-full"><LineChart id="second-canvas" data={[{ name: "B", sales: 18 }]}><XAxis dataKey="name" /><Line dataKey="sales" stroke="var(--color-sales)" /><ChartTooltip content={<ChartTooltipContent />} /></LineChart></ChartContainer></section>,
     heex: `<section><.chart_container :let={chart} id="first" config={%{sales: %{label: "First sales", color: "#9333ea"}}} class="h-[200px] w-full"><.chart_canvas id="first-canvas" context={chart} data={[%{name: "A", sales: 12}]} series={[:sales]} /></.chart_container><.chart_container :let={chart} id="second" config={%{sales: %{label: "Second sales", theme: %{light: "#dc2626", dark: "#f87171"}}}} class="h-[200px] w-full"><.chart_canvas id="second-canvas" context={chart} kind="line" data={[%{name: "B", sales: 18}]} series={[:sales]} /></.chart_container></section>`,
   },
 ]

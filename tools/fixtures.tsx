@@ -1,13 +1,3 @@
-if (typeof globalThis.document === "undefined") {
-  globalThis.document = {
-    querySelector: () => null,
-    querySelectorAll: () => [],
-    createElement: () => ({ style: {} }),
-    body: { style: {} },
-    documentElement: { style: {} },
-  } as unknown as Document
-}
-
 import React from "react"
 import { fixtures as linkedFixtures } from "./fixtures/linked"
 import { fixtures as modalFixtures } from "./fixtures/modals"
@@ -20,10 +10,14 @@ import { fixtures as conversationFixtures } from "./fixtures/conversation"
 import { fixtures as selectionFixtures } from "./fixtures/selections"
 import { fixtures as controlFixtures } from "./fixtures/controls"
 import { fixtures as plainFixtures } from "./fixtures/plain"
+import { fixtures as nativeSelectFixtures } from "./fixtures/native-select"
+import { fixtures as progressFixtures } from "./fixtures/progress"
+import { ensureSSRDocument } from "./fixtures/ssr-environment"
+import { ButtonPreview, NotificationPreview, PaginationPreview } from "./fixtures/basic-live"
 import { Alert, AlertDescription, AlertTitle } from "../vendor/shadcn/ui/alert"
 import { AspectRatio } from "../vendor/shadcn/ui/aspect-ratio"
 import { Attachment, AttachmentDescription, AttachmentTitle } from "../vendor/shadcn/ui/attachment"
-import { Avatar, AvatarFallback, AvatarImage } from "../vendor/shadcn/ui/avatar"
+import { Avatar, AvatarFallback } from "../vendor/shadcn/ui/avatar"
 import { Badge } from "../vendor/shadcn/ui/badge"
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../vendor/shadcn/ui/breadcrumb"
 import { Bubble, BubbleContent } from "../vendor/shadcn/ui/bubble"
@@ -40,9 +34,7 @@ import { Kbd } from "../vendor/shadcn/ui/kbd"
 import { Label } from "../vendor/shadcn/ui/label"
 import { Marker } from "../vendor/shadcn/ui/marker"
 import { Message, MessageContent } from "../vendor/shadcn/ui/message"
-import { NativeSelect, NativeSelectOptGroup, NativeSelectOption } from "../vendor/shadcn/ui/native-select"
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "../vendor/shadcn/ui/pagination"
-import { Progress } from "../vendor/shadcn/ui/progress"
 import { ScrollArea } from "../vendor/shadcn/ui/scroll-area"
 import { Separator } from "../vendor/shadcn/ui/separator"
 import { Skeleton } from "../vendor/shadcn/ui/skeleton"
@@ -52,12 +44,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Textarea } from "../vendor/shadcn/ui/textarea"
 import { Toggle } from "../vendor/shadcn/ui/toggle"
 
+ensureSSRDocument()
+
 export interface ComponentFixture {
   name: string
   family?: string
   title: string
   category: "actions" | "data-display" | "feedback" | "forms" | "layout" | "navigation" | "overlay"
   renderReact: () => React.ReactElement
+  // Browser state owners are separate so the strict SSR reference stays deterministic.
+  renderLiveReact?: () => React.ReactElement
   heex: string
   liveHeex?: string
 }
@@ -201,7 +197,9 @@ export const fixtures: ComponentFixture[] = [
     title: "Button",
     category: "actions",
     renderReact: () => <Button variant="default">Click me</Button>,
-    heex: `<.button variant="default">Click me</.button>`
+    heex: `<.button variant="default">Click me</.button>`,
+    renderLiveReact: () => <ButtonPreview />,
+    liveHeex: `<.button phx-click="preview:increment" phx-value-id="button-clicks">{if Map.get(@state, "button-clicks", 0) == 0, do: "Click me", else: "Clicked #{Map.get(@state, "button-clicks")} times"}</.button>`
   },
   {
     name: "card",
@@ -271,22 +269,22 @@ export const fixtures: ComponentFixture[] = [
     title: "Field",
     category: "forms",
     renderReact: () => (
-      <FieldSet>
+      <FieldSet className="w-full max-w-md">
         <FieldGroup>
           <Field>
-            <FieldLabel>Email address</FieldLabel>
-            <Input type="email" placeholder="m@example.com" />
-            <FieldDescription>We will never share your email.</FieldDescription>
+            <FieldLabel htmlFor="field-email">Email address</FieldLabel>
+            <Input id="field-email" type="email" placeholder="m@example.com" aria-describedby="field-help" />
+            <FieldDescription id="field-help">We will never share your email.</FieldDescription>
           </Field>
         </FieldGroup>
       </FieldSet>
     ),
-    heex: `<.field_set>
+    heex: `<.field_set class="w-full max-w-md">
   <.field_group>
     <.field>
-      <.field_label>Email address</.field_label>
-      <.input type="email" placeholder="m@example.com" />
-      <.field_description>We will never share your email.</.field_description>
+      <.field_label for="field-email">Email address</.field_label>
+      <.input id="field-email" type="email" placeholder="m@example.com" aria-describedby="field-help" />
+      <.field_description id="field-help">We will never share your email.</.field_description>
     </.field>
   </.field_group>
 </.field_set>`
@@ -343,8 +341,8 @@ export const fixtures: ComponentFixture[] = [
     name: "label",
     title: "Label",
     category: "forms",
-    renderReact: () => <Label htmlFor="test-input">Your email address</Label>,
-    heex: `<.label for="test-input">Your email address</.label>`
+    renderReact: () => <div><Label htmlFor="test-input">Your email address</Label><Input id="test-input" type="email" /></div>,
+    heex: `<div><.label for="test-input">Your email address</.label><.input id="test-input" type="email" /></div>`
   },
   {
     name: "marker",
@@ -366,191 +364,7 @@ export const fixtures: ComponentFixture[] = [
   <.message_content>Hi, how can I help you today?</.message_content>
 </.message>`
   },
-  {
-    name: "native-select",
-    title: "Native Select",
-    category: "forms",
-    renderReact: () => (
-      <NativeSelect>
-        <NativeSelectOption value="1">Option 1</NativeSelectOption>
-        <NativeSelectOption value="2">Option 2</NativeSelectOption>
-      </NativeSelect>
-    ),
-    heex: `<.native_select>
-  <.native_select_option value="1">Option 1</.native_select_option>
-  <.native_select_option value="2">Option 2</.native_select_option>
-</.native_select>`
-  },
-  {
-    name: "native-select-default-selection",
-    family: "native-select",
-    title: "Native Select Default Selection",
-    category: "forms",
-    renderReact: () => (
-      <form id="native-default-form">
-        <label htmlFor="native-default">Fruit</label>
-        <NativeSelect id="native-default" name="fruit" defaultValue="pear" required aria-describedby="native-default-help" className="w-48 min-w-24 max-w-64">
-          <NativeSelectOption value="">Choose fruit</NativeSelectOption>
-          <NativeSelectOptGroup label="Fruit">
-            <NativeSelectOption value="apple">Apple</NativeSelectOption>
-            <NativeSelectOption value="pear" className="font-medium">Pear</NativeSelectOption>
-          </NativeSelectOptGroup>
-        </NativeSelect>
-        <p id="native-default-help">Choose a fruit.</p>
-        <button type="reset">Reset</button>
-      </form>
-    ),
-    heex: `<form id="native-default-form">
-  <label for="native-default">Fruit</label>
-  <.native_select :let={selection} id="native-default" name="fruit" default_value="pear" required aria-describedby="native-default-help" class="w-48 min-w-24 max-w-64">
-    <.native_select_option value="" selected={"" in selection}>Choose fruit</.native_select_option>
-    <.native_select_opt_group label="Fruit">
-      <.native_select_option value="apple" selected={"apple" in selection}>Apple</.native_select_option>
-      <.native_select_option value="pear" selected={"pear" in selection} class="font-medium">Pear</.native_select_option>
-    </.native_select_opt_group>
-  </.native_select>
-  <p id="native-default-help">Choose a fruit.</p>
-  <button type="reset">Reset</button>
-</form>`
-  },
-  {
-    name: "native-select-controlled-small",
-    family: "native-select",
-    title: "Native Select Controlled Small",
-    category: "forms",
-    renderReact: () => (
-      <NativeSelect id="native-controlled" name="quantity" value={2} onChange={() => {}} size="sm" aria-label="Quantity" aria-invalid="true" className="w-[180px]">
-        <NativeSelectOption value={1}>One</NativeSelectOption>
-        <NativeSelectOption value={2}>Two</NativeSelectOption>
-        <NativeSelectOption value={3} disabled>Three</NativeSelectOption>
-      </NativeSelect>
-    ),
-    heex: `<.native_select :let={selection} id="native-controlled" name="quantity" value={2} size="sm" aria-label="Quantity" aria-invalid="true" class="w-[180px]">
-  <.native_select_option value={1} selected={"1" in selection}>One</.native_select_option>
-  <.native_select_option value={2} selected={"2" in selection}>Two</.native_select_option>
-  <.native_select_option value={3} selected={"3" in selection} disabled>Three</.native_select_option>
-</.native_select>`
-  },
-  {
-    name: "native-select-disabled-groups",
-    family: "native-select",
-    title: "Native Select Disabled Groups",
-    category: "forms",
-    renderReact: () => (
-      <form>
-        <NativeSelect id="native-disabled" name="region" disabled defaultValue="west" aria-label="Region">
-          <NativeSelectOptGroup label="Unavailable" disabled>
-            <NativeSelectOption value="east">East</NativeSelectOption>
-          </NativeSelectOptGroup>
-          <NativeSelectOptGroup label="Available">
-            <NativeSelectOption value="west" label="Western region">West</NativeSelectOption>
-          </NativeSelectOptGroup>
-        </NativeSelect>
-      </form>
-    ),
-    heex: `<form>
-  <.native_select :let={selection} id="native-disabled" name="region" disabled default_value="west" aria-label="Region">
-    <.native_select_opt_group label="Unavailable" disabled>
-      <.native_select_option value="east" selected={"east" in selection}>East</.native_select_option>
-    </.native_select_opt_group>
-    <.native_select_opt_group label="Available">
-      <.native_select_option value="west" selected={"west" in selection} label="Western region">West</.native_select_option>
-    </.native_select_opt_group>
-  </.native_select>
-</form>`
-  },
-  {
-    name: "native-select-multiple-instances",
-    family: "native-select",
-    title: "Native Select Multiple Instances",
-    category: "forms",
-    renderReact: () => (
-      <form id="native-multiple-form">
-        <NativeSelect id="native-multiple" name="colors" multiple defaultValue={["red", "blue"]} aria-label="Colors">
-          <NativeSelectOptGroup label="Colors">
-            <NativeSelectOption value="red">Red</NativeSelectOption>
-            <NativeSelectOption value="green">Green</NativeSelectOption>
-            <NativeSelectOption value="blue">Blue</NativeSelectOption>
-          </NativeSelectOptGroup>
-        </NativeSelect>
-        <NativeSelect id="native-second" name="shape" defaultValue="square" aria-label="Shape">
-          <NativeSelectOption value="circle">Circle</NativeSelectOption>
-          <NativeSelectOption value="square">Square</NativeSelectOption>
-        </NativeSelect>
-        <button type="reset">Reset</button>
-      </form>
-    ),
-    heex: `<form id="native-multiple-form">
-  <.native_select :let={selection} id="native-multiple" name="colors" multiple default_value={["red", "blue"]} aria-label="Colors">
-    <.native_select_opt_group label="Colors">
-      <.native_select_option value="red" selected={"red" in selection}>Red</.native_select_option>
-      <.native_select_option value="green" selected={"green" in selection}>Green</.native_select_option>
-      <.native_select_option value="blue" selected={"blue" in selection}>Blue</.native_select_option>
-    </.native_select_opt_group>
-  </.native_select>
-  <.native_select :let={selection} id="native-second" name="shape" default_value="square" aria-label="Shape">
-    <.native_select_option value="circle" selected={"circle" in selection}>Circle</.native_select_option>
-    <.native_select_option value="square" selected={"square" in selection}>Square</.native_select_option>
-  </.native_select>
-  <button type="reset">Reset</button>
-</form>`
-  },
-  {
-    name: "native-select-empty-controlled",
-    family: "native-select",
-    title: "Native Select Empty Controlled",
-    category: "forms",
-    renderReact: () => (
-      <NativeSelect value="" onChange={() => {}} name="empty-choice" aria-label="Empty choice">
-        <NativeSelectOption value="other">Other</NativeSelectOption>
-        <NativeSelectOption value="">None</NativeSelectOption>
-      </NativeSelect>
-    ),
-    heex: `<.native_select :let={selection} value="" name="empty-choice" aria-label="Empty choice">
-  <.native_select_option value="other" selected={"other" in selection}>Other</.native_select_option>
-  <.native_select_option value="" selected={"" in selection}>None</.native_select_option>
-</.native_select>`
-  },
-  {
-    name: "native-select-controlled-multiple",
-    family: "native-select",
-    title: "Native Select Controlled Multiple",
-    category: "forms",
-    renderReact: () => (
-      <NativeSelect multiple value={["b", "c"]} onChange={() => {}} name="letters" aria-label="Letters" size="sm">
-        <NativeSelectOption value="a">A</NativeSelectOption>
-        <NativeSelectOption value="b">B</NativeSelectOption>
-        <NativeSelectOption value="c">C</NativeSelectOption>
-      </NativeSelect>
-    ),
-    heex: `<.native_select :let={selection} multiple value={["b", "c"]} name="letters" aria-label="Letters" size="sm">
-  <.native_select_option value="a" selected={"a" in selection}>A</.native_select_option>
-  <.native_select_option value="b" selected={"b" in selection}>B</.native_select_option>
-  <.native_select_option value="c" selected={"c" in selection}>C</.native_select_option>
-</.native_select>`
-  },
-  {
-    name: "native-select-external-form-empty-multiple",
-    family: "native-select",
-    title: "Native Select External Form Empty Multiple",
-    category: "forms",
-    renderReact: () => (
-      <div>
-        <form id="native-external-form"><button type="reset">Reset</button></form>
-        <NativeSelect id="native-external" form="native-external-form" name="external-choices" multiple defaultValue={[]} aria-label="External choices">
-          <NativeSelectOption value="a">A</NativeSelectOption>
-          <NativeSelectOption value="b">B</NativeSelectOption>
-        </NativeSelect>
-      </div>
-    ),
-    heex: `<div>
-  <form id="native-external-form"><button type="reset">Reset</button></form>
-  <.native_select :let={selection} id="native-external" form="native-external-form" name="external-choices" multiple default_value={[]} aria-label="External choices">
-    <.native_select_option value="a" selected={"a" in selection}>A</.native_select_option>
-    <.native_select_option value="b" selected={"b" in selection}>B</.native_select_option>
-  </.native_select>
-</div>`
-  },
+  ...nativeSelectFixtures,
   {
     name: "pagination",
     title: "Pagination",
@@ -582,48 +396,26 @@ export const fixtures: ComponentFixture[] = [
       <.pagination_next href="#" />
     </.pagination_item>
   </.pagination_content>
-</.pagination>`
+</.pagination>`,
+    renderLiveReact: () => <PaginationPreview />,
+    liveHeex: `<.pagination><.pagination_content>
+  <.pagination_item><.pagination_previous href="#page-1" phx-click="preview:page" phx-value-page={max(1, Map.get(@state, "page", 1) - 1)} /></.pagination_item>
+  <.pagination_item :for={page <- 1..3}><.pagination_link href={"#page-#{page}"} is_active={Map.get(@state, "page", 1) == page} phx-click="preview:page" phx-value-page={page}>{page}</.pagination_link></.pagination_item>
+  <.pagination_item><.pagination_next href="#page-3" phx-click="preview:page" phx-value-page={min(3, Map.get(@state, "page", 1) + 1)} /></.pagination_item>
+</.pagination_content></.pagination>`
   },
-  {
-    name: "progress",
-    title: "Progress",
-    category: "feedback",
-    renderReact: () => <Progress value={60} className="w-[60%]" />,
-    heex: `<.progress value={60} class="w-[60%]" />`
-  },
-  ...[
-    { name: "absent", props: {}, heexAttrs: "" },
-    { name: "null", props: { value: null }, heexAttrs: "value={nil}" },
-    { name: "zero", props: { value: 0 }, heexAttrs: "value={0}" },
-    { name: "fractional", props: { value: 25.5 }, heexAttrs: "value={25.5}" },
-    { name: "complete", props: { value: 100 }, heexAttrs: "value={100}" },
-    { name: "custom-max", props: { value: 50, max: 200 }, heexAttrs: "value={50} max={200}" },
-    { name: "null-max", props: { value: 40, max: null as unknown as number }, heexAttrs: "value={40} max={nil}" },
-    { name: "outside-visual-range", props: { value: 125, max: 80 }, heexAttrs: "value={125} max={80}" },
-    {
-      name: "custom-class-aria",
-      props: { value: 75, className: "w-[180px] min-w-24 max-w-64 h-2 bg-primary", id: "upload-progress", "aria-label": "Upload", "aria-valuetext": "Uploading" },
-      heexAttrs: 'value={75} class="w-[180px] min-w-24 max-w-64 h-2 bg-primary" id="upload-progress" aria-label="Upload" aria-valuetext="Uploading"'
-    },
-  ].map(({ name, props, heexAttrs }): ComponentFixture => ({
-    name: `progress-${name}`,
-    family: "progress",
-    title: `Progress ${name}`,
-    category: "feedback",
-    renderReact: () => <Progress {...props} />,
-    heex: `<.progress ${heexAttrs} />`
-  })),
+  ...progressFixtures,
   {
     name: "scroll-area",
     title: "Scroll Area",
     category: "layout",
     renderReact: () => (
-      <ScrollArea className="h-32 w-48 rounded-md border p-4">
-        Long scrolling text item list inside scroll area.
+      <ScrollArea id="scroll-area-demo" className="h-32 w-48 rounded-md border p-4">
+        {Array.from({ length: 20 }, (_, index) => <div key={index} className="py-2">Item {index + 1}</div>)}
       </ScrollArea>
     ),
-    heex: `<.scroll_area class="h-32 w-48 rounded-md border p-4">
-  Long scrolling text item list inside scroll area.
+    heex: `<.scroll_area id="scroll-area-demo" class="h-32 w-48 rounded-md border p-4">
+  <div :for={n <- 1..20} class="py-2">Item {n}</div>
 </.scroll_area>`
   },
   {
@@ -645,7 +437,13 @@ export const fixtures: ComponentFixture[] = [
     title: "Sonner",
     category: "feedback",
     renderReact: () => <Toaster />,
-    heex: `<.toaster />`
+    heex: `<.toaster />`,
+    renderLiveReact: () => <NotificationPreview />,
+    liveHeex: `<form phx-submit="preview:toast" class="grid gap-2">
+  <.input name="message" aria-label="Notification message" value="Event has been created" />
+  <.button type="submit" name="duration" value="0">Show notification</.button>
+  <.button type="submit" name="duration" value="1000">Show brief notification</.button>
+</form><.toaster id="preview-toaster" />`
   },
   {
     name: "spinner",

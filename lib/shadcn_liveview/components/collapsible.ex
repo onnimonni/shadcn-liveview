@@ -2,7 +2,9 @@ defmodule ShadcnLiveview.Components.Collapsible do
   @moduledoc """
   Server-controlled disclosure. Pass the root's :let context to its trigger and
   content. on_open_change receives %{"id" => id, "open" => boolean}; assign
-  the returned open value on the next render. Closed content has no child markup.
+  the returned open value on the next render. Events respect the nearest
+  phx-target, and nested triggers operate only their nearest collapsible root.
+  Closed content has no child markup.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
@@ -37,12 +39,17 @@ defmodule ShadcnLiveview.Components.Collapsible do
         mounted() {
           this.click = event => {
             const trigger = event.target.closest('[data-slot="collapsible-trigger"]');
-            if (!trigger || !this.el.contains(trigger) || trigger.disabled) return;
-            this.pushEvent(this.el.getAttribute("phx-value-change"), {id:this.el.id, open:this.el.getAttribute("data-state") !== "open"});
+            if (!trigger || trigger.closest('[data-slot="collapsible"]') !== this.el || trigger.disabled) return;
+            this.sendEvent(this.el.getAttribute("phx-value-change"), {id:this.el.id, open:this.el.getAttribute("data-state") !== "open"});
           };
           this.el.addEventListener("click", this.click);
         },
         updated() {},
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         destroyed() { this.el.removeEventListener("click", this.click); }
       }
     </script>

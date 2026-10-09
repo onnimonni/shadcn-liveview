@@ -1,6 +1,7 @@
 defmodule ShadcnLiveview.Components.Questionnaire do
   @moduledoc """
   Caller-controlled questionnaire state with explicit root and item :let contexts. Supply items (name, required, disabled and choices maps), an optional item name, statuses and invalid names. The native form hook initializes controls, validates all enabled questions, supports keyboard navigation, resets answers, and dispatches questionnaire:item-change plus an optional LiveView on_item_change event. Server patches remain authoritative; hidden fieldsets are inert, not disabled, so answered questions remain in FormData.
+  Hook navigation and reset events honor phx-target on the form or nearest containing element. Scalar forms use Phoenix's native form transport. Forms with multiple-answer items push configured phx-change/phx-submit events with array values, preserving successful DOM field names; changes include _target and an empty array when the last choice is cleared.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -68,12 +69,29 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     </form>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Questionnaire">
         export default {
+      sendEvent(event, payload, onReply) {
+      const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+      if (target) return this.pushEventTo(target, event, payload, onReply);
+      return this.pushEvent(event, payload, onReply);
+      },
       mounted() {
       this.states = new Map(); this.controlDefaults = new Map(); this.initialItem = this.el.getAttribute("phx-value-item"); this.current = this.initialItem; this.serverItem = this.initialItem;
       this.change = e => {
         const fieldset = e.target.closest('[data-slot="questionnaire-item"]'); if (!fieldset) return;
         const state = this.state(fieldset); state.skipped = false;
         this.refresh();
+        const event = this.items().some(item => item.hasAttribute("data-multiple")) && this.el.getAttribute("phx-change");
+        if (event) {
+          // Phoenix's URL-encoded form transport collapses repeated unbracketed
+          // names. Keep vendor DOM/FormData names and push the typed values instead.
+          e.stopPropagation();
+          if (e.isComposing || e.type === "change" && this.arrayInput === e.target) return;
+          if (e.type === "input") {
+            const input = e.target; this.arrayInput = input;
+            queueMicrotask(() => { if (this.arrayInput === input) this.arrayInput = null; });
+          }
+          this.sendEvent(event, { ...this.formPayload(undefined, fieldset.getAttribute("phx-value-name")), _target: [fieldset.getAttribute("phx-value-name")] });
+        }
       };
       this.click = e => {
         const button = e.target.closest("button[data-slot]"); if (!button || !this.el.contains(button) || button.disabled) return;
@@ -85,6 +103,13 @@ defmodule ShadcnLiveview.Components.Questionnaire do
       this.submit = e => {
         const invalid = this.items().find(item => !this.validate(item));
         if (invalid) { e.preventDefault(); e.stopImmediatePropagation(); this.select(invalid, true); }
+        else {
+          const event = this.items().some(item => item.hasAttribute("data-multiple")) && this.el.getAttribute("phx-submit");
+          if (event) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            this.sendEvent(event, this.formPayload(e.submitter));
+          }
+        }
       };
       this.reset = e => { queueMicrotask(() => {
         if (e.defaultPrevented) return;
@@ -118,6 +143,14 @@ defmodule ShadcnLiveview.Components.Questionnaire do
       this.el.addEventListener("click", this.click); this.el.addEventListener("submit", this.submit, true);
       this.el.addEventListener("reset", this.reset); this.el.addEventListener("keydown", this.key);
       this.initialize(); this.refresh();
+      },
+      formPayload(submitter, changedName) {
+      const data = submitter ? new FormData(this.el, submitter) : new FormData(this.el);
+      const multiple = new Set(this.items().filter(item => item.hasAttribute("data-multiple")).map(item => item.getAttribute("phx-value-name")));
+      const payload = { id: this.el.id };
+      for (const name of new Set(data.keys())) payload[name] = multiple.has(name) ? data.getAll(name) : data.get(name);
+      if (multiple.has(changedName) && !data.has(changedName)) payload[changedName] = [];
+      return payload;
       },
       items() { return Array.from(this.el.querySelectorAll('[data-slot="questionnaire-item"]')).filter(item => !item.disabled); },
       controls(item) { return Array.from(item.querySelectorAll('[data-slot="questionnaire-choice-input"], [data-slot="questionnaire-input"]')).filter(control => !control.disabled); },
@@ -162,7 +195,7 @@ defmodule ShadcnLiveview.Components.Questionnaire do
       if (invalid) (this.controls(item)[0] || item).focus(); else item.focus();
       if (changed) {
         this.el.dispatchEvent(new CustomEvent("questionnaire:item-change", { bubbles: true, detail: { item: name } }));
-        const event = this.el.getAttribute("phx-value-on-item-change"); if (event) this.pushEvent(event, { id: this.el.id, value: name });
+        const event = this.el.getAttribute("phx-value-on-item-change"); if (event) this.sendEvent(event, { id: this.el.id, value: name });
       }
       },
       move(delta) { const items = this.items(); const index = items.indexOf(this.active()); this.select(items[index + delta]); },

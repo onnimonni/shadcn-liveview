@@ -1,5 +1,5 @@
 defmodule ShadcnLiveview.Components.Combobox do
-  @moduledoc "A native editable combobox with caller IDs and explicit selected/open assigns. Input and content named slots receive :let context. Closed content is absent, matching Base UI SSR; LiveView renders and owns the content after the caller handles shadcn:combobox-open with id/open. Pressing the editable input or its trigger opens the options. Handle shadcn:combobox-change with id/value to update selection and the clear affordance; pass input_value for the selected display label. Event names are configurable. The colocated hook filters and navigates existing server-owned items; it never copies or reparents slot markup. Group and popup ownership is refreshed after patches to independent roots. Native name/form, disabled and validation semantics stay on form controls."
+  @moduledoc "A native editable combobox with caller IDs and explicit selected/open assigns. Input and content named slots receive :let context. Closed content is absent, matching Base UI SSR; LiveView renders and owns the content after the caller handles shadcn:combobox-open with id/open. Pressing the editable input or its trigger opens the options. Handle shadcn:combobox-change with id/value to update selection and the clear affordance; pass input_value for the selected display label. Event names are configurable and route to the nearest phx-target ancestor of the editable input, or the owning LiveView when absent. The colocated hook filters and navigates existing server-owned items; it never copies or reparents slot markup. Group and popup ownership is refreshed after patches to independent roots. Disabling either the root or combobox_input disables the editable input, trigger and clear affordance on every server render. Native name/form, disabled and validation semantics stay on form controls."
   use Phoenix.Component
   import ShadcnLiveview.Helpers
   alias ShadcnLiveview.Components.Icon
@@ -15,6 +15,7 @@ defmodule ShadcnLiveview.Components.Combobox do
   attr :on_open_change, :string, default: "shadcn:combobox-open"
   attr :required, :boolean, default: false
   attr :on_change, :string, default: "shadcn:combobox-change"
+  attr :rest, :global
   slot :input, required: true
   slot :content, required: true
 
@@ -27,6 +28,7 @@ defmodule ShadcnLiveview.Components.Combobox do
       open: assigns.open,
       event: assigns.on_change,
       open_event: assigns.on_open_change,
+      target: Map.get(assigns.rest, :"phx-target") || Map.get(assigns.rest, "phx-target"),
       list_id: "radix-#{assigns.id}-list",
       popup_id: "radix-#{assigns.id}-popup"
     }
@@ -64,10 +66,13 @@ defmodule ShadcnLiveview.Components.Combobox do
   slot :inner_block
 
   def combobox_input(assigns) do
+    assigns = assign(assigns, :effective_disabled, assigns.disabled || assigns.context.disabled)
+
     ~H"""
     <div
       data-slot="input-group"
       role="group"
+      phx-target={@context.target}
       class={
         classes([
           "group/input-group relative flex h-8 min-w-0 items-center rounded-lg border border-input transition-colors outline-none in-data-[slot=combobox-content]:focus-within:border-inherit in-data-[slot=combobox-content]:focus-within:ring-0 has-disabled:bg-input/50 has-disabled:opacity-50 has-[[data-slot=input-group-control]:focus-visible]:border-ring has-[[data-slot=input-group-control]:focus-visible]:ring-3 has-[[data-slot=input-group-control]:focus-visible]:ring-ring/50 has-[[data-slot][aria-invalid=true]]:border-destructive has-[[data-slot][aria-invalid=true]]:ring-3 has-[[data-slot][aria-invalid=true]]:ring-destructive/20 has-[>[data-align=block-end]]:h-auto has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-start]]:h-auto has-[>[data-align=block-start]]:flex-col has-[>textarea]:h-auto dark:bg-input/30 dark:has-disabled:bg-input/80 dark:has-[[data-slot][aria-invalid=true]]:ring-destructive/40 has-[>[data-align=block-end]]:[&>input]:pt-3 has-[>[data-align=block-start]]:[&>input]:pb-3 has-[>[data-align=inline-end]]:[&>input]:pr-1.5 has-[>[data-align=inline-start]]:[&>input]:pl-1.5 w-auto",
@@ -79,7 +84,7 @@ defmodule ShadcnLiveview.Components.Combobox do
         id={@id}
         data-slot="input-group-control"
         class="h-8 w-full min-w-0 border-input px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 md:text-sm dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent"
-        data-disabled={(@disabled || @context.disabled) && ""}
+        data-disabled={@effective_disabled && ""}
         data-list-empty=""
         autocomplete="off"
         spellcheck="false"
@@ -90,7 +95,7 @@ defmodule ShadcnLiveview.Components.Combobox do
         aria-controls={@context.open && @context.list_id}
         aria-haspopup="listbox"
         aria-autocomplete="list"
-        disabled={@disabled}
+        disabled={@effective_disabled}
         value={@context.input_value}
         phx-hook=".Combobox"
         phx-value-root={@context.id}
@@ -111,28 +116,30 @@ defmodule ShadcnLiveview.Components.Combobox do
           :if={@show_trigger}
           id={@context.id}
           type="button"
-          data-disabled={(@disabled || @context.disabled) && ""}
+          data-disabled={@effective_disabled && ""}
           data-list-empty=""
           data-placeholder={@context.value == "" && ""}
           tabindex="0"
           role="combobox"
           aria-expanded={to_string(@context.open)}
           aria-haspopup="dialog"
-          disabled={@disabled || @context.disabled}
+          disabled={@effective_disabled}
           data-slot="input-group-button"
           data-variant="ghost"
           data-size="icon-xs"
           class="group/button shrink-0 justify-center border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 flex items-center gap-2 text-sm shadow-none size-6 rounded-[calc(var(--radius)-3px)] p-0 has-[>svg]:p-0 group-has-data-[slot=combobox-clear]/input-group:hidden data-pressed:bg-transparent"
         ><Icon.icon name="chevron-down" class="pointer-events-none size-4 text-muted-foreground" /></button>
-        <.combobox_clear
-          :if={@show_clear && @context.value != ""}
-          disabled={@disabled || @context.disabled}
-        />
+        <.combobox_clear :if={@show_clear && @context.value != ""} disabled={@effective_disabled} />
       </div>
       {render_slot(@inner_block)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Combobox">
         export default {
+      sendEvent(event, payload, onReply) {
+      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+      if (target) return this.pushEventTo(target, event, payload, onReply);
+      return this.pushEvent(event, payload, onReply);
+      },
       mounted() {
       this.group = this.el.closest("[data-slot=input-group]"); this.listeners = []; this.popup = null; this.active = null; this.popupListeners = []; this.query = "";
       this.listen = (node, type, handler) => { node.addEventListener(type, handler); this.listeners.push([node, type, handler]); };
@@ -146,6 +153,7 @@ defmodule ShadcnLiveview.Components.Combobox do
       });
       this.listen(document, "phx:update", () => {
         this.group = this.el.closest("[data-slot=input-group]");
+        this.syncTrigger();
         if (document.getElementById(this.el.getAttribute("phx-value-popup-id")) !== this.popup) this.bindPopup();
       });
       this.listen(this.el, "pointerdown", () => this.requestOpen(true));
@@ -171,6 +179,20 @@ defmodule ShadcnLiveview.Components.Combobox do
         this.requestOpen(false); this.commit(this.formInput()?.value || "", this.el.value);
       }));
       this.bindPopup();
+      this.syncTrigger();
+      },
+      syncTrigger() {
+      // Base UI starts with popup-input trigger semantics during SSR, then the
+      // editable input registers on mount and leaves its auxiliary trigger a button.
+      const trigger = this.group.querySelector("[data-slot=input-group-button]");
+      if (!trigger) return;
+      trigger.removeAttribute("role");
+      trigger.setAttribute("tabindex", "-1");
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-expanded", this.el.getAttribute("aria-expanded"));
+      const controls = this.el.getAttribute("aria-controls");
+      if (controls) trigger.setAttribute("aria-controls", controls);
+      else trigger.removeAttribute("aria-controls");
       },
       formInput() {
       let sibling = this.group.nextElementSibling;
@@ -182,7 +204,7 @@ defmodule ShadcnLiveview.Components.Combobox do
       if (this.requestedOpen === open || (this.requestedOpen === undefined && (this.el.getAttribute("phx-value-open") === "true") === open)) return;
       this.requestedOpen = open;
       const event = this.el.getAttribute("phx-value-open-event");
-      if (event) this.pushEvent(event, {id: this.el.getAttribute("phx-value-root"), open});
+      if (event) this.sendEvent(event, {id: this.el.getAttribute("phx-value-root"), open});
       },
       unbindPopup() {
       if (this.popup) this.popupListeners.forEach(([type, listener]) => this.popup.removeEventListener(type, listener));
@@ -246,13 +268,14 @@ defmodule ShadcnLiveview.Components.Combobox do
       const hidden = this.formInput(); if (hidden) { hidden.value = value; hidden.dispatchEvent(new Event("input", {bubbles: true})); hidden.dispatchEvent(new Event("change", {bubbles: true})); }
       const detail = {id: this.el.getAttribute("phx-value-root"), value};
       this.el.dispatchEvent(new CustomEvent("shadcn:combobox-change", {bubbles: true, detail}));
-      const event = this.el.getAttribute("phx-value-event"); if (event) this.pushEvent(event, detail);
+      const event = this.el.getAttribute("phx-value-event"); if (event) this.sendEvent(event, detail);
       this.requestOpen(false); this.el.focus();
       },
       updated() {
       this.requestedOpen = undefined;
       this.group = this.el.closest("[data-slot=input-group]");
       this.bindPopup();
+      this.syncTrigger();
       },
       destroyed() {
       this.unbindPopup();

@@ -1,5 +1,6 @@
 import React from "react"
 import type { ComponentFixture } from "../fixtures"
+import { bindLiveOverlayControls } from "../../assets/js/react-fixtures/overlay-controls"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../../vendor/shadcn/ui/accordion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../vendor/shadcn/ui/tabs"
 
@@ -89,3 +90,5 @@ export const fixtures: ComponentFixture[] = [
   tabsFixture("tabs-force-mount", "Tabs — retained inactive content", [{ id: "tabs-force-demo", selected: "history", items: tabItems.map(item => ({ ...item, forceMount: true, contentClass: "p-2" })) }]),
   tabsFixture("tabs-instances", "Tabs — independent instances", [{ id: "tabs-first", selected: "overview", items: tabItems }, { id: "tabs-second", selected: "settings", items: tabItems }])
 ]
+
+bindLiveOverlayControls(fixtures)

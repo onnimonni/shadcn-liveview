@@ -7,6 +7,7 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
   on_value_change names a LiveView event receiving %{id, value}. Single values
   are strings (empty when deselected); multiple values are lists. Native buttons
   retain Space/Enter activation while the hook provides directional roving focus.
+  Hook events honor phx-target on the root or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -83,6 +84,11 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".ToggleGroup">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.radio = this.el.dataset.slot === "radio-group";
           this.controlled = this.el.getAttribute("phx-controlled") === "true";
@@ -140,7 +146,7 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
           if (!this.controlled) { this.values = next; this.paint(); }
           const value = this.radio || this.el.getAttribute("phx-selection-type") === "single" ? (next[0] || "") : next;
           const event = this.el.getAttribute("phx-change-event");
-          if (event) this.pushEvent(event, {id: this.el.id, value});
+          if (event) this.sendEvent(event, {id: this.el.id, value});
           this.el.dispatchEvent(new CustomEvent("selection-change", {bubbles: true, detail: {value}}));
           if (this.radio && !this.controlled) {
             const input = item.nextElementSibling;

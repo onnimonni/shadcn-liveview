@@ -1,9 +1,16 @@
 defmodule ShadcnLiveview.Components.Slider do
   @moduledoc """
   Slider with native submitted values, pointer capture, and keyboard stepping.
-  Supply a stable ID; value/default_value are numeric lists. on_change receives
-  %{"id" => id, "value" => values}. Form reset restores the mounted initial
-  value (default_value when supplied), not the latest server-patched value.
+  Supply a stable ID; value/default_value are numeric lists. value is authoritative
+  on every patch; uncontrolled values survive unrelated patches and keep their
+  current value when value becomes nil. on_change receives
+  %{"id" => id, "value" => values} and respects the nearest phx-target.
+  Form reset restores the mounted initial value (default_value when supplied),
+  not the latest server-patched value. Native submission follows current values,
+  including when a patch changes the default list's thumb count. Disabled sliders
+  ignore pointer and keyboard input but still submit their values, as in Radix.
+  Focus stays on the same thumb index across patches while that thumb remains
+  present and enabled; removed or disabled thumbs do not receive restored focus.
   SSR follows Radix's unmeasured thumbs; the hook measures the rendered values.
   """
   use Phoenix.Component
@@ -57,7 +64,9 @@ defmodule ShadcnLiveview.Components.Slider do
       phx-value-distance={@min_steps_between_thumbs}
       phx-value-inverted={to_string(@inverted)}
       phx-value-form={@form}
+      phx-value-name={@name}
       phx-value-change={@on_change}
+      phx-value-controlled={to_string(!is_nil(@value))}
       {@rest}
     >
       <span
@@ -99,7 +108,7 @@ defmodule ShadcnLiveview.Components.Slider do
           this.initial = JSON.parse(this.el.getAttribute("phx-value-initial"));
           this.keydown = event => {
             const index = this.thumbs.indexOf(event.target);
-            if (index < 0 || this.disabled) return;
+            if (index < 0 || index >= this.values.length || this.disabled) return;
             const key = event.key;
             if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","PageUp","PageDown","Home","End"].includes(key)) return;
             event.preventDefault();
@@ -126,7 +135,7 @@ defmodule ShadcnLiveview.Components.Slider do
             this.thumbs[this.active].focus();
             this.change(this.active, value);
           };
-          this.pointermove = event => { if (this.el.hasPointerCapture(event.pointerId)) this.change(this.active, this.pointerValue(event)); };
+          this.pointermove = event => { if (!this.disabled && this.active < this.values.length && this.el.hasPointerCapture(event.pointerId)) this.change(this.active, this.pointerValue(event)); };
           this.pointerup = event => { if (this.el.hasPointerCapture(event.pointerId)) this.el.releasePointerCapture(event.pointerId); };
           this.reset = () => { this.resetFrame = requestAnimationFrame(() => { this.values = [...this.initial]; this.render(); this.notify(); }); };
           this.el.addEventListener("keydown", this.keydown);
@@ -135,8 +144,18 @@ defmodule ShadcnLiveview.Components.Slider do
           this.el.addEventListener("pointerup", this.pointerup);
           this.updated();
         },
+        beforeUpdate() {
+          this.focusedThumbIndex = this.thumbs.indexOf(this.el.ownerDocument.activeElement);
+          this.el.replaceChildren(...this.serverChildren);
+          for (const {element, attributes} of this.serverAttributes) {
+            for (const attribute of Array.from(element.attributes)) element.removeAttribute(attribute.name);
+            for (const [name, value] of attributes) element.setAttribute(name, value);
+          }
+        },
         updated() {
-          this.values = JSON.parse(this.el.getAttribute("phx-value-values"));
+          if (this.el.getAttribute("phx-value-controlled") === "true" || this.values === undefined) {
+            this.values = JSON.parse(this.el.getAttribute("phx-value-values"));
+          }
           this.min = Number(this.el.getAttribute("phx-value-min"));
           this.max = Number(this.el.getAttribute("phx-value-max"));
           this.step = Number(this.el.getAttribute("phx-value-step"));
@@ -147,8 +166,23 @@ defmodule ShadcnLiveview.Components.Slider do
           this.disabled = this.el.getAttribute("aria-disabled") === "true";
           this.thumbs = Array.from(this.el.querySelectorAll('[data-slot="slider-thumb"]'));
           this.inputs = Array.from(this.el.querySelectorAll("input"));
+          // Restore the server's DOM before a patch without replacing local values.
+          this.serverChildren = Array.from(this.el.childNodes);
+          this.serverAttributes = [
+            ...this.thumbs.flatMap(thumb => [thumb, thumb.parentElement]),
+            ...this.inputs,
+            this.el.querySelector('[data-slot="slider-range"]')
+          ].map(element => ({element, attributes:Array.from(element.attributes, attribute => [attribute.name, attribute.value])}));
           this.render();
-          const form = this.inputs[0]?.form;
+          const focusedThumb = this.thumbs[this.focusedThumbIndex];
+          const activeElement = this.el.ownerDocument.activeElement;
+          if (!this.disabled && this.focusedThumbIndex < this.values.length && focusedThumb &&
+              (activeElement === this.el.ownerDocument.body || activeElement === focusedThumb)) {
+            focusedThumb.focus({preventScroll:true});
+          }
+          this.focusedThumbIndex = -1;
+          const formId = this.el.getAttribute("phx-value-form");
+          const form = this.inputs[0]?.form || (formId ? document.getElementById(formId) : this.el.closest("form"));
           if (this.form !== form) {
             if (this.form) this.form.removeEventListener("reset", this.reset);
             this.form = form;
@@ -173,16 +207,44 @@ defmodule ShadcnLiveview.Components.Slider do
           this.render(); this.notify();
         },
         render() {
+          // Uncontrolled values can outlive a server-side thumb-count change.
+          while (this.thumbs.length < this.values.length) {
+            const wrapper = document.createElement("span");
+            wrapper.style.cssText = "transform:var(--radix-slider-thumb-transform);position:absolute";
+            const thumb = document.createElement("span");
+            thumb.setAttribute("role", "slider");
+            thumb.setAttribute("data-slot", "slider-thumb");
+            thumb.setAttribute("data-radix-collection-item", "");
+            thumb.className = "relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50";
+            const input = document.createElement("input");
+            input.style.display = "none";
+            wrapper.append(thumb);
+            this.el.append(wrapper, input);
+            this.thumbs.push(thumb);
+            this.inputs.push(input);
+          }
           const start = this.vertical ? (this.inverted ? "top" : "bottom") : (this.reverse ? "right" : "left");
           const end = this.vertical ? (this.inverted ? "bottom" : "top") : (this.reverse ? "left" : "right");
           const percents = this.values.map(value => Math.max(0, Math.min(100, 100/(this.max-this.min)*(value-this.min))));
           this.thumbs.forEach((thumb,index) => {
             if (this.values[index] === undefined) {
               thumb.style.display = "none";
-              if (this.inputs[index]) this.inputs[index].value = "";
+              if (this.inputs[index]) {
+                this.inputs[index].value = "";
+                this.inputs[index].disabled = true;
+              }
               return;
             }
             thumb.style.display = "";
+            thumb.setAttribute("data-orientation", this.vertical ? "vertical" : "horizontal");
+            thumb.setAttribute("aria-orientation", this.vertical ? "vertical" : "horizontal");
+            if (this.disabled) {
+              thumb.setAttribute("data-disabled", "");
+              thumb.removeAttribute("tabindex");
+            } else {
+              thumb.removeAttribute("data-disabled");
+              thumb.setAttribute("tabindex", "0");
+            }
             thumb.setAttribute("aria-valuenow", String(this.values[index]));
             const label = this.values.length > 2 ? "Value " + (index+1) + " of " + this.values.length : this.values.length === 2 ? ["Minimum","Maximum"][index] : null;
             if (label) thumb.setAttribute("aria-label", label);
@@ -193,8 +255,12 @@ defmodule ShadcnLiveview.Components.Slider do
             const input = this.inputs[index];
             if (input) {
               input.type = "hidden";
-              input.disabled = this.disabled;
+              // Radix disables interaction, not the submitted slider inputs.
+              input.disabled = false;
               input.value = String(this.values[index]);
+              const name = this.el.getAttribute("phx-value-name");
+              if (name !== null) input.name = name + (this.values.length > 1 ? "[]" : "");
+              else input.removeAttribute("name");
               const form = this.el.getAttribute("phx-value-form");
               if (form) input.setAttribute("form", form);
               else input.removeAttribute("form");
@@ -207,7 +273,12 @@ defmodule ShadcnLiveview.Components.Slider do
         notify() {
           this.inputs.forEach(input => { input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); });
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.pushEvent(event,{id:this.el.id,value:this.values});
+          if (event) this.sendEvent(event,{id:this.el.id,value:this.values});
+        },
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
         },
         destroyed() {
           cancelAnimationFrame(this.resetFrame);

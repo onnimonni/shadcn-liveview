@@ -1,12 +1,16 @@
 defmodule ShadcnLiveview.Preview do
   @moduledoc """
   Local, connected component gallery. Start with `SHADCN_PREVIEW=1 mix run --no-halt`.
-  SSR-only comparison galleries remain in `priv/static/preview`; this gallery exercises
-  real LiveView events, patches and colocated hook lifecycles at `/live-preview/:fixture`.
+  Each fixture can also be embedded as an isolated connected stage using `?embed=1`.
+  Real LiveView events, patches and colocated hook lifecycles run at `/live-preview/:fixture`.
   """
   use Phoenix.Component
 
   def root(assigns) do
+    fixture = assigns.conn.params["fixture"]
+    entry = Enum.find(ShadcnLiveview.Gallery.entries(), &(&1.name == fixture))
+    assigns = assign(assigns, :family, if(entry, do: entry.family))
+
     ~H"""
     <!DOCTYPE html>
     <html lang="en">
@@ -18,8 +22,10 @@ defmodule ShadcnLiveview.Preview do
         <link rel="stylesheet" href="/assets/css/app.css" />
         <script type="module" src="/assets/js/preview.js">
         </script>
+        <script type="module" src="/assets/js/gallery-frame.js">
+        </script>
       </head>
-      <body class="min-h-screen bg-background text-foreground antialiased">
+      <body class="min-h-screen bg-background text-foreground antialiased" data-family={@family}>
         {@inner_content}
       </body>
     </html>
@@ -32,6 +38,7 @@ defmodule ShadcnLiveview.Preview.Live do
   use Phoenix.LiveView, layout: false
   alias ShadcnLiveview.Components.Calendar
   alias ShadcnLiveview.Gallery
+  alias ShadcnLiveview.Preview.FixtureState
 
   @value_events ~w(shadcn:accordion-change shadcn:tabs-change shadcn:selection-change
     shadcn:menubar-change shadcn:menu-check-change shadcn:menu-radio-change shadcn:menubar-sub-change
@@ -45,9 +52,18 @@ defmodule ShadcnLiveview.Preview.Live do
   end
 
   @impl true
-  def handle_params(%{"fixture" => fixture}, _uri, socket) do
+  def handle_params(%{"fixture" => fixture} = params, _uri, socket) do
     if fixture in Gallery.names() do
-      {:noreply, assign(socket, fixture: fixture, state: %{}, form_data: %{})}
+      entry = Enum.find(Gallery.entries(), &(&1.name == fixture))
+
+      {:noreply,
+       assign(socket,
+         fixture: fixture,
+         family: entry.family,
+         embed: params["embed"] == "1",
+         state: %{},
+         form_data: %{}
+       )}
     else
       {:noreply, push_navigate(socket, to: "/live-preview/#{hd(Gallery.names())}")}
     end
@@ -60,6 +76,22 @@ defmodule ShadcnLiveview.Preview.Live do
 
   def handle_event("preview:form", params, socket),
     do: {:noreply, assign(socket, :form_data, params)}
+
+  def handle_event("preview:increment", %{"id" => id}, socket),
+    do: {:noreply, put_state(socket, id, Map.get(socket.assigns.state, id, 0) + 1)}
+
+  def handle_event("preview:page", %{"page" => page}, socket),
+    do: {:noreply, put_state(socket, "page", String.to_integer(page))}
+
+  def handle_event("preview:toast", %{"message" => message, "duration" => duration}, socket) do
+    {:noreply,
+     push_event(socket, "shadcn:toast", %{
+       toaster: "preview-toaster",
+       message: message,
+       description: "Your changes were saved.",
+       duration: String.to_integer(duration)
+     })}
+  end
 
   def handle_event(event, %{"id" => id, "value" => value}, socket) when event in @value_events do
     {:noreply, put_state(socket, id, value)}
@@ -100,13 +132,16 @@ defmodule ShadcnLiveview.Preview.Live do
 
   def handle_event(event, %{"id" => id} = params, socket)
       when event in ~w(shadcn:questionnaire-answer shadcn:questionnaire-submit) do
-    answers = Map.drop(params, ~w(_target id item on-item-change))
+    submission = Map.drop(params, ~w(_target id item on-item-change))
+    previous = Map.get(socket.assigns.state, "#{id}-answers", %{})
+    previous = Map.drop(previous, List.wrap(params["_target"]))
+    answers = Map.merge(previous, submission)
     socket = put_state(socket, "#{id}-answers", answers)
 
     socket =
       if event == "shadcn:questionnaire-submit",
-        do: put_state(socket, "#{id}-submitted", true),
-        else: socket
+        do: put_state(socket, "#{id}-submitted", questionnaire_submission(id, submission)),
+        else: put_state(socket, "#{id}-submitted", nil)
 
     {:noreply, assign(socket, :form_data, Map.put(socket.assigns.form_data, event, params))}
   end
@@ -114,7 +149,15 @@ defmodule ShadcnLiveview.Preview.Live do
   @impl true
   def render(assigns) do
     ~H"""
-    <main class="mx-auto max-w-7xl space-y-6 p-8">
+    <main
+      :if={@embed}
+      id="fixture-stage"
+      data-family={@family}
+      class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6"
+    >
+      <Gallery.live_fixture fixture={@fixture} state={@state} form_data={@form_data} />
+    </main>
+    <main :if={!@embed} class="mx-auto max-w-7xl space-y-6 p-8">
       <h1 class="text-2xl font-semibold">Connected LiveView component preview</h1>
       <form id="fixture-navigation" phx-change="preview:fixture">
         <label for="fixture">Fixture</label>
@@ -123,7 +166,7 @@ defmodule ShadcnLiveview.Preview.Live do
         </select>
       </form>
       <section id="component-preview" class="rounded-lg border p-8">
-        <Gallery.live_fixture fixture={@fixture} state={@state} />
+        <Gallery.live_fixture fixture={@fixture} state={@state} form_data={@form_data} />
       </section>
       <output id="preview-state" class="block whitespace-pre-wrap text-xs">{Jason.encode!(@state)}</output>
       <output id="preview-form-data" class="block whitespace-pre-wrap text-xs">{Jason.encode!(
@@ -131,6 +174,20 @@ defmodule ShadcnLiveview.Preview.Live do
       )}</output>
     </main>
     """
+  end
+
+  defp questionnaire_submission("questionnaire-inputs", answers),
+    do: Map.get(answers, "email", "")
+
+  defp questionnaire_submission(_id, answers) do
+    # Match FormData.getAll in the fixtures' DOM field order, including omitted
+    # skipped fields, rather than serializing merged editing state or metadata.
+    fields =
+      for name <- ~w(rating comment), Map.has_key?(answers, name) do
+        {name, List.wrap(Map.fetch!(answers, name))}
+      end
+
+    fields |> Jason.OrderedObject.new() |> Jason.encode!()
   end
 
   defp put_state(socket, id, value),
@@ -149,11 +206,7 @@ defmodule ShadcnLiveview.Preview.Live do
   defp popup_selection(socket, _id, _action, _params), do: socket
 
   defp calendar_state(socket, id) do
-    Map.get(socket.assigns.state, id, %{
-      month: ~D[2024-02-01],
-      mode: "single",
-      selected: ~D[2024-02-29]
-    })
+    Map.get(socket.assigns.state, id, FixtureState.calendar(id))
   end
 end
 
@@ -173,6 +226,7 @@ defmodule ShadcnLiveview.Preview.Router do
   scope "/" do
     pipe_through :browser
     live "/live-preview/:fixture", ShadcnLiveview.Preview.Live
+    live "/review-preview", ShadcnLiveview.Preview.ReviewLive
   end
 end
 

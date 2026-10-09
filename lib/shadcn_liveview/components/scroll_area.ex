@@ -11,7 +11,7 @@ defmodule ShadcnLiveview.Components.ScrollArea do
 
   slot :inner_block, required: false
 
-  @doc "Renders the initial Radix scroll-area viewport and scrollbar-hiding CSS. Scrollbars are absent in SSR."
+  @doc "Preserves initial Radix SSR; LiveView mounting enables native two-axis scrolling and keyboard focus, retained across patches."
   def scroll_area(assigns) do
     ~H"""
     <div
@@ -29,6 +29,10 @@ defmodule ShadcnLiveview.Components.ScrollArea do
         data-slot="scroll-area-viewport"
         class="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
         style="overflow-x:hidden;overflow-y:hidden"
+        phx-mounted={
+          Phoenix.LiveView.JS.set_attribute({"tabindex", "0"})
+          |> Phoenix.LiveView.JS.set_attribute({"style", "overflow-x:auto;overflow-y:auto"})
+        }
       >
         <div style="min-width:100%;display:table">{render_slot(@inner_block)}</div>
       </div>

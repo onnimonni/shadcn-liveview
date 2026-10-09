@@ -28,11 +28,17 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   current assigns to change_month/2 or select_date/2 and assign the returned map.
   This controlled API keeps independent calendars and server-side disabled rules
   isolated. The optional day slot receives the Date, replacing the day number.
+  Range selection follows DayPicker's default optional, zero-minimum range model:
+  the first click completes a same-day range, clicking it again clears selection,
+  and subsequent clicks edit the existing endpoints rather than restart the range.
   locale accepts en-US or en-GB; week_starts_on is 0 (Sunday) through 6 (Saturday).
   Month bounds are normalized once per render. Keyboard focus prefers an eligible
   selected day, then today, then the first visible enabled day in the shown months.
   Arrow keys move by day/week; Home/End respect week_starts_on. PageUp/PageDown
   move months (Shift moves years), preserving focus across controlled month patches.
+  Set phx-target on the root (or optional target) to route both native navigation/
+  selection commands and hook month changes to a LiveComponent. Hook events also
+  inherit the nearest containing phx-target without moving any caller DOM.
   """
   use Phoenix.Component
   alias Phoenix.LiveView.JS
@@ -60,6 +66,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :hide_navigation, :boolean, default: false
   attr :on_month_change, :string, default: "calendar-month"
   attr :on_select, :string, default: "calendar-select"
+  attr :target, :any, default: nil
   attr :class, :string, default: nil
   attr :class_names, :map, default: %{}
   attr :rest, :global
@@ -68,14 +75,16 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   @doc "Renders a computed month grid and controlled LiveView navigation/selection."
   def calendar(assigns) do
     assigns = assign(assigns, calendar_state(assigns))
+    target = assigns.target || Map.get(assigns.rest, :"phx-target")
+    assigns = assign(assigns, target: target, rest: Map.delete(assigns.rest, :"phx-target"))
     ~H"""
-    <div id={@id} data-slot="calendar" lang={@locale} data-mode={@mode} data-multiple-months={truth(@number_of_months > 1)} class={Helpers.classes([${literal(root)}, @class])} phx-hook=".Calendar" phx-value-month={Date.to_iso8601(Date.beginning_of_month(@month))} phx-value-month-count={@number_of_months} phx-value-week-start={@week_starts_on || if(@locale == "en-GB", do: 1, else: 0)} phx-value-month-event={@on_month_change} phx-value-start={if @start_month, do: Date.to_iso8601(Date.beginning_of_month(@start_month))} phx-value-end={if @end_month, do: Date.to_iso8601(Date.end_of_month(@end_month))} phx-value-disabled-before={if @disabled_before, do: Date.to_iso8601(@disabled_before)} phx-value-disabled-after={if @disabled_after, do: Date.to_iso8601(@disabled_after)} {@rest}>
+    <div id={@id} data-slot="calendar" lang={@locale} data-mode={@mode} data-multiple-months={truth(@number_of_months > 1)} class={Helpers.classes([${literal(root)}, @class])} phx-hook=".Calendar" phx-target={@target} phx-value-month={Date.to_iso8601(Date.beginning_of_month(@month))} phx-value-month-count={@number_of_months} phx-value-week-start={@week_starts_on || if(@locale == "en-GB", do: 1, else: 0)} phx-value-month-event={@on_month_change} phx-value-start={if @start_month, do: Date.to_iso8601(Date.beginning_of_month(@start_month))} phx-value-end={if @end_month, do: Date.to_iso8601(Date.end_of_month(@end_month))} phx-value-disabled-before={if @disabled_before, do: Date.to_iso8601(@disabled_before)} phx-value-disabled-after={if @disabled_after, do: Date.to_iso8601(@disabled_after)} {@rest}>
       <div class={style(@class_names, :months)}>
         <nav :if={!@hide_navigation} class={style(@class_names, :nav)} aria-label="Navigation bar">
-          <button type="button" class={Helpers.classes([${literal(navButton)}, "rdp-button_previous"])} tabindex={if @previous_disabled, do: "-1"} aria-disabled={truth(@previous_disabled)} aria-label="Go to the Previous Month" phx-click={if !@previous_disabled, do: push(@on_month_change, %{id: @id, month: Date.to_iso8601(@previous)})}>
+          <button type="button" class={Helpers.classes([${literal(navButton)}, "rdp-button_previous"])} tabindex={if @previous_disabled, do: "-1"} aria-disabled={truth(@previous_disabled)} aria-label="Go to the Previous Month" phx-click={if !@previous_disabled, do: push(@on_month_change, %{id: @id, month: Date.to_iso8601(@previous)}, @target)}>
             <.chevron direction="left" disabled={@previous_disabled} />
           </button>
-          <button type="button" class={Helpers.classes([${literal(navButton)}, "rdp-button_next"])} tabindex={if @next_disabled, do: "-1"} aria-disabled={truth(@next_disabled)} aria-label="Go to the Next Month" phx-click={if !@next_disabled, do: push(@on_month_change, %{id: @id, month: Date.to_iso8601(@next)})}>
+          <button type="button" class={Helpers.classes([${literal(navButton)}, "rdp-button_next"])} tabindex={if @next_disabled, do: "-1"} aria-disabled={truth(@next_disabled)} aria-label="Go to the Next Month" phx-click={if !@next_disabled, do: push(@on_month_change, %{id: @id, month: Date.to_iso8601(@next)}, @target)}>
             <.chevron direction="right" disabled={@next_disabled} />
           </button>
         </nav>
@@ -88,7 +97,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
                 <td :for={cell <- week} class={cell_class(cell, @class_names)} role="gridcell" aria-selected={truth(cell.selected)} aria-label={if is_nil(@mode) and not cell.hidden, do: cell.label} data-day={cell.iso_date} data-month={cell.outside_month} data-selected={truth(cell.selected)} data-disabled={truth(cell.disabled)} data-hidden={truth(cell.hidden)} data-outside={truth(cell.outside)} data-today={truth(cell.today)}>
                   <%= if not cell.hidden do %>
                     <%= if @mode do %>
-                      <button type="button" data-slot="button" data-variant="ghost" data-size="icon" class={${literal(dayButton)}} data-day={local_date(cell.date, @locale)} data-selected-single={if cell.selected, do: to_string(not cell.range_start and not cell.range_end and not cell.range_middle)} data-range-start={if @mode == "range" and @selected, do: to_string(cell.range_start)} data-range-end={if @mode == "range" and @selected, do: to_string(cell.range_end)} data-range-middle={if @mode == "range" and @selected, do: to_string(cell.range_middle)} disabled={cell.disabled} tabindex={if cell.date == @focus, do: "0", else: "-1"} aria-label={cell.label} phx-click={push(@on_select, %{id: @id, date: cell.iso_date})}>
+                      <button type="button" data-slot="button" data-variant="ghost" data-size="icon" class={${literal(dayButton)}} data-day={local_date(cell.date, @locale)} data-selected-single={if cell.selected, do: to_string(not cell.range_start and not cell.range_end and not cell.range_middle)} data-range-start={if @mode == "range" and @selected, do: to_string(cell.range_start)} data-range-end={if @mode == "range" and @selected, do: to_string(cell.range_end)} data-range-middle={if @mode == "range" and @selected, do: to_string(cell.range_middle)} disabled={cell.disabled} tabindex={if cell.date == @focus, do: "0", else: "-1"} aria-label={cell.label} phx-click={push(@on_select, %{id: @id, date: cell.iso_date}, @target)}>
                         <%= if @day == [], do: cell.date.day, else: render_slot(@day, cell.date) %>
                       </button>
                     <% else %><%= if @day == [], do: cell.date.day, else: render_slot(@day, cell.date) %><% end %>
@@ -102,6 +111,11 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Calendar">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.onFocus = event => {
             const day = event.target.closest("td[data-day] button");
@@ -165,7 +179,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
           this.pendingFocus = iso;
           date.setUTCDate(1);
           if (iso > first) date.setUTCMonth(date.getUTCMonth() - count + 1);
-          this.pushEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)});
+          this.sendEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)});
         },
         beforeUpdate() { this.restoreFocus = this.el.contains(document.activeElement) ? document.activeElement.closest("td[data-day]")?.dataset.day : null; },
         updated() {
@@ -193,8 +207,9 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   defp truth(true), do: "true"
   defp truth(_), do: nil
   defp style(overrides, name), do: Map.get(overrides, name, Map.fetch!(@styles, name))
-  defp push(nil, _), do: nil
-  defp push(event, values), do: JS.push(event, value: values)
+  defp push(nil, _, _), do: nil
+  defp push(event, values, target) when target in [nil, ""], do: JS.push(event, value: values)
+  defp push(event, values, target), do: JS.push(event, value: values, target: target)
   defp caption(date), do: "#{Enum.at(@months, date.month - 1)} #{date.year}"
   defp local_date(date, "en-GB"), do: "#{pad(date.day)}/#{pad(date.month)}/#{date.year}"
   defp local_date(date, _), do: "#{date.month}/#{date.day}/#{date.year}"
@@ -360,12 +375,21 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   defp next_selection(date, "multiple", dates) when is_list(dates) do
     if date in dates, do: List.delete(dates, date), else: dates ++ [date]
   end
-  defp next_selection(date, "range", %{to: %Date{}}), do: %{from: date, to: nil}
+  # react-day-picker 10.0.2 utils/addToRange: min=0, max=0, required=false.
+  defp next_selection(date, "range", %{from: %Date{} = first, to: %Date{} = last}) do
+    cond do
+      date == first and date == last -> nil
+      date == first or date == last -> %{from: date, to: date}
+      Date.compare(date, first) == :lt -> %{from: date, to: last}
+      true -> %{from: first, to: date}
+    end
+  end
   defp next_selection(date, "range", %{from: %Date{} = first}) do
     if Date.compare(date, first) == :lt,
       do: %{from: date, to: first}, else: %{from: first, to: date}
   end
-  defp next_selection(date, "range", _), do: %{from: date, to: nil}
+  defp next_selection(_, "range", %{to: %Date{}}), do: nil
+  defp next_selection(date, "range", _), do: %{from: date, to: date}
   defp next_selection(_, _, selected), do: selected
 end
 `

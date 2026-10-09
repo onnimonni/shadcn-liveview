@@ -11,3 +11,9 @@ bun node_modules/esbuild/bin/esbuild assets/css/app.css \
   --outfile="$compiled"
 bun node_modules/@tailwindcss/cli/dist/index.mjs \
   -i "$compiled" -o priv/static/assets/css/app.css
+
+bun node_modules/esbuild/bin/esbuild assets/js/react-preview.tsx \
+  --tsconfig=assets/js/tsconfig.react.json --bundle --format=esm --target=es2022 \
+  --outfile=priv/static/assets/js/react-preview.js
+
+bunx tsx tools/ssr.tsx

@@ -37,7 +37,7 @@ export async function generateIcons(): Promise<void> {
     const geometry = serialize(svg)
     const className = svg.attrs.find(attr => attr.name === "class")!.value
     classes.push(`    ${JSON.stringify(name)} => ${JSON.stringify(className)}`)
-    clauses.push(`  defp icon_body(%{name: "${name}"} = assigns) do\n    ~H\"\"\"\n    ${geometry}\n    \"\"\"\n  end`)
+    clauses.push(`  defp icon_body(%{name: "${name}"} = assigns) do\n    ~H"""\n    ${geometry}\n    """\n  end`)
   }
   await fs.writeFile("lib/shadcn_liveview/components/icon.ex", `defmodule ShadcnLiveview.Components.Icon do
   @moduledoc """

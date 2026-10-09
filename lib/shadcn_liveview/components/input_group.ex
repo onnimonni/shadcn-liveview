@@ -162,6 +162,9 @@ defmodule ShadcnLiveview.Components.InputGroup do
     include:
       ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
 
+  attr :value, :any, default: nil
+
+  @doc "Native textarea content: a non-nil value overrides the slot; an explicit empty string clears it. Content is escaped and leading newlines are preserved."
   slot :inner_block, required: false
 
   def input_group_textarea(assigns) do
@@ -175,9 +178,7 @@ defmodule ShadcnLiveview.Components.InputGroup do
         ])
       }
       {@rest}
-    >
-      {render_slot(@inner_block)}
-    </textarea>
+    >{if is_nil(@value), do: render_slot(@inner_block), else: Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
     """
   end
 end

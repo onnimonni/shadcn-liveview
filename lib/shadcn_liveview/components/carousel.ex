@@ -2,12 +2,16 @@ defmodule ShadcnLiveview.Components.Carousel do
   @moduledoc """
   Composable carousel with an explicit caller ID. Bind the root's slot context with
   `:let={carousel}` and pass `carousel={carousel}` to content, items and controls.
-  Orientation, loop and start_index configure the native scrolling hook. Controls
+  Orientation, loop and start_index configure the vanilla Embla hook. Controls
   are disabled during SSR, like upstream Embla, and synchronize after mounting.
   Items retain their caller-specified basis classes; scrolling supports pointer,
-  touch, keyboard, responsive resizing and independently scoped instances.
-  Keyboard focus survives server acknowledgements and disabling an end control;
-  the region remains keyboard reachable without changing upstream SSR markup.
+  touch, responsive resizing and independently scoped instances. ArrowLeft and
+  ArrowRight select the previous and next slide in both orientations, like the
+  upstream carousel; ArrowUp and ArrowDown do not navigate a vertical carousel.
+  Enabled controls retain keyboard focus across server acknowledgements. End
+  controls become disabled without moving focus to an extra region tab stop.
+  Hook events honor phx-target on the root or nearest containing element,
+  including internal state changes and completion acknowledgements.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -143,90 +147,80 @@ defmodule ShadcnLiveview.Components.Carousel do
       {render_slot(@inner_block, @context)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Carousel">
+      import EmblaCarousel from "embla-carousel";
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.abort = new AbortController();
-          const on = (target, name, callback, options = {}) => target.addEventListener(name, callback, {...options, signal: this.abort.signal});
-          this.index = Number(this.el.getAttribute("phx-value-start-index") || 0); this.serverIndex = this.index;
-          on(this.el, "click", event => {
+          const on = (name, callback, options = {}) => this.el.addEventListener(name, callback, {...options, signal: this.abort.signal});
+          this.selected = () => {
+            const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
+            this.syncControls();
+            const index = this.api.selectedScrollSnap();
+            this.el.dispatchEvent(new CustomEvent("carousel:select", {detail: {index}, bubbles: true}));
+            this.sendEvent("shadcn:carousel-change", {id: this.el.id, value: index}, () => this.restoreFocus(focused));
+          };
+          on("click", event => {
             const button = event.target.closest('[data-slot="carousel-previous"], [data-slot="carousel-next"]');
-            if (!button || button.closest('[data-slot="carousel"]') !== this.el) return;
-            this.move(button.getAttribute("data-slot") === "carousel-next" ? 1 : -1);
+            if (!this.api || !button || button.closest('[data-slot="carousel"]') !== this.el || button.disabled) return;
+            if (button.getAttribute("data-slot") === "carousel-next") this.api.scrollNext();
+            else this.api.scrollPrev();
           });
-          on(this.el, "keydown", event => {
-            if (event.target.closest('input,textarea,select,[contenteditable=true]')) return;
-            const vertical = this.vertical();
-            const delta = event.key === "ArrowLeft" || (vertical && event.key === "ArrowUp") ? -1 : event.key === "ArrowRight" || (vertical && event.key === "ArrowDown") ? 1 : 0;
-            if (delta) { event.preventDefault(); this.move(delta); }
-          });
-          on(this.el, "pointerdown", event => {
-            if (!this.viewport || !this.viewport.contains(event.target) || event.button !== 0 || event.target.closest('button,a,input,textarea,select')) return;
-            this.drag = {id: event.pointerId, point: this.vertical() ? event.clientY : event.clientX, offset: this.position()};
-            this.viewport.setPointerCapture(event.pointerId);
-          });
-          on(this.el, "pointermove", event => {
-            if (!this.drag || this.drag.id !== event.pointerId) return;
-            const distance = this.drag.point - (this.vertical() ? event.clientY : event.clientX);
-            if (Math.abs(distance) > 4) { event.preventDefault(); this.scroll(this.drag.offset + distance, "instant"); }
-          });
-          const end = () => { if (!this.drag) return; const focused = this.el.contains(document.activeElement) ? document.activeElement : null; this.drag = null; this.index = this.nearest(); this.go("smooth"); this.pushEvent("shadcn:carousel-change", {id: this.el.id, value: this.index}, () => this.restoreFocus(focused)); };
-          on(this.el, "pointerup", end); on(this.el, "pointercancel", end);
-          this.observer = new ResizeObserver(() => { this.measure(); this.go("instant"); });
+          on("keydown", event => {
+            if (!this.api || event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+            event.preventDefault();
+            if (event.key === "ArrowRight") this.api.scrollNext();
+            else this.api.scrollPrev();
+          }, {capture:true});
           this.configure();
         },
-        vertical() { return this.el.getAttribute("phx-value-orientation") === "vertical"; },
-        position() { return this.vertical() ? this.viewport.scrollTop : this.viewport.scrollLeft; },
-        scroll(position, behavior) { this.viewport.scrollTo(this.vertical() ? {top: position, behavior} : {left: position, behavior}); },
         configure() {
-          if (!this.el.hasAttribute("tabindex")) this.el.tabIndex = 0;
-          this.observer.disconnect();
-          this.viewport = [...this.el.querySelectorAll('[data-slot="carousel-content"]')].find(node => node.closest('[data-slot="carousel"]') === this.el);
-          if (!this.viewport) return;
-          this.track = this.viewport.firstElementChild;
-          this.viewport.style.touchAction = this.vertical() ? "pan-x" : "pan-y";
-          this.observer.observe(this.viewport); this.observer.observe(this.track);
-          this.measure(); this.go("instant");
-        },
-        measure() {
-          if (!this.viewport) return;
-          const items = [...this.track.children].filter(node => node.getAttribute("data-slot") === "carousel-item");
-          const max = Math.max(0, this.vertical() ? this.viewport.scrollHeight - this.viewport.clientHeight : this.viewport.scrollWidth - this.viewport.clientWidth);
-          const origin = items.length ? (this.vertical() ? items[0].offsetTop : items[0].offsetLeft) : 0;
-          this.positions = [...new Set(items.map(node => Math.min(max, Math.max(0, (this.vertical() ? node.offsetTop : node.offsetLeft) - origin))))];
-          if (!this.positions.length) this.positions = [0];
-          this.index = Math.max(0, Math.min(this.index, this.positions.length - 1));
-        },
-        nearest() { return this.positions.reduce((best, position, index) => Math.abs(position - this.position()) < Math.abs(this.positions[best] - this.position()) ? index : best, 0); },
-        move(delta) {
-          if (!this.viewport) return;
-          const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
-          const count = this.positions.length;
+          const viewport = [...this.el.querySelectorAll('[data-slot="carousel-content"]')].find(node => node.closest('[data-slot="carousel"]') === this.el);
+          if (!viewport) { this.api?.destroy(); this.api = null; this.viewport = null; return; }
+          const axis = this.el.getAttribute("phx-value-orientation") === "vertical" ? "y" : "x";
           const loop = this.el.getAttribute("phx-value-loop") === "true";
-          this.index = loop ? (this.index + delta + count) % count : Math.max(0, Math.min(count - 1, this.index + delta));
-          this.go("smooth");
-          this.pushEvent("shadcn:carousel-change", {id: this.el.id, value: this.index}, () => this.restoreFocus(focused));
+          const serverIndex = Number(this.el.getAttribute("phx-value-start-index") || 0);
+          const selected = this.api?.selectedScrollSnap() ?? serverIndex;
+          const startIndex = serverIndex !== this.serverIndex ? serverIndex : selected;
+          if (!this.api || viewport !== this.viewport) {
+            this.api?.destroy();
+            this.viewport = viewport;
+            this.api = EmblaCarousel(viewport, {axis, loop, startIndex});
+            this.api.on("select", this.selected).on("reInit", () => this.syncControls());
+          } else if (axis !== this.axis || loop !== this.loop || startIndex !== selected || this.api.containerNode() !== viewport.firstElementChild) {
+            this.api.reInit({axis, loop, startIndex});
+          }
+          this.axis = axis; this.loop = loop; this.serverIndex = serverIndex;
+          this.syncControls();
         },
-        go(behavior) {
-          if (!this.viewport) return;
-          this.scroll(this.positions[this.index] || 0, behavior);
-          const loop = this.el.getAttribute("phx-value-loop") === "true" && this.positions.length > 1;
+        syncControls() {
           this.el.querySelectorAll('[data-slot="carousel-previous"], [data-slot="carousel-next"]').forEach(button => {
             if (button.closest('[data-slot="carousel"]') !== this.el) return;
-            const focused = document.activeElement === button;
-            button.disabled = button.getAttribute("phx-value-disabled") === "true" || (!loop && (button.getAttribute("data-slot") === "carousel-previous" ? this.index === 0 : this.index === this.positions.length - 1));
-            if (focused && button.disabled) this.el.focus();
+            const canScroll = button.getAttribute("data-slot") === "carousel-previous" ? this.api.canScrollPrev() : this.api.canScrollNext();
+            button.disabled = button.getAttribute("phx-value-disabled") === "true" || !canScroll;
           });
-          this.el.dispatchEvent(new CustomEvent("carousel:select", {detail: {index: this.index}, bubbles: true}));
         },
         restoreFocus(focused) {
           if (!focused || document.activeElement !== document.body) return;
           const slot = focused.getAttribute("data-slot");
           const replacement = slot && this.el.querySelector('[data-slot="' + slot + '"]');
-          const target = focused.isConnected && !focused.disabled ? focused : replacement && !replacement.disabled ? replacement : this.el;
-          target.focus();
+          const target = focused.isConnected && !focused.disabled ? focused : replacement && !replacement.disabled ? replacement : null;
+          target?.focus({preventScroll:true});
         },
-        updated() { const index = Number(this.el.getAttribute("phx-value-start-index") || 0); if (index !== this.serverIndex) {this.index = index;this.serverIndex = index;} this.configure(); },
-        destroyed() { this.abort.abort(); this.observer.disconnect(); }
+        beforeUpdate() {
+          // HEEx does not render Embla-owned track and loop-slide transforms.
+          this.transforms = this.api ? [this.api.containerNode(), ...this.api.slideNodes()].map(node => [node, node.style.transform]) : [];
+        },
+        updated() {
+          for (const [node, transform] of this.transforms || []) if (node.isConnected) node.style.transform = transform;
+          this.transforms = null;
+          this.configure();
+        },
+        destroyed() { this.abort.abort(); this.api?.destroy(); }
       }
     </script>
     """

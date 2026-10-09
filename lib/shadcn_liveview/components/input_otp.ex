@@ -1,5 +1,5 @@
 defmodule ShadcnLiveview.Components.InputOtp do
-  @moduledoc "A single native OTP input with slotted visual cells. Root :let passes the value to each indexed slot. Native name, form, required, disabled, pattern and autocomplete semantics are retained. The colocated hook manages focus, character selection, paste, fake carets and completion. Declared minlength remains enforced through the native Constraint Validation API after LiveView value patches clear the browser user-edit flag; caller-owned custom validity is preserved. on_change/on_complete events receive id and value; paste_transform may be strip-separators. Without JavaScript the noscript CSS exposes the real input. With JavaScript the hook restores its adjacent noscript to text after fragment patches, preserving the browser scripting-enabled parsing invariant."
+  @moduledoc "A single native OTP input with slotted visual cells. Root :let passes the value to each indexed slot. Native name, form, required, disabled, pattern and autocomplete semantics are retained. The colocated hook manages focus, character selection, paste, fake carets and completion. Declared minlength remains enforced through the native Constraint Validation API after LiveView value patches clear the browser user-edit flag; caller-owned custom validity is preserved. on_change/on_complete events receive id and value and route to the nearest phx-target ancestor, or the owning LiveView when absent. Completion waits for the final change acknowledgement before sending on_complete; paste_transform may be strip-separators. Without JavaScript the noscript CSS exposes the real input. With JavaScript the hook restores its adjacent noscript to text after fragment patches, preserving the browser scripting-enabled parsing invariant."
   use Phoenix.Component
   import ShadcnLiveview.Helpers
   alias ShadcnLiveview.Components.Icon
@@ -66,6 +66,11 @@ defmodule ShadcnLiveview.Components.InputOtp do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".InputOTP">
         export default {
+      sendEvent(event, payload, onReply) {
+      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+      if (target) return this.pushEventTo(target, event, payload, onReply);
+      return this.pushEvent(event, payload, onReply);
+      },
       mounted() {
       this.container = this.el.closest("[data-input-otp-container]"); this.listeners = []; this.lastValue = this.el.value;
       this.serverValue = this.el.getAttribute("phx-value-value") || ""; this.pendingValues = [];
@@ -131,11 +136,11 @@ defmodule ShadcnLiveview.Components.InputOtp do
       if (event) {
         this.pendingValues.push(value);
         // Complete only after the change reply releases LiveView's input lock.
-        this.pushEvent(event, detail, () => { if (complete) this.pushEvent(complete, detail); });
+        this.sendEvent(event, detail, () => { if (complete) this.sendEvent(complete, detail); });
       }
       if (completed) {
         this.el.dispatchEvent(new CustomEvent("shadcn:otp-complete", {bubbles: true, detail}));
-        if (!event && complete) this.pushEvent(complete, detail);
+        if (!event && complete) this.sendEvent(complete, detail);
       }
       },
       paint() {

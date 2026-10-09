@@ -1,7 +1,8 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import { renderToStaticMarkup } from "react-dom/server"
-import { fixtures, type ComponentFixture } from "./fixtures"
+import { fixtures } from "./fixtures"
+import { buildInteractiveGalleries } from "./interactive-gallery"
 
 export interface SSRRenderResult {
   name: string
@@ -68,6 +69,7 @@ ${cssContent}
     .preview-stage .fixed {
       position: static !important;
       transform: none !important;
+      translate: none !important;
       max-width: 100% !important;
     }
     .preview-stage [data-slot$=-overlay] {
@@ -97,8 +99,9 @@ ${cssContent}
 
   const outDir = path.resolve("priv/static/preview")
   await fs.mkdir(outDir, { recursive: true })
-  const outPath = path.join(outDir, "react-ssr.html")
+  const outPath = path.join(outDir, "react-static.html")
   await fs.writeFile(outPath, html, "utf8")
+  await buildInteractiveGalleries()
   return outPath
 }
 

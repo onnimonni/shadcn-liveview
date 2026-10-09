@@ -1,0 +1,16 @@
+version: 1
+
+overrides:
+  # These executable tools print their normal CLI results, not debugging traces.
+  - files: [tools/generate.tsx, tools/parity.tsx, tools/ssr.tsx, tools/vendor.mjs]
+    rules:
+      ai-slop/console-leftover: off
+  # These are canonical public documentation/community links, not deployment hosts.
+  - files: [login-preview/src/App.tsx]
+    rules:
+      ai-slop/hardcoded-url: off
+  # The heuristic strips template interpolations containing these actual usages.
+  # ESLint's syntax-aware unused-variable/import checks remain enabled.
+  - files: [tools/converters/chart.ts, tools/converters/controls.ts, tools/converters/layout.ts, tools/converters/selections.ts]
+    rules:
+      ai-slop/unused-import: off

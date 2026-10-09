@@ -4,7 +4,6 @@ import * as parse5 from "parse5"
 import { isValidElement, type ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { fixtures, type ComponentFixture } from "./fixtures"
-import { buildSSRPreviewPage } from "./ssr"
 
 export interface ParityResult {
   name: string
@@ -290,7 +289,7 @@ export async function runParitySuite(): Promise<{
     const raw = await fs.readFile(jsonPath, "utf8")
     phoenixMap = JSON.parse(raw) as Record<string, string>
   } catch (err) {
-    console.error(`Could not read ${jsonPath}. Run "mix run -e 'File.write!(\"priv/phoenix_ssr.json\", ShadcnLiveview.Gallery.dump_all())'" first.`)
+    console.error(`Could not read ${jsonPath}. Run "mix run -e 'File.write!("priv/phoenix_ssr.json", ShadcnLiveview.Gallery.dump_all())'" first.`)
     throw err
   }
 
@@ -328,6 +327,7 @@ ${cssContent}
     .preview-stage .fixed {
       position: static !important;
       transform: none !important;
+      translate: none !important;
       max-width: 100% !important;
     }
     .preview-stage [data-slot$=-overlay] {
@@ -397,7 +397,6 @@ ${cssContent}
 }
 
 async function runCli(): Promise<void> {
-  await buildSSRPreviewPage()
   const summary = await runParitySuite()
 
   console.log("\n========================================================")
@@ -421,7 +420,7 @@ async function runCli(): Promise<void> {
   }
 
   console.log("\nGenerated previews for visual comparison:")
-  console.log("  - React SSR:   priv/static/preview/react-ssr.html")
+  console.log("  - React SSR:   priv/static/preview/react-static.html")
   console.log("  - Phoenix SSR: priv/static/preview/phoenix-ssr.html\n")
 
   const caseDiscrepancies = summary.totalCount - summary.passedCount

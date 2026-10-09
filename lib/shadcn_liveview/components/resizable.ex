@@ -6,7 +6,18 @@ defmodule ShadcnLiveview.Components.Resizable do
   `:let={group}` and pass `group={group}` to its direct children. The hook
   installs separator ARIA relationships after layout, supports pointer capture,
   arrow/Home/End keyboard resizing, min/max constraints and collapsible panels.
-  Listen for `resizable:change` to persist the percentage layout in LiveView.
+  Arrow keys resize by five percentage points, including with Shift held.
+  Double-clicking an enabled separator resets the first adjacent panel with an
+  explicit default_size, respecting its constraints; panels without defaults do
+  not reset. Disabled groups, separators and fixed panels cannot be resized.
+  Set disable_double_click on a separator to opt out of this reset.
+  Keep panel default_size values as reset baselines. Bind the group's layout to
+  a map of panel IDs to percentages for caller-owned state, and persist the
+  value map from shadcn:resizable-change; resizable:change exposes that same map
+  as a browser event. Reset notifications use the same payload and phx-target
+  routing as pointer and keyboard resizing.
+  Hook events honor phx-target on the root or nearest containing element,
+  including internal state changes and completion acknowledgements.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -14,6 +25,7 @@ defmodule ShadcnLiveview.Components.Resizable do
   attr :id, :string, required: true
   attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
   attr :disabled, :boolean, default: false
+  attr :layout, :map, default: nil
   attr :class, :string, default: nil
 
   attr :rest, :global,
@@ -41,12 +53,18 @@ defmodule ShadcnLiveview.Components.Resizable do
       phx-hook=".Resizable"
       phx-value-orientation={@orientation}
       phx-value-disabled={to_string(@disabled)}
+      phx-value-layout={if @layout, do: Jason.encode!(@layout)}
       {@rest}
     >
       {render_slot(@inner_block, @context)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Resizable">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.abort = new AbortController();
           const on = (name, callback) => this.el.addEventListener(name, callback, {signal: this.abort.signal});
@@ -63,21 +81,28 @@ defmodule ShadcnLiveview.Components.Resizable do
             this.drag.handle.dataset.separator = "inactive"; this.drag = null; this.emit();
           };
           on("pointerup", end); on("pointercancel", end); on("lostpointercapture", end);
+          on("dblclick", event => {
+            const handle = event.target.closest('[data-slot="resizable-handle"]');
+            if (event.defaultPrevented || !this.usable(handle) || handle.getAttribute("phx-value-disable-double-click") === "true") return;
+            const panels = this.panels(), index = this.pair(handle).find(index => panels[index].hasAttribute("phx-value-default-size"));
+            if (index === undefined) return;
+            event.preventDefault(); this.reset(index);
+          });
           on("keydown", event => {
             const handle = event.target.closest('[data-slot="resizable-handle"]');
             if (!this.usable(handle)) return;
             const keys = this.vertical() ? ["ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"];
-            let delta = event.key === keys[0] ? -1 : event.key === keys[1] ? 1 : 0;
+            let delta = event.key === keys[0] ? -5 : event.key === keys[1] ? 5 : 0;
             if (event.key === "Home") delta = -100;
             if (event.key === "End") delta = 100;
             if (!delta) return;
-            event.preventDefault(); this.resize(handle, this.sizes(), delta * (event.shiftKey && Math.abs(delta) === 1 ? 10 : 1)); this.emit();
+            event.preventDefault(); this.resize(handle, this.sizes(), delta); this.emit();
           });
           this.observer = new ResizeObserver(() => this.aria()); this.observer.observe(this.el); this.configure();
         },
         vertical() { return this.el.getAttribute("phx-value-orientation") === "vertical"; },
         point(event) { return this.vertical() ? event.clientY : event.clientX; },
-        length() { return this.vertical() ? this.el.clientHeight : this.el.clientWidth; },
+        length() { return this.panels().reduce((total,panel) => total + (this.vertical() ? panel.offsetHeight : panel.offsetWidth), 0); },
         panels() { return [...this.el.children].filter(node => node.dataset.slot === "resizable-panel"); },
         handles() { return [...this.el.children].filter(node => node.dataset.slot === "resizable-handle"); },
         sizes() { const sizes = this.panels().map(node => this.vertical() ? node.getBoundingClientRect().height : node.getBoundingClientRect().width); const total = sizes.reduce((a,b) => a+b, 0); return sizes.map(size => total ? size / total * 100 : 100 / sizes.length); },
@@ -99,7 +124,7 @@ defmodule ShadcnLiveview.Components.Resizable do
         usable(handle) {
           if (!handle || handle.parentElement !== this.el || handle.getAttribute("aria-disabled") === "true" || this.el.getAttribute("phx-value-disabled") === "true") return false;
           const [left,right] = this.pair(handle); const panels = this.panels();
-          return left >= 0 && right >= 0 && ![panels[left],panels[right]].some(panel => panel.dataset.disabled === "true");
+          return left >= 0 && right >= 0 && ![panels[left],panels[right]].some(panel => panel.dataset.disabled === "true" || this.bound(panel, "min-size", 0) >= this.bound(panel, "max-size", 100));
         },
         resize(handle, sizes, delta) {
           const [a,b] = this.pair(handle); const panels = this.panels(); const total = sizes[a] + sizes[b];
@@ -116,9 +141,64 @@ defmodule ShadcnLiveview.Components.Resizable do
           const next = [...sizes]; next[a] = value; next[b] = total - value;
           panels.forEach((panel,index) => { panel.style.flexBasis = "0px"; panel.style.flexGrow = next[index]; panel.style.flexShrink = "1"; }); this.aria();
         },
+        clamp(panel, value) {
+          const min = this.bound(panel, "min-size", 0), max = this.bound(panel, "max-size", 100);
+          if (value < min) {
+            const collapsed = this.bound(panel, "collapsed-size", 0);
+            value = panel.getAttribute("phx-value-collapsible") === "true" && value < (min + collapsed) / 2 ? collapsed : min;
+          }
+          return Math.min(max, value);
+        },
+        normalize(values) {
+          const panels = this.panels(), total = values.reduce((sum,value) => sum + value, 0);
+          const normalized = values.map(value => total ? value / total * 100 : 100 / panels.length);
+          let remaining = 0;
+          panels.forEach((panel,index) => { const next = this.clamp(panel, normalized[index]); remaining += normalized[index] - next; normalized[index] = next; });
+          for (let index = 0; index < panels.length && Math.abs(remaining) > .001; index++) {
+            const next = this.clamp(panels[index], normalized[index] + remaining);
+            remaining -= next - normalized[index]; normalized[index] = next;
+          }
+          return normalized;
+        },
+        apply(values) {
+          this.panels().forEach((panel,index) => {panel.style.flexBasis="0px";panel.style.flexGrow=values[index];panel.style.flexShrink="1";}); this.aria();
+        },
+        reset(index) {
+          const panels = this.panels(), sizes = this.sizes(), last = index === panels.length - 1;
+          const target = this.bound(panels[index], "default-size", sizes[index]);
+          let delta = last ? sizes[index] - target : target - sizes[index];
+          if (Math.abs(delta) < .001) return;
+          const a = last ? index - 1 : index, b = last ? index : index + 1;
+          const expanding = delta > 0 ? a : b, min = this.bound(panels[expanding], "min-size", 0);
+          if (panels[expanding].getAttribute("phx-value-collapsible") === "true" && sizes[expanding] < min && sizes[expanding] + Math.abs(delta) < min) {
+            const gap = min - this.bound(panels[expanding], "collapsed-size", 0);
+            if (Math.abs(delta) < gap / 2 || (Math.abs(delta) === gap / 2 && delta > 0)) return;
+            delta = delta < 0 ? -gap : gap;
+          }
+          const growing = [], shrinking = [];
+          for (let current = delta > 0 ? a : b; current >= 0 && current < panels.length; current += delta > 0 ? -1 : 1) growing.push(current);
+          for (let current = delta > 0 ? b : a; current >= 0 && current < panels.length; current += delta > 0 ? 1 : -1) shrinking.push(current);
+          const clamp = (current,value) => panels[current].dataset.disabled === "true" ? sizes[current] : this.clamp(panels[current], value);
+          const capacity = growing.reduce((sum,current) => sum + clamp(current,100) - sizes[current], 0);
+          const requested = Math.min(Math.abs(delta), Math.max(0,capacity)), next = [...sizes];
+          let freed = 0;
+          for (const current of shrinking) {
+            next[current] = clamp(current, sizes[current] - (requested - freed));
+            freed += sizes[current] - next[current];
+            if (freed >= requested - .001) break;
+          }
+          let remaining = freed;
+          for (const current of growing) {
+            next[current] = clamp(current, sizes[current] + remaining);
+            remaining -= next[current] - sizes[current];
+            if (Math.abs(remaining) < .001) break;
+          }
+          if (Math.abs(remaining) > .1 || next.every((value,current) => Math.abs(value - sizes[current]) < .001)) return;
+          this.apply(next); this.emit();
+        },
         configure() {
-          const panels = this.panels(), values = this.sizes();
-          const signature = panels.map(panel => [panel.id,...["default-size","min-size","max-size","collapsible","collapsed-size"].map(name => panel.getAttribute("phx-value-"+name))].join(":")).join("|");
+          const panels = this.panels(), values = this.sizes(), layoutValue = this.el.getAttribute("phx-value-layout");
+          const signature = [this.vertical(),layoutValue,panels.map(panel => [panel.id,...["default-size","min-size","max-size","collapsible","collapsed-size"].map(name => panel.getAttribute("phx-value-"+name))].join(":")).join("|")].join(";");
           if (signature === this.layoutSignature) {this.aria();return;} this.layoutSignature = signature;
           const defaults = panels.map(panel => panel.getAttribute("phx-value-default-size") ? this.bound(panel, "default-size", 0) : null);
           const specified = defaults.reduce((sum,value) => sum + (value || 0), 0), missing = defaults.filter(value => value === null).length;
@@ -127,16 +207,11 @@ defmodule ShadcnLiveview.Components.Resizable do
             const sum = requested.reduce((total,value) => total + value,0);
             if (sum) requested.forEach((value,index) => {values[index] = value / sum * 100;});
           }
-          const bounds = panels.map(panel => [this.bound(panel, "min-size", 0), this.bound(panel, "max-size", 100)]);
-          panels.forEach((panel,index) => { values[index] = Math.max(bounds[index][0], Math.min(bounds[index][1], values[index])); });
-          for (let pass = 0; pass < panels.length; pass++) {
-            const difference = 100 - values.reduce((sum,value) => sum + value, 0);
-            if (Math.abs(difference) < .001) break;
-            const adjustable = values.map((value,index) => index).filter(index => difference > 0 ? values[index] < bounds[index][1] : values[index] > bounds[index][0]);
-            if (!adjustable.length) break;
-            adjustable.forEach(index => {values[index] = Math.max(bounds[index][0], Math.min(bounds[index][1], values[index] + difference / adjustable.length));});
+          if (layoutValue) {
+            const layout = JSON.parse(layoutValue);
+            if (panels.every(panel => typeof layout[panel.id] === "number")) panels.forEach((panel,index) => {values[index] = layout[panel.id];});
           }
-          panels.forEach((panel,index) => {panel.style.flexBasis="0px";panel.style.flexGrow=values[index];panel.style.flexShrink="1";}); this.aria();
+          this.apply(this.normalize(values));
         },
         aria() {
           if (!this.length()) return;
@@ -152,7 +227,7 @@ defmodule ShadcnLiveview.Components.Resizable do
         emit() {
           const sizes = this.sizes(), value = Object.fromEntries(this.panels().map((panel,index) => [panel.id, sizes[index]]));
           this.el.dispatchEvent(new CustomEvent("resizable:change", {detail:value,bubbles:true}));
-          this.pushEvent("shadcn:resizable-change", {id:this.el.id,value});
+          this.sendEvent("shadcn:resizable-change", {id:this.el.id,value});
         },
         updated() { this.configure(); },
         destroyed() { this.abort.abort(); this.observer.disconnect(); this.drag = null; }
@@ -205,6 +280,7 @@ defmodule ShadcnLiveview.Components.Resizable do
   attr :group, :map, required: true
   attr :with_handle, :boolean, default: false
   attr :disabled, :boolean, default: false
+  attr :disable_double_click, :boolean, default: false
   attr :class, :string, default: nil
 
   attr :rest, :global,
@@ -225,6 +301,7 @@ defmodule ShadcnLiveview.Components.Resizable do
       role="separator"
       aria-disabled={if @disabled, do: "true"}
       aria-orientation={if @group.orientation == "horizontal", do: "vertical", else: "horizontal"}
+      phx-value-disable-double-click={to_string(@disable_double_click)}
       tabindex={if !@disabled, do: "0"}
       class={
         classes([

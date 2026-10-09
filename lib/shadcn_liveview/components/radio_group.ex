@@ -7,6 +7,7 @@ defmodule ShadcnLiveview.Components.RadioGroup do
   names a LiveView event receiving %{id, value}. Without value, default_value
   initializes local selection. Arrow keys select, Space checks, and form reset
   restores the initial value. SSR focus stops are activated by the colocated hook.
+  Hook events honor phx-target on the root or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -70,6 +71,11 @@ defmodule ShadcnLiveview.Components.RadioGroup do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".RadioGroup">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.radio = this.el.dataset.slot === "radio-group";
           this.controlled = this.el.getAttribute("phx-controlled") === "true";
@@ -127,7 +133,7 @@ defmodule ShadcnLiveview.Components.RadioGroup do
           if (!this.controlled) { this.values = next; this.paint(); }
           const value = this.radio || this.el.getAttribute("phx-selection-type") === "single" ? (next[0] || "") : next;
           const event = this.el.getAttribute("phx-change-event");
-          if (event) this.pushEvent(event, {id: this.el.id, value});
+          if (event) this.sendEvent(event, {id: this.el.id, value});
           this.el.dispatchEvent(new CustomEvent("selection-change", {bubbles: true, detail: {value}}));
           if (this.radio && !this.controlled) {
             const input = item.nextElementSibling;

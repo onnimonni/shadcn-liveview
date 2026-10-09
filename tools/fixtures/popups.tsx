@@ -1,5 +1,6 @@
 import * as React from "react"
 import type { ComponentFixture } from "../fixtures"
+import { bindLiveOverlayControls } from "../../assets/js/react-fixtures/overlay-controls"
 import { Button } from "../../vendor/shadcn/ui/button"
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "../../vendor/shadcn/ui/context-menu"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../../vendor/shadcn/ui/dropdown-menu"
@@ -133,15 +134,13 @@ for (const fixture of fixtures) {
       const value = attributes.match(/\svalue="([^"]*)"/)?.[1]
       attributes = attributes.replace(/\svalue="[^"]*"/, "")
       attributes += ` value={Map.get(@state, "${id}-value", ${value === undefined ? "nil" : JSON.stringify(value)})}`
-      if (fixture.name === "select") attributes += ` name="fruit"`
     }
     return `<.${root} id="${id}" open={Map.get(@state, "${id}-open", ${open})}${attributes} on_change="shadcn:popup-change">`
   })
   if (family === "select") {
     fixture.liveHeex = fixture.liveHeex.replace(/<\.select_value(?!\scontext=)(?=\s|>)/g, "<.select_value context={popup}")
       .replace("<.select_value context={popup}>Banana</.select_value>", "<.select_value context={popup} />")
-    const controls = `<button type="reset">Reset</button><button type="submit">Submit</button>`
-    if (fixture.name === "select") fixture.liveHeex = `<form id="select-demo-form" phx-change="preview:form" phx-submit="preview:form">${fixture.liveHeex}${controls}</form>`
-    if (fixture.name === "select-value-disabled") fixture.liveHeex = fixture.liveHeex.replace("<form>", `<form id="select-value-form" phx-change="preview:form" phx-submit="preview:form">`).replace("</form>", `${controls}</form>`)
   }
 }
+
+bindLiveOverlayControls(fixtures)

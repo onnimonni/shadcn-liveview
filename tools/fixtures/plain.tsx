@@ -7,6 +7,11 @@ import { Input } from "../../vendor/shadcn/ui/input"
 import { Textarea } from "../../vendor/shadcn/ui/textarea"
 import type { ComponentFixture } from "../fixtures"
 
+function LiveToggle({ pressed: initialPressed, ...props }: React.ComponentProps<typeof Toggle>) {
+  const [pressed, setPressed] = React.useState(initialPressed)
+  return <Toggle {...props} pressed={pressed} onPressedChange={setPressed} />
+}
+
 export const fixtures: ComponentFixture[] = [
   ...(["default", "outline", "secondary", "ghost", "destructive", "link"] as const).flatMap(variant =>
     (["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg"] as const).map(size => ({
@@ -23,6 +28,7 @@ export const fixtures: ComponentFixture[] = [
     [false, true].map(pressed => ({
       name: `toggle-${variant}-${size}-${pressed ? "on" : "off"}`, family: "toggle", title: `Toggle ${variant} ${size} ${pressed ? "on" : "off"}`, category: "actions" as const,
       renderReact: () => <Toggle id={`toggle-${variant}-${size}-${pressed}`} variant={variant} size={size} pressed={pressed}>Bold</Toggle>,
+      renderLiveReact: () => <LiveToggle id={`toggle-${variant}-${size}-${pressed}`} variant={variant} size={size} pressed={pressed}>Bold</LiveToggle>,
       heex: `<.toggle id="toggle-${variant}-${size}-${pressed}" variant="${variant}" size="${size}" pressed={${pressed}}>Bold</.toggle>`,
     })))),
   {

@@ -113,6 +113,51 @@ defmodule ShadcnLiveview.CommandTest do
     end
   end
 
+  test "combobox input combines root and child disabled assigns on every render" do
+    for child_disabled <- [false, true], root_disabled <- [false, true, false] do
+      assigns = %{root_disabled: root_disabled, child_disabled: child_disabled}
+
+      document =
+        parse(~H"""
+        <.combobox
+          id="disabled-framework"
+          name="framework"
+          value="phoenix"
+          input_value="Phoenix"
+          disabled={@root_disabled}
+        >
+          <:input :let={combo}>
+            <.combobox_input
+              context={combo}
+              id="disabled-framework-input"
+              disabled={@child_disabled}
+              show_clear
+            />
+          </:input>
+          <:content :let={combo}>
+            <.combobox_content context={combo}>Options</.combobox_content>
+          </:content>
+        </.combobox>
+        """)
+
+      effective_disabled = root_disabled || child_disabled
+
+      for selector <- [
+            "#disabled-framework-input",
+            "#disabled-framework",
+            "[data-slot=combobox-clear]"
+          ] do
+        assert length(Floki.find(document, selector)) == 1
+        assert Floki.find(document, selector <> "[disabled]") != [] == effective_disabled
+        assert Floki.find(document, selector <> "[data-disabled]") != [] == effective_disabled
+      end
+
+      assert Floki.find(document, "input[name=framework][disabled]") != [] == root_disabled
+      assert Floki.attribute(document, "#disabled-framework-input", "value") == ["Phoenix"]
+      assert Floki.attribute(document, "input[name=framework]", "value") == ["phoenix"]
+    end
+  end
+
   defp parse(rendered) do
     rendered
     |> Safe.to_iodata()

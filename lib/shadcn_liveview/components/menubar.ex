@@ -8,6 +8,8 @@ defmodule ShadcnLiveview.Components.Menubar do
   default_value only supplies initial selection. The hook positions mounted
   content, implements keyboard focus and requests state changes without HTML
   serialization. Submenus similarly use open and on_open_change.
+  All selection, dismissal and submenu events honor phx-target on the root
+  or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -48,6 +50,11 @@ defmodule ShadcnLiveview.Components.Menubar do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Menubar">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.pendingFocus = null;
           this.click = e => {
@@ -60,10 +67,10 @@ defmodule ShadcnLiveview.Components.Menubar do
             const item = e.target.closest('[role^="menuitem"]');
             if (!item || item.hasAttribute("data-disabled")) return;
             if (item.dataset.slot === "menubar-sub-trigger") { this.submenu(item, true, false); return; }
-            if (item.getAttribute("role") === "menuitemcheckbox") this.pushEvent(item.getAttribute("phx-change-event"), {id: item.id, value: item.getAttribute("aria-checked") !== "true"});
+            if (item.getAttribute("role") === "menuitemcheckbox") this.sendEvent(item.getAttribute("phx-change-event"), {id: item.id, value: item.getAttribute("aria-checked") !== "true"});
             if (item.getAttribute("role") === "menuitemradio") {
               const group = item.closest('[data-slot="menubar-radio-group"]');
-              this.pushEvent(group.getAttribute("phx-change-event"), {id: group.id, value: item.getAttribute("phx-value")});
+              this.sendEvent(group.getAttribute("phx-change-event"), {id: group.id, value: item.getAttribute("phx-value")});
             }
             this.change("", false);
             this.activeTrigger?.focus();
@@ -103,11 +110,17 @@ defmodule ShadcnLiveview.Components.Menubar do
         owns(target) { return this.el.contains(target) && !!target.closest('[role="menu"]'); },
         tabstop(trigger) { this.triggers().forEach(t => t.tabIndex = t === trigger && !t.disabled ? 0 : -1); },
         change(value, keyboard) {
+          if (keyboard && value === this.value) {
+            const trigger = this.triggers().find(t => t.getAttribute("phx-menu-value") === value);
+            const menu = document.getElementById(trigger?.getAttribute("phx-content-id"));
+            if (menu && this.el.contains(menu)) this.menuItems(menu)[0]?.focus();
+            return;
+          }
           if (value !== this.value) {
             for (const sub of this.el.querySelectorAll('[data-slot="menubar-sub-trigger"][aria-expanded="true"]')) this.submenu(sub, false, false);
           }
           this.pendingFocus = keyboard ? this.triggers().find(t => t.getAttribute("phx-menu-value") === value)?.getAttribute("phx-content-id") : null;
-          this.pushEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value});
+          this.sendEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value});
         },
         sync() {
           this.value = this.el.getAttribute("phx-value") || "";
@@ -168,7 +181,7 @@ defmodule ShadcnLiveview.Components.Menubar do
         menuItems(menu) { return [...menu.querySelectorAll('[role^="menuitem"]')].filter(i => !i.hasAttribute("data-disabled") && i.closest('[role="menu"]') === menu); },
         submenu(trigger, open, keyboard) {
           this.pendingFocus = open && keyboard ? trigger.getAttribute("phx-content-id") : null;
-          this.pushEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open});
+          this.sendEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open});
         },
         keydown(e) {
           const trigger = e.target.closest('[data-slot="menubar-trigger"]');
@@ -220,9 +233,19 @@ defmodule ShadcnLiveview.Components.Menubar do
           let index = key === "Home" ? 0 : key === "End" ? items.length - 1 : items.indexOf(trigger) + (((key === "ArrowRight") !== (this.el.getAttribute("phx-dir") === "rtl")) ? 1 : -1);
           if (this.el.getAttribute("phx-loop") === "true") index = (index + items.length) % items.length;
           const next = items[index];
-          if (next) { this.tabstop(next); next.focus(); if (open) this.change(next.getAttribute("phx-menu-value"), true); }
+          if (next) { this.tabstop(next); next.focus(); if (open || this.value) this.change(next.getAttribute("phx-menu-value"), open); }
         },
-        updated() { this.sync(); },
+        beforeUpdate() {
+          const focused = document.activeElement;
+          this.focusedTrigger = this.el.contains(focused) ? focused.closest('[data-slot="menubar-trigger"]')?.getAttribute("phx-menu-value") : null;
+        },
+        updated() {
+          this.sync();
+          if (this.focusedTrigger && document.activeElement === document.body) {
+            this.triggers().find(t => t.getAttribute("phx-menu-value") === this.focusedTrigger)?.focus({preventScroll: true});
+          }
+          this.focusedTrigger = null;
+        },
         destroyed() {
           clearTimeout(this.typeTimer);
           document.removeEventListener("click", this.click);

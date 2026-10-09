@@ -1,5 +1,6 @@
 import React from "react"
 import type { ComponentFixture } from "../fixtures"
+import { bindLiveOverlayControls } from "../../assets/js/react-fixtures/overlay-controls"
 import { Checkbox } from "../../vendor/shadcn/ui/checkbox"
 import { Switch } from "../../vendor/shadcn/ui/switch"
 import { Slider } from "../../vendor/shadcn/ui/slider"
@@ -85,15 +86,15 @@ export const fixtures: ComponentFixture[] = [
   },
   {
     name: "slider-multiple-instances", family: "slider", title: "Slider Multiple Instances", category: "forms",
-    renderReact: () => <form id="slider-multiple-form"><Slider id="slider-price" defaultValue={[5, 15]} min={0} max={20} step={1} name="price" /><Slider id="slider-rating" defaultValue={[3]} min={1} max={5} step={1} name="rating" /></form>,
-    heex: `<form id="slider-multiple-form"><.slider id="slider-price" default_value={[5, 15]} min={0} max={20} step={1} name="price" /><.slider id="slider-rating" default_value={[3]} min={1} max={5} step={1} name="rating" /></form>`,
-    liveHeex: `<form id="slider-multiple-form"><.slider id="slider-price" value={Map.get(@state, "slider-price", [5, 15])} default_value={[5, 15]} on_change="control_change" min={0} max={20} step={1} name="price" /><.slider id="slider-rating" value={Map.get(@state, "slider-rating", [3])} default_value={[3]} on_change="control_change" min={1} max={5} step={1} name="rating" /></form>`
+    renderReact: () => <form id="slider-multiple-form" className="w-64 space-y-4"><Slider id="slider-price" defaultValue={[5, 15]} min={0} max={20} step={1} name="price" /><Slider id="slider-rating" defaultValue={[3]} min={1} max={5} step={1} name="rating" /></form>,
+    heex: `<form id="slider-multiple-form" class="w-64 space-y-4"><.slider id="slider-price" default_value={[5, 15]} min={0} max={20} step={1} name="price" /><.slider id="slider-rating" default_value={[3]} min={1} max={5} step={1} name="rating" /></form>`,
+    liveHeex: `<form id="slider-multiple-form" class="w-64 space-y-4"><.slider id="slider-price" value={Map.get(@state, "slider-price", [5, 15])} default_value={[5, 15]} on_change="control_change" min={0} max={20} step={1} name="price" /><.slider id="slider-rating" value={Map.get(@state, "slider-rating", [3])} default_value={[3]} on_change="control_change" min={1} max={5} step={1} name="rating" /></form>`
   },
   {
     name: "slider-external-form", family: "slider", title: "Slider External Form", category: "forms",
-    renderReact: () => <div><form id="slider-external-form" /><Slider id="slider-external" defaultValue={[2]} min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>,
-    heex: `<div><form id="slider-external-form"></form><.slider id="slider-external" default_value={[2]} min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>`,
-    liveHeex: `<div><form id="slider-external-form"></form><.slider id="slider-external" value={Map.get(@state, "slider-external", [2])} default_value={[2]} on_change="control_change" min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>`
+    renderReact: () => <div><form id="slider-external-form" /><Slider id="slider-external" className="w-64" defaultValue={[2]} min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>,
+    heex: `<div><form id="slider-external-form"></form><.slider id="slider-external" class="w-64" default_value={[2]} min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>`,
+    liveHeex: `<div><form id="slider-external-form"></form><.slider id="slider-external" class="w-64" value={Map.get(@state, "slider-external", [2])} default_value={[2]} on_change="control_change" min={0} max={10} step={0.25} name="quantity" form="slider-external-form" /></div>`
   },
   {
     name: "slider-minimum-thumb-distance", family: "slider", title: "Slider Minimum Thumb Distance", category: "forms",
@@ -165,3 +166,17 @@ export const fixtures: ComponentFixture[] = [
     liveHeex: `<.navigation_menu :let={context} id="navigation-indicator" value={Map.get(@state, "navigation-indicator", "docs")} viewport={false}><:indicator /><.navigation_menu_list context={context}><.navigation_menu_item :let={item} context={context} value="docs"><.navigation_menu_trigger context={item}>Docs</.navigation_menu_trigger><.navigation_menu_content context={item}>Guide</.navigation_menu_content></.navigation_menu_item></.navigation_menu_list></.navigation_menu>`
   }
 ]
+
+for (const fixture of fixtures) {
+  if (fixture.liveHeex) continue
+  const family = fixture.family ?? fixture.name
+  if (family === "slider") {
+    fixture.liveHeex = fixture.heex.replace('<.slider id="slider-default-extents"', '<.slider id="slider-default-extents" value={Map.get(@state, "slider-default-extents", [10, 30])} default_value={[10, 30]} on_change="control_change"')
+  } else if (family === "collapsible") {
+    fixture.liveHeex = fixture.heex.replace('open={false}', 'open={Map.get(@state, "collapsible-forced", false)}')
+  } else if (family === "navigation-menu") {
+    fixture.liveHeex = fixture.heex.replace(/<\.navigation_menu([^>]*?)id="([^"]+)"/, (_match, attrs: string, id: string) => `<.navigation_menu${attrs}id="${id}" value={Map.get(@state, "${id}", "")}`)
+  }
+}
+
+bindLiveOverlayControls(fixtures)

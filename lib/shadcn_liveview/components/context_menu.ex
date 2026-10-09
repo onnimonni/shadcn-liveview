@@ -10,6 +10,9 @@ defmodule ShadcnLiveview.Components.ContextMenu do
   and handles dismissal, focus, keyboard navigation, and pointer interactions.
   Handle `:on_change` (default `shadcn:popup-change`) with `id`, `action`,
   and `value` and update the corresponding root assigns.
+  Set phx-target on this wrapperless root (or its optional `:target`) to route
+  every hook event to a LiveComponent. The slot context forwards the target to
+  its native trigger; the trigger also inherits its nearest containing phx-target.
   Menu selections include `role` and `checked`; checkbox changes update their own value key, while radio selections update the group value.
   """
   use Phoenix.Component
@@ -26,6 +29,8 @@ defmodule ShadcnLiveview.Components.ContextMenu do
   attr :open_delay, :integer, default: 0
   attr :close_delay, :integer, default: 100
   attr :on_change, :string, default: "shadcn:popup-change"
+  attr :target, :any, default: nil
+  attr :rest, :global
 
   slot :trigger, required: true
   slot :content, required: true
@@ -34,6 +39,7 @@ defmodule ShadcnLiveview.Components.ContextMenu do
   def context_menu(assigns) do
     context = %{
       id: assigns.id,
+      target: assigns.target || Map.get(assigns.rest, :"phx-target"),
       content_id: assigns.id <> "-content",
       trigger_id: assigns.id <> "-trigger",
       open: assigns.open,
@@ -52,6 +58,7 @@ defmodule ShadcnLiveview.Components.ContextMenu do
       "phx-popup-kind" => "context-menu",
       "phx-popup-content-id" => context.content_id,
       "phx-popup-disabled" => to_string(assigns.disabled),
+      "phx-target" => context.target,
       "phx-popup-offset" => assigns.side_offset,
       "phx-popup-open-delay" => assigns.open_delay,
       "phx-popup-close-delay" => assigns.close_delay,
@@ -74,6 +81,11 @@ defmodule ShadcnLiveview.Components.ContextMenu do
 
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Popup">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.abort = new AbortController();
           this.kind = this.el.getAttribute("phx-popup-kind");
@@ -244,7 +256,7 @@ defmodule ShadcnLiveview.Components.ContextMenu do
           const id = this.el.getAttribute("phx-popup-id");
           const payload = {action, value, id, ...extra};
           this.el.dispatchEvent(new CustomEvent("shadcn:popup", {bubbles: true, detail: payload}));
-          const event = this.el.getAttribute("phx-popup-event"); if (event) this.pushEvent(event, payload);
+          const event = this.el.getAttribute("phx-popup-event"); if (event) this.sendEvent(event, payload);
         }
       }
     </script>

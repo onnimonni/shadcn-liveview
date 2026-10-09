@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "cn"
+import { createUiSlot } from "../../lib/ui-slot"
 
 function Card({
   className,
@@ -19,77 +20,37 @@ function Card({
   )
 }
 
-function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-header"
-      className={cn(
-        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const CardHeader = createUiSlot(
+  "div",
+  "card-header",
+  "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)"
+)
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-title"
-      className={cn(
-        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const CardTitle = createUiSlot(
+  "div",
+  "card-title",
+  "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm"
+)
 
-function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-description"
-      className={cn("text-sm text-muted-foreground", className)}
-      {...props}
-    />
-  )
-}
+const CardDescription = createUiSlot(
+  "div",
+  "card-description",
+  "text-sm text-muted-foreground"
+)
 
-function CardAction({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-action"
-      className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const CardAction = createUiSlot(
+  "div",
+  "card-action",
+  "col-start-2 row-span-2 row-start-1 self-start justify-self-end"
+)
 
-function CardContent({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-content"
-      className={cn("px-(--card-spacing)", className)}
-      {...props}
-    />
-  )
-}
+const CardContent = createUiSlot("div", "card-content", "px-(--card-spacing)")
 
-function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="card-footer"
-      className={cn(
-        "flex items-center rounded-b-xl border-t bg-muted/50 p-(--card-spacing)",
-        className
-      )}
-      {...props}
-    />
-  )
-}
+const CardFooter = createUiSlot(
+  "div",
+  "card-footer",
+  "flex items-center rounded-b-xl border-t bg-muted/50 p-(--card-spacing)"
+)
 
 export {
   Card,

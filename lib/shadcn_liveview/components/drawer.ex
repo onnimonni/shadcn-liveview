@@ -11,6 +11,11 @@ defmodule ShadcnLiveview.Components.Drawer do
   `-title` and `-description`. Title/description IDs can be overridden
   on the root. Native action/close buttons accept `on_click` JS that
   runs before the root's close command, plus ordinary form attributes.
+  Set phx-target on the wrapperless root (or optional `target`) to route
+  default open/close commands and hook dismissal to a LiveComponent. Context
+  forwards this target to native triggers, overlays, content and close controls.
+  Hook dismissal also inherits the nearest containing phx-target; caller-supplied
+  JS commands keep their operation order and explicitly supplied push targets.
 
   Closed content is absent, as with Radix portals. Initial SSR intentionally
   omits Radix's effect-installed ARIA links; the colocated hook establishes
@@ -31,6 +36,8 @@ defmodule ShadcnLiveview.Components.Drawer do
   attr :trigger_id, :string, default: nil
   attr :on_open, JS, default: nil
   attr :on_close, JS, default: nil
+  attr :target, :any, default: nil
+  attr :rest, :global
   attr :direction, :string, default: "bottom", values: ~w(top right bottom left)
   attr :draggable, :boolean, default: true
   attr :close_threshold, :float, default: 0.25
@@ -38,20 +45,20 @@ defmodule ShadcnLiveview.Components.Drawer do
   slot :content, required: true
   @doc "Renders trigger and open content slots, yielding the explicit modal context."
   def drawer(assigns) do
+    target = assigns.target || Map.get(assigns.rest, :"phx-target")
+
     context = %{
       id: assigns.id,
       open: assigns.open,
       modal: assigns.modal,
+      target: target,
       dismissible: assigns.dismissible,
       title_id: assigns.title_id || assigns.id <> "-title",
       description_id: assigns.description_id || assigns.id <> "-description",
       trigger_id: assigns.trigger_id || assigns.id <> "-trigger",
-      on_open: assigns.on_open || JS.push("shadcn:modal-open", value: %{id: assigns.id}),
-      on_close:
-        if(assigns.dismissible,
-          do: assigns.on_close || JS.push("shadcn:modal-close", value: %{id: assigns.id}),
-          else: %JS{}
-        ),
+      close_event: if(is_nil(assigns.on_close), do: "shadcn:modal-close"),
+      on_open: assigns.on_open || push("shadcn:modal-open", assigns.id, target),
+      on_close: assigns.on_close || push("shadcn:modal-close", assigns.id, target),
       direction: assigns.direction,
       draggable: assigns.draggable,
       close_threshold: assigns.close_threshold
@@ -64,6 +71,9 @@ defmodule ShadcnLiveview.Components.Drawer do
     {render_slot(@content, @context)}
     """
   end
+
+  defp push(event, id, target) when target in [nil, ""], do: JS.push(event, value: %{id: id})
+  defp push(event, id, target), do: JS.push(event, value: %{id: id}, target: target)
 
   attr :context, :map, required: true
   attr :class, :string, default: nil
@@ -81,6 +91,7 @@ defmodule ShadcnLiveview.Components.Drawer do
       data-state={if @context.open, do: "open", else: "closed"}
       data-slot="drawer-trigger"
       class={@class}
+      phx-target={@context.target}
       phx-click={if @context.open, do: @context.on_close, else: @context.on_open}
       {@rest}
     >
@@ -107,6 +118,7 @@ defmodule ShadcnLiveview.Components.Drawer do
         ])
       }
       style={"pointer-events:auto;" <> (@style || "")}
+      phx-target={@context.target}
       phx-click={if @context.dismissible, do: @context.on_close}
       data-vaul-overlay=""
       data-vaul-snap-points="false"
@@ -146,10 +158,12 @@ defmodule ShadcnLiveview.Components.Drawer do
       }
       tabindex="-1"
       phx-hook=".Modal"
+      phx-target={@context.target}
       phx-value-modal={to_string(@context.modal)}
       phx-value-dismissible={to_string(@context.dismissible)}
       phx-value-trigger-id={@context.trigger_id}
       phx-modal-close={@context.on_close}
+      phx-modal-close-event={@context.close_event}
       phx-value-draggable={to_string(@context.draggable)}
       phx-value-close-threshold={@context.close_threshold}
       {@rest}
@@ -159,6 +173,11 @@ defmodule ShadcnLiveview.Components.Drawer do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Modal">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           const key = Symbol.for("shadcn-liveview.modal-stack");
           this.registry = window[key] ||= { stack: [], overflow: null };
@@ -231,7 +250,9 @@ defmodule ShadcnLiveview.Components.Drawer do
         close() {
           if (this.closing) return;
           this.closing = true;
-          this.liveSocket.execJS(this.el, this.el.getAttribute("phx-modal-close"));
+          const event = this.el.getAttribute("phx-modal-close-event");
+          if (event) return this.sendEvent(event, {id: this.el.id});
+          return this.liveSocket.execJS(this.el, this.el.getAttribute("phx-modal-close"));
         },
         focusable() {
           return [...this.el.querySelectorAll('button, [href], input, select, textarea, [tabindex]')]
@@ -397,6 +418,7 @@ defmodule ShadcnLiveview.Components.Drawer do
       type={@type}
       data-slot="drawer-close"
       class={@class}
+      phx-target={@context.target}
       phx-click={JS.concat(@on_click, @context.on_close)}
       {@rest}
     >

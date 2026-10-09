@@ -52,6 +52,34 @@ defmodule ShadcnLiveview.ControlsTest do
     assert Floki.attribute(document, "#mail", "data-size") == ["sm"]
   end
 
+  test "binary controls distinguish explicit false and mixed values from uncontrolled defaults" do
+    assigns = %{}
+
+    document =
+      parse(~H"""
+      <.checkbox id="uncontrolled-check" default_checked={true} />
+      <.checkbox id="controlled-check" checked={false} default_checked={true} />
+      <.checkbox id="mixed-check" checked="indeterminate" default_checked={true} />
+      <.switch id="uncontrolled-switch" default_checked={true} />
+      <.switch id="controlled-switch" checked={false} default_checked={true} />
+      """)
+
+    for id <- ["uncontrolled-check", "uncontrolled-switch"] do
+      assert Floki.attribute(document, "##{id}", "phx-value-controlled") == ["false"]
+      assert Floki.attribute(document, "##{id}", "phx-value-state") == ["checked"]
+      assert Floki.attribute(document, "##{id}", "phx-value-initial") == ["checked"]
+    end
+
+    for id <- ["controlled-check", "controlled-switch"] do
+      assert Floki.attribute(document, "##{id}", "phx-value-controlled") == ["true"]
+      assert Floki.attribute(document, "##{id}", "phx-value-state") == ["unchecked"]
+      assert Floki.attribute(document, "##{id}", "aria-checked") == ["false"]
+    end
+
+    assert Floki.attribute(document, "#mixed-check", "phx-value-controlled") == ["true"]
+    assert Floki.attribute(document, "#mixed-check", "phx-value-state") == ["indeterminate"]
+  end
+
   test "slider ranges derive from supplied bounds and values, not a midpoint constant" do
     assigns = %{}
 
@@ -108,6 +136,29 @@ defmodule ShadcnLiveview.ControlsTest do
     assert Floki.attribute(document, "#fractional [data-slot=slider-range]", "style") == [
              "left:33.333333333333336%;right:33.33333333333333%"
            ]
+  end
+
+  test "slider controlled values override defaults while mounted reset defaults remain separate" do
+    assigns = %{}
+
+    document =
+      parse(~H"""
+      <.slider id="uncontrolled-slider" default_value={[25]} />
+      <.slider id="controlled-slider" value={[40]} default_value={[25]} />
+      <.slider id="empty-slider" value={[]} default_value={[25]} />
+      <.slider id="implicit-slider" min={10} max={30} />
+      """)
+
+    assert Floki.attribute(document, "#uncontrolled-slider", "phx-value-controlled") == ["false"]
+    assert Floki.attribute(document, "#uncontrolled-slider", "phx-value-values") == ["[25]"]
+    assert Floki.attribute(document, "#uncontrolled-slider", "phx-value-initial") == ["[25]"]
+    assert Floki.attribute(document, "#controlled-slider", "phx-value-controlled") == ["true"]
+    assert Floki.attribute(document, "#controlled-slider", "phx-value-values") == ["[40]"]
+    assert Floki.attribute(document, "#controlled-slider", "phx-value-initial") == ["[25]"]
+    assert Floki.attribute(document, "#empty-slider", "phx-value-controlled") == ["true"]
+    assert Floki.attribute(document, "#empty-slider", "phx-value-values") == ["[]"]
+    assert Floki.attribute(document, "#implicit-slider", "phx-value-controlled") == ["false"]
+    assert Floki.attribute(document, "#implicit-slider", "phx-value-values") == ["[10]"]
   end
 
   test "disclosure context scopes controls and closed content does not render its children" do

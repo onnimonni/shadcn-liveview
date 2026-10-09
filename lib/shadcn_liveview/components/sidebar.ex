@@ -10,6 +10,8 @@ defmodule ShadcnLiveview.Components.Sidebar do
   children become the mobile dialog without hidden duplicate content or IDs.
   Nested primitives accept caller classes and global attributes. Use `tag="a"`
   on menu/group buttons for link composition instead of a React asChild wrapper.
+  Hook events honor phx-target on the root or nearest containing element,
+  including internal state changes and completion acknowledgements.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -51,6 +53,11 @@ defmodule ShadcnLiveview.Components.Sidebar do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Sidebar">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           this.abort = new AbortController(); this.open = this.el.getAttribute("phx-value-open") === "true"; this.serverOpen = this.open;
           this.serverMobileOpen = this.el.getAttribute("phx-value-mobile-open") === "true"; this.mobileOpen = this.serverMobileOpen;
@@ -85,16 +92,16 @@ defmodule ShadcnLiveview.Components.Sidebar do
         containers() { return this.roots().map(root => root.querySelector('[data-slot="sidebar-container"]')); },
         closeMobile() {
           if (!this.mobileOpen) return;
-          this.mobileOpen = false; this.pushEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:false}); this.paint();
+          this.mobileOpen = false; this.sendEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:false}); this.paint();
         },
         toggle(trigger) {
           if (this.media.matches) {
             this.returnFocus = trigger; this.mobileOpen = !this.mobileOpen;
             if(this.mobileOpen) document.dispatchEvent(new CustomEvent("sidebar:mobile-open",{detail:{id:this.el.id}}));
-            this.pushEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:this.mobileOpen});
+            this.sendEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:this.mobileOpen});
           } else {
             this.open = !this.open; document.cookie = "sidebar_state=" + this.open + "; path=/; max-age=604800";
-            this.pushEvent("shadcn:sidebar-change", {id:this.el.id,open:this.open});
+            this.sendEvent("shadcn:sidebar-change", {id:this.el.id,open:this.open});
           }
           this.paint(); this.el.dispatchEvent(new CustomEvent("sidebar:change", {detail:{open:this.open, mobileOpen:this.mobileOpen},bubbles:true}));
         },

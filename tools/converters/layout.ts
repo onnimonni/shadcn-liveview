@@ -1,10 +1,13 @@
 import type { ComponentSpec } from "../generate"
 import { cn } from "cn"
 import { buttonVariants } from "../../vendor/shadcn/ui/button"
+import { carouselHook, resizableHook, sidebarHook } from "./layout-hooks"
 
 const header = (spec: ComponentSpec, docs: string) => `defmodule ShadcnLiveview.Components.${spec.moduleName} do
   @moduledoc """
   ${docs}
+  Hook events honor phx-target on the root or nearest containing element,
+  including internal state changes and completion acknowledgements.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -24,12 +27,14 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 function carousel(spec: ComponentSpec): string {
   return header(spec, `Composable carousel with an explicit caller ID. Bind the root's slot context with
   \`:let={carousel}\` and pass \`carousel={carousel}\` to content, items and controls.
-  Orientation, loop and start_index configure the native scrolling hook. Controls
+  Orientation, loop and start_index configure the vanilla Embla hook. Controls
   are disabled during SSR, like upstream Embla, and synchronize after mounting.
   Items retain their caller-specified basis classes; scrolling supports pointer,
-  touch, keyboard, responsive resizing and independently scoped instances.
-  Keyboard focus survives server acknowledgements and disabling an end control;
-  the region remains keyboard reachable without changing upstream SSR markup.`) + `
+  touch, responsive resizing and independently scoped instances. ArrowLeft and
+  ArrowRight select the previous and next slide in both orientations, like the
+  upstream carousel; ArrowUp and ArrowDown do not navigate a vertical carousel.
+  Enabled controls retain keyboard focus across server acknowledgements. End
+  controls become disabled without moving focus to an extra region tab stop.`) + `
   @control_classes %{
 ${["default", "outline", "secondary", "ghost", "destructive", "link"].flatMap(variant => ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg"].map(size => `    {"${variant}", "${size}"} => ${JSON.stringify(cn(buttonVariants({variant: variant as "outline", size: size as "icon-sm"}), "absolute touch-manipulation rounded-full"))}`)).join(",\n")}
   }
@@ -49,91 +54,7 @@ ${globals}
       {render_slot(@inner_block, @context)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Carousel">
-      export default {
-        mounted() {
-          this.abort = new AbortController();
-          const on = (target, name, callback, options = {}) => target.addEventListener(name, callback, {...options, signal: this.abort.signal});
-          this.index = Number(this.el.getAttribute("phx-value-start-index") || 0); this.serverIndex = this.index;
-          on(this.el, "click", event => {
-            const button = event.target.closest('[data-slot="carousel-previous"], [data-slot="carousel-next"]');
-            if (!button || button.closest('[data-slot="carousel"]') !== this.el) return;
-            this.move(button.getAttribute("data-slot") === "carousel-next" ? 1 : -1);
-          });
-          on(this.el, "keydown", event => {
-            if (event.target.closest('input,textarea,select,[contenteditable=true]')) return;
-            const vertical = this.vertical();
-            const delta = event.key === "ArrowLeft" || (vertical && event.key === "ArrowUp") ? -1 : event.key === "ArrowRight" || (vertical && event.key === "ArrowDown") ? 1 : 0;
-            if (delta) { event.preventDefault(); this.move(delta); }
-          });
-          on(this.el, "pointerdown", event => {
-            if (!this.viewport || !this.viewport.contains(event.target) || event.button !== 0 || event.target.closest('button,a,input,textarea,select')) return;
-            this.drag = {id: event.pointerId, point: this.vertical() ? event.clientY : event.clientX, offset: this.position()};
-            this.viewport.setPointerCapture(event.pointerId);
-          });
-          on(this.el, "pointermove", event => {
-            if (!this.drag || this.drag.id !== event.pointerId) return;
-            const distance = this.drag.point - (this.vertical() ? event.clientY : event.clientX);
-            if (Math.abs(distance) > 4) { event.preventDefault(); this.scroll(this.drag.offset + distance, "instant"); }
-          });
-          const end = () => { if (!this.drag) return; const focused = this.el.contains(document.activeElement) ? document.activeElement : null; this.drag = null; this.index = this.nearest(); this.go("smooth"); this.pushEvent("shadcn:carousel-change", {id: this.el.id, value: this.index}, () => this.restoreFocus(focused)); };
-          on(this.el, "pointerup", end); on(this.el, "pointercancel", end);
-          this.observer = new ResizeObserver(() => { this.measure(); this.go("instant"); });
-          this.configure();
-        },
-        vertical() { return this.el.getAttribute("phx-value-orientation") === "vertical"; },
-        position() { return this.vertical() ? this.viewport.scrollTop : this.viewport.scrollLeft; },
-        scroll(position, behavior) { this.viewport.scrollTo(this.vertical() ? {top: position, behavior} : {left: position, behavior}); },
-        configure() {
-          if (!this.el.hasAttribute("tabindex")) this.el.tabIndex = 0;
-          this.observer.disconnect();
-          this.viewport = [...this.el.querySelectorAll('[data-slot="carousel-content"]')].find(node => node.closest('[data-slot="carousel"]') === this.el);
-          if (!this.viewport) return;
-          this.track = this.viewport.firstElementChild;
-          this.viewport.style.touchAction = this.vertical() ? "pan-x" : "pan-y";
-          this.observer.observe(this.viewport); this.observer.observe(this.track);
-          this.measure(); this.go("instant");
-        },
-        measure() {
-          if (!this.viewport) return;
-          const items = [...this.track.children].filter(node => node.getAttribute("data-slot") === "carousel-item");
-          const max = Math.max(0, this.vertical() ? this.viewport.scrollHeight - this.viewport.clientHeight : this.viewport.scrollWidth - this.viewport.clientWidth);
-          const origin = items.length ? (this.vertical() ? items[0].offsetTop : items[0].offsetLeft) : 0;
-          this.positions = [...new Set(items.map(node => Math.min(max, Math.max(0, (this.vertical() ? node.offsetTop : node.offsetLeft) - origin))))];
-          if (!this.positions.length) this.positions = [0];
-          this.index = Math.max(0, Math.min(this.index, this.positions.length - 1));
-        },
-        nearest() { return this.positions.reduce((best, position, index) => Math.abs(position - this.position()) < Math.abs(this.positions[best] - this.position()) ? index : best, 0); },
-        move(delta) {
-          if (!this.viewport) return;
-          const focused = this.el.contains(document.activeElement) ? document.activeElement : null;
-          const count = this.positions.length;
-          const loop = this.el.getAttribute("phx-value-loop") === "true";
-          this.index = loop ? (this.index + delta + count) % count : Math.max(0, Math.min(count - 1, this.index + delta));
-          this.go("smooth");
-          this.pushEvent("shadcn:carousel-change", {id: this.el.id, value: this.index}, () => this.restoreFocus(focused));
-        },
-        go(behavior) {
-          if (!this.viewport) return;
-          this.scroll(this.positions[this.index] || 0, behavior);
-          const loop = this.el.getAttribute("phx-value-loop") === "true" && this.positions.length > 1;
-          this.el.querySelectorAll('[data-slot="carousel-previous"], [data-slot="carousel-next"]').forEach(button => {
-            if (button.closest('[data-slot="carousel"]') !== this.el) return;
-            const focused = document.activeElement === button;
-            button.disabled = button.getAttribute("phx-value-disabled") === "true" || (!loop && (button.getAttribute("data-slot") === "carousel-previous" ? this.index === 0 : this.index === this.positions.length - 1));
-            if (focused && button.disabled) this.el.focus();
-          });
-          this.el.dispatchEvent(new CustomEvent("carousel:select", {detail: {index: this.index}, bubbles: true}));
-        },
-        restoreFocus(focused) {
-          if (!focused || document.activeElement !== document.body) return;
-          const slot = focused.getAttribute("data-slot");
-          const replacement = slot && this.el.querySelector('[data-slot="' + slot + '"]');
-          const target = focused.isConnected && !focused.disabled ? focused : replacement && !replacement.disabled ? replacement : this.el;
-          target.focus();
-        },
-        updated() { const index = Number(this.el.getAttribute("phx-value-start-index") || 0); if (index !== this.serverIndex) {this.index = index;this.serverIndex = index;} this.configure(); },
-        destroyed() { this.abort.abort(); this.observer.disconnect(); }
-      }
+${carouselHook}
     </script>
     """
   end
@@ -193,10 +114,20 @@ function resizable(spec: ComponentSpec): string {
   \`:let={group}\` and pass \`group={group}\` to its direct children. The hook
   installs separator ARIA relationships after layout, supports pointer capture,
   arrow/Home/End keyboard resizing, min/max constraints and collapsible panels.
-  Listen for \`resizable:change\` to persist the percentage layout in LiveView.`) + `
+  Arrow keys resize by five percentage points, including with Shift held.
+  Double-clicking an enabled separator resets the first adjacent panel with an
+  explicit default_size, respecting its constraints; panels without defaults do
+  not reset. Disabled groups, separators and fixed panels cannot be resized.
+  Set disable_double_click on a separator to opt out of this reset.
+  Keep panel default_size values as reset baselines. Bind the group's layout to
+  a map of panel IDs to percentages for caller-owned state, and persist the
+  value map from shadcn:resizable-change; resizable:change exposes that same map
+  as a browser event. Reset notifications use the same payload and phx-target
+  routing as pointer and keyboard resizing.`) + `
   attr :id, :string, required: true
   attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
   attr :disabled, :boolean, default: false
+  attr :layout, :map, default: nil
 ${globals}
   def resizable_panel_group(assigns) do
     assigns = assign(assigns, :context, %{id: assigns.id, orientation: assigns.orientation, disabled: assigns.disabled})
@@ -204,121 +135,12 @@ ${globals}
     <div id={@id} data-slot="resizable-panel-group" data-group="true" data-testid={@id}
       class={classes([${JSON.stringify(groupClass)}, @class])}
       style={"height:100%;width:100%;overflow:hidden;display:flex;flex-direction:" <> if(@orientation == "horizontal", do: "row", else: "column") <> ";flex-wrap:nowrap;touch-action:" <> if(@orientation == "horizontal", do: "pan-y", else: "pan-x")}
-      phx-hook=".Resizable" phx-value-orientation={@orientation} phx-value-disabled={to_string(@disabled)} {@rest}>
+      phx-hook=".Resizable" phx-value-orientation={@orientation} phx-value-disabled={to_string(@disabled)}
+      phx-value-layout={if @layout, do: Jason.encode!(@layout)} {@rest}>
       {render_slot(@inner_block, @context)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Resizable">
-      export default {
-        mounted() {
-          this.abort = new AbortController();
-          const on = (name, callback) => this.el.addEventListener(name, callback, {signal: this.abort.signal});
-          on("pointerdown", event => {
-            const handle = event.target.closest('[data-slot="resizable-handle"]');
-            if (event.button !== 0 || !this.usable(handle)) return;
-            event.preventDefault(); handle.setPointerCapture(event.pointerId);
-            this.drag = {handle, id: event.pointerId, start: this.point(event), sizes: this.sizes()};
-            handle.dataset.separator = "active";
-          });
-          on("pointermove", event => { if (this.drag && this.drag.id === event.pointerId) this.resize(this.drag.handle, this.drag.sizes, (this.point(event) - this.drag.start) / this.length() * 100); });
-          const end = event => {
-            if (!this.drag || this.drag.id !== event.pointerId) return;
-            this.drag.handle.dataset.separator = "inactive"; this.drag = null; this.emit();
-          };
-          on("pointerup", end); on("pointercancel", end); on("lostpointercapture", end);
-          on("keydown", event => {
-            const handle = event.target.closest('[data-slot="resizable-handle"]');
-            if (!this.usable(handle)) return;
-            const keys = this.vertical() ? ["ArrowUp", "ArrowDown"] : ["ArrowLeft", "ArrowRight"];
-            let delta = event.key === keys[0] ? -1 : event.key === keys[1] ? 1 : 0;
-            if (event.key === "Home") delta = -100;
-            if (event.key === "End") delta = 100;
-            if (!delta) return;
-            event.preventDefault(); this.resize(handle, this.sizes(), delta * (event.shiftKey && Math.abs(delta) === 1 ? 10 : 1)); this.emit();
-          });
-          this.observer = new ResizeObserver(() => this.aria()); this.observer.observe(this.el); this.configure();
-        },
-        vertical() { return this.el.getAttribute("phx-value-orientation") === "vertical"; },
-        point(event) { return this.vertical() ? event.clientY : event.clientX; },
-        length() { return this.vertical() ? this.el.clientHeight : this.el.clientWidth; },
-        panels() { return [...this.el.children].filter(node => node.dataset.slot === "resizable-panel"); },
-        handles() { return [...this.el.children].filter(node => node.dataset.slot === "resizable-handle"); },
-        sizes() { const sizes = this.panels().map(node => this.vertical() ? node.getBoundingClientRect().height : node.getBoundingClientRect().width); const total = sizes.reduce((a,b) => a+b, 0); return sizes.map(size => total ? size / total * 100 : 100 / sizes.length); },
-        bound(panel, name, fallback) {
-          const value = panel.getAttribute("phx-value-" + name);
-          if (!value) return fallback;
-          if (value.endsWith("%")) return parseFloat(value);
-          let pixels;
-          if (/^[\\d.]+(?:px)?$/.test(value)) pixels = parseFloat(value);
-          else {
-            const probe = document.createElement("div"); probe.style.position = "absolute"; probe.style.visibility = "hidden"; probe.style[this.vertical() ? "height" : "width"] = value;
-            this.el.append(probe); pixels = this.vertical() ? probe.getBoundingClientRect().height : probe.getBoundingClientRect().width; probe.remove();
-          }
-          return this.length() ? pixels / this.length() * 100 : fallback;
-        },
-        pair(handle) {
-          const panels = this.panels(); return [panels.indexOf(handle.previousElementSibling), panels.indexOf(handle.nextElementSibling)];
-        },
-        usable(handle) {
-          if (!handle || handle.parentElement !== this.el || handle.getAttribute("aria-disabled") === "true" || this.el.getAttribute("phx-value-disabled") === "true") return false;
-          const [left,right] = this.pair(handle); const panels = this.panels();
-          return left >= 0 && right >= 0 && ![panels[left],panels[right]].some(panel => panel.dataset.disabled === "true");
-        },
-        resize(handle, sizes, delta) {
-          const [a,b] = this.pair(handle); const panels = this.panels(); const total = sizes[a] + sizes[b];
-          const minA = this.bound(panels[a], "min-size", 0), minB = this.bound(panels[b], "min-size", 0);
-          const maxA = this.bound(panels[a], "max-size", 100), maxB = this.bound(panels[b], "max-size", 100);
-          const collapsedA = panels[a].getAttribute("phx-value-collapsible") === "true" ? this.bound(panels[a], "collapsed-size", 0) : minA;
-          const collapsedB = panels[b].getAttribute("phx-value-collapsible") === "true" ? this.bound(panels[b], "collapsed-size", 0) : minB;
-          const low = Math.max(collapsedA, total - maxB), high = Math.min(maxA, total - collapsedB);
-          if (low > high) return;
-          let value = Math.max(low, Math.min(high, sizes[a] + delta));
-          if (value < minA) value = value < (minA + collapsedA) / 2 ? collapsedA : minA;
-          if (total - value < minB) value = total - (total - value < (minB + collapsedB) / 2 ? collapsedB : minB);
-          value = Math.max(low, Math.min(high, value));
-          const next = [...sizes]; next[a] = value; next[b] = total - value;
-          panels.forEach((panel,index) => { panel.style.flexBasis = "0px"; panel.style.flexGrow = next[index]; panel.style.flexShrink = "1"; }); this.aria();
-        },
-        configure() {
-          const panels = this.panels(), values = this.sizes();
-          const signature = panels.map(panel => [panel.id,...["default-size","min-size","max-size","collapsible","collapsed-size"].map(name => panel.getAttribute("phx-value-"+name))].join(":")).join("|");
-          if (signature === this.layoutSignature) {this.aria();return;} this.layoutSignature = signature;
-          const defaults = panels.map(panel => panel.getAttribute("phx-value-default-size") ? this.bound(panel, "default-size", 0) : null);
-          const specified = defaults.reduce((sum,value) => sum + (value || 0), 0), missing = defaults.filter(value => value === null).length;
-          if (defaults.some(value => value !== null)) {
-            const requested = defaults.map(value => value === null ? Math.max(0,100-specified) / missing : value);
-            const sum = requested.reduce((total,value) => total + value,0);
-            if (sum) requested.forEach((value,index) => {values[index] = value / sum * 100;});
-          }
-          const bounds = panels.map(panel => [this.bound(panel, "min-size", 0), this.bound(panel, "max-size", 100)]);
-          panels.forEach((panel,index) => { values[index] = Math.max(bounds[index][0], Math.min(bounds[index][1], values[index])); });
-          for (let pass = 0; pass < panels.length; pass++) {
-            const difference = 100 - values.reduce((sum,value) => sum + value, 0);
-            if (Math.abs(difference) < .001) break;
-            const adjustable = values.map((value,index) => index).filter(index => difference > 0 ? values[index] < bounds[index][1] : values[index] > bounds[index][0]);
-            if (!adjustable.length) break;
-            adjustable.forEach(index => {values[index] = Math.max(bounds[index][0], Math.min(bounds[index][1], values[index] + difference / adjustable.length));});
-          }
-          panels.forEach((panel,index) => {panel.style.flexBasis="0px";panel.style.flexGrow=values[index];panel.style.flexShrink="1";}); this.aria();
-        },
-        aria() {
-          if (!this.length()) return;
-          const panels = this.panels(), sizes = this.sizes();
-          this.handles().forEach(handle => {
-            const [a,b] = this.pair(handle); if (a < 0 || b < 0) return;
-            handle.setAttribute("aria-controls", panels[a].id);
-            handle.setAttribute("aria-valuemin", String(Math.round(this.bound(panels[a], "min-size", 0))));
-            handle.setAttribute("aria-valuemax", String(Math.round(this.bound(panels[a], "max-size", 100))));
-            handle.setAttribute("aria-valuenow", String(Math.round(sizes[a])));
-          });
-        },
-        emit() {
-          const sizes = this.sizes(), value = Object.fromEntries(this.panels().map((panel,index) => [panel.id, sizes[index]]));
-          this.el.dispatchEvent(new CustomEvent("resizable:change", {detail:value,bubbles:true}));
-          this.pushEvent("shadcn:resizable-change", {id:this.el.id,value});
-        },
-        updated() { this.configure(); },
-        destroyed() { this.abort.abort(); this.observer.disconnect(); this.drag = null; }
-      }
+${resizableHook}
     </script>
     """
   end
@@ -348,12 +170,14 @@ ${globals}
   attr :group, :map, required: true
   attr :with_handle, :boolean, default: false
   attr :disabled, :boolean, default: false
+  attr :disable_double_click, :boolean, default: false
 ${globals}
   def resizable_handle(assigns) do
     assigns = assign(assigns, :disabled, assigns.disabled or assigns.group.disabled)
     ~H"""
     <div id={@id} data-slot="resizable-handle" data-testid={@id} data-separator={if @disabled, do: "disabled", else: "inactive"}
       role="separator" aria-disabled={if @disabled, do: "true"} aria-orientation={if @group.orientation == "horizontal", do: "vertical", else: "horizontal"}
+      phx-value-disable-double-click={to_string(@disable_double_click)}
       tabindex={if !@disabled, do: "0"} class={classes([${JSON.stringify(handleClass)}, @class])}
       style={"flex-basis:auto;" <> if(@disabled, do: "cursor:not-allowed;", else: "") <> "flex-grow:0;flex-shrink:0;touch-action:none"} {@rest}>
       <div :if={@with_handle} class="z-10 flex h-6 w-1 shrink-0 rounded-lg bg-border"></div>
@@ -388,7 +212,7 @@ function sidebar(spec: ComponentSpec): string {
   Upstream always renders desktop markup during SSR because its media-query hook
   initializes false; mobile behavior is installed only after mounting. The same
   children become the mobile dialog without hidden duplicate content or IDs.
-  Nested primitives accept caller classes and global attributes. Use \`tag=\"a\"\`
+  Nested primitives accept caller classes and global attributes. Use \`tag="a"\`
   on menu/group buttons for link composition instead of a React asChild wrapper.`) + `
   attr :id, :string, required: true
   attr :open, :boolean, default: true
@@ -406,103 +230,7 @@ ${globals}
       {render_slot(@inner_block, @context)}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Sidebar">
-      export default {
-        mounted() {
-          this.abort = new AbortController(); this.open = this.el.getAttribute("phx-value-open") === "true"; this.serverOpen = this.open;
-          this.serverMobileOpen = this.el.getAttribute("phx-value-mobile-open") === "true"; this.mobileOpen = this.serverMobileOpen;
-          this.original = new WeakMap();
-          this.media = matchMedia("(max-width: 767px)");
-          this.mobileOpen = this.mobileOpen && this.media.matches;
-          const on = (target,name,fn) => target.addEventListener(name,fn,{signal:this.abort.signal});
-          on(this.el,"click",event => {
-            const trigger = event.target.closest('[data-sidebar="trigger"],[data-sidebar="rail"]');
-            if (trigger && trigger.closest('[data-slot="sidebar-wrapper"]') === this.el) this.toggle(trigger);
-          });
-          on(document,"sidebar:mobile-open",event => {if(event.detail.id!==this.el.id) this.closeMobile();});
-          on(document,"keydown",event => {
-            if (event.key.toLowerCase() === "b" && (event.ctrlKey || event.metaKey)) {
-              const owner = document.activeElement?.closest('[data-slot="sidebar-wrapper"]') || document.querySelector('[data-slot="sidebar-wrapper"]');
-              if (owner === this.el) { event.preventDefault(); this.toggle(document.activeElement); }
-            }
-            if (!this.mobileOpen) return;
-            if (event.key === "Escape") { event.preventDefault(); this.closeMobile(); }
-            if (event.key === "Tab") {
-              const container = this.containers()[0]; if (!container) return;
-              const targets = [...container.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
-              const first = targets[0] || container, last = targets[targets.length-1] || container;
-              if (event.shiftKey && (document.activeElement === first || document.activeElement === container)) { event.preventDefault(); last.focus(); }
-              else if (!event.shiftKey && (document.activeElement === last || !container.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
-            }
-          });
-          on(this.media,"change",() => { this.closeMobile(); this.paint(); });
-          this.paint();
-        },
-        roots() { return [...this.el.querySelectorAll('[data-slot="sidebar"]')].filter(node => node.closest('[data-slot="sidebar-wrapper"]') === this.el && node.hasAttribute("data-collapsible")); },
-        containers() { return this.roots().map(root => root.querySelector('[data-slot="sidebar-container"]')); },
-        closeMobile() {
-          if (!this.mobileOpen) return;
-          this.mobileOpen = false; this.pushEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:false}); this.paint();
-        },
-        toggle(trigger) {
-          if (this.media.matches) {
-            this.returnFocus = trigger; this.mobileOpen = !this.mobileOpen;
-            if(this.mobileOpen) document.dispatchEvent(new CustomEvent("sidebar:mobile-open",{detail:{id:this.el.id}}));
-            this.pushEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:this.mobileOpen});
-          } else {
-            this.open = !this.open; document.cookie = "sidebar_state=" + this.open + "; path=/; max-age=604800";
-            this.pushEvent("shadcn:sidebar-change", {id:this.el.id,open:this.open});
-          }
-          this.paint(); this.el.dispatchEvent(new CustomEvent("sidebar:change", {detail:{open:this.open, mobileOpen:this.mobileOpen},bubbles:true}));
-        },
-        paint() {
-          const mobile = this.media.matches;
-          this.roots().forEach(root => {
-            const container = root.querySelector('[data-slot="sidebar-container"]');
-            const mode = root.getAttribute("phx-value-collapsible") || "offcanvas";
-            root.dataset.state = mobile || this.open ? "expanded" : "collapsed"; root.dataset.collapsible = mobile || this.open ? "" : mode;
-            if (!container) return;
-            if (!this.original.has(container)) this.original.set(container,Object.fromEntries(["role","aria-modal","aria-label","tabindex","data-mobile","style"].map(name => [name,container.getAttribute(name)])));
-            if (mobile) {
-              root.style.display = this.mobileOpen ? "block" : "none";
-              root.querySelector('[data-slot="sidebar-gap"]').style.display = "none";
-              container.style.cssText = (this.original.get(container).style || "") + ";display:flex;position:fixed;top:0;bottom:0;width:18rem;max-width:calc(100vw - 2rem);z-index:51;" + (root.dataset.side === "right" ? "right:0;left:auto;" : "left:0;right:auto;");
-              container.setAttribute("role","dialog"); container.setAttribute("aria-modal","true"); container.setAttribute("aria-label","Sidebar"); container.setAttribute("tabindex","-1"); container.dataset.mobile = "true";
-              container.style.setProperty("--sidebar-width", "18rem");
-            } else {
-              root.style.removeProperty("display");
-              root.querySelector('[data-slot="sidebar-gap"]').style.removeProperty("display");
-              Object.entries(this.original.get(container)).forEach(([name,value]) => {if(value===null) container.removeAttribute(name);else container.setAttribute(name,value);});
-            }
-          });
-          this.el.querySelectorAll('[data-sidebar="trigger"],[data-sidebar="rail"]').forEach(trigger => {
-            if (trigger.closest('[data-slot="sidebar-wrapper"]') !== this.el) return;
-            const target = this.containers()[0]; if (target) trigger.setAttribute("aria-controls",target.id);
-            trigger.setAttribute("aria-expanded",String(mobile ? this.mobileOpen : this.open));
-          });
-          if (mobile && this.mobileOpen && !this.backdrop) {
-            this.backdrop = document.createElement("div"); this.backdrop.style.cssText="position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:50";
-            this.backdrop.addEventListener("click",() => this.closeMobile(),{signal:this.abort.signal});
-            this.el.append(this.backdrop); this.containers()[0]?.focus();
-            this.locked = true; this.previousOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";
-          } else if (mobile && this.mobileOpen && !this.backdrop.isConnected) {
-            this.el.append(this.backdrop);
-          } else if ((!mobile || !this.mobileOpen) && this.backdrop) {
-            this.backdrop.remove(); this.backdrop=null; this.unlock(); this.returnFocus?.focus();
-          }
-          if (mobile && this.mobileOpen) {
-            const container = this.containers()[0];
-            if (container && !container.contains(document.activeElement)) container.focus();
-          }
-        },
-        unlock() { if (this.locked) { document.body.style.overflow=this.previousOverflow;this.locked=false; } },
-        beforeUpdate() { this.backdrop?.remove(); },
-        updated() {
-          const state=this.el.getAttribute("phx-value-open")==="true"; if(state!==this.serverOpen){this.open=state;this.serverOpen=state;}
-          const mobileState=this.el.getAttribute("phx-value-mobile-open")==="true"; if(mobileState!==this.serverMobileOpen){this.mobileOpen=mobileState&&this.media.matches;this.serverMobileOpen=mobileState;}
-          this.paint();
-        },
-        destroyed() { this.abort.abort();this.backdrop?.remove();this.unlock(); }
-      }
+${sidebarHook}
     </script>
     """
   end

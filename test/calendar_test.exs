@@ -50,22 +50,76 @@ defmodule ShadcnLiveview.CalendarTest do
     assert Calendar.select_date(selected, %{"date" => "2024-02-05"}).selected == [~D[2024-02-06]]
   end
 
-  test "range selection orders endpoints and starts a fresh range after completion" do
+  test "an empty range selects a completed same-day range and the same endpoint clears it" do
     state = %{mode: "range", selected: nil}
     first = Calendar.select_date(state, %{"date" => "2024-02-20"})
-    assert first.selected == %{from: ~D[2024-02-20], to: nil}
-    incomplete = %{mode: "range", selected: %{from: ~D[2024-02-20]}}
+    assert first.selected == %{from: ~D[2024-02-20], to: ~D[2024-02-20]}
+    assert Calendar.select_date(first, %{"date" => "2024-02-20"}).selected == nil
+    assert Calendar.select_date(%{state | selected: %{}}, %{"date" => "2024-02-20"}) == first
 
-    assert Calendar.select_date(incomplete, %{"date" => "2024-02-21"}).selected ==
-             %{from: ~D[2024-02-20], to: ~D[2024-02-21]}
+    cleared = Calendar.select_date(first, %{"date" => "2024-02-20"})
 
-    second = Calendar.select_date(first, %{"date" => "2024-02-10"})
-    assert second.selected == %{from: ~D[2024-02-10], to: ~D[2024-02-20]}
+    assert Calendar.select_date(cleared, %{"date" => "2024-02-10"}).selected ==
+             %{from: ~D[2024-02-10], to: ~D[2024-02-10]}
+  end
 
-    assert Calendar.select_date(second, %{"date" => "2024-02-25"}).selected == %{
-             from: ~D[2024-02-25],
-             to: nil
-           }
+  test "incomplete ranges order earlier and later picks and complete an equal start" do
+    for selection <- [%{from: ~D[2024-02-20]}, %{from: ~D[2024-02-20], to: nil}],
+        {clicked, expected} <- [
+          {"2024-02-10", %{from: ~D[2024-02-10], to: ~D[2024-02-20]}},
+          {"2024-02-20", %{from: ~D[2024-02-20], to: ~D[2024-02-20]}},
+          {"2024-02-21", %{from: ~D[2024-02-20], to: ~D[2024-02-21]}}
+        ] do
+      state = %{mode: "range", selected: selection}
+      assert Calendar.select_date(state, %{"date" => clicked}).selected == expected
+    end
+  end
+
+  test "completed ranges edit endpoints on earlier, later, inside and endpoint picks" do
+    state = %{mode: "range", selected: %{from: ~D[2024-02-10], to: ~D[2024-02-20]}}
+
+    # DayPicker addToRange defaults: min=0, max=0, required=false.
+    for {clicked, expected} <- [
+          {"2024-02-05", %{from: ~D[2024-02-05], to: ~D[2024-02-20]}},
+          {"2024-02-25", %{from: ~D[2024-02-10], to: ~D[2024-02-25]}},
+          {"2024-02-15", %{from: ~D[2024-02-10], to: ~D[2024-02-15]}},
+          {"2024-02-10", %{from: ~D[2024-02-10], to: ~D[2024-02-10]}},
+          {"2024-02-20", %{from: ~D[2024-02-20], to: ~D[2024-02-20]}}
+        ] do
+      assert Calendar.select_date(state, %{"date" => clicked}).selected == expected
+    end
+
+    endpoint = Calendar.select_date(state, %{"date" => "2024-02-20"})
+    assert Calendar.select_date(endpoint, %{"date" => "2024-02-20"}).selected == nil
+  end
+
+  test "bounded range fixture rejects disabled clicks but permits inclusive bounds" do
+    state = %{
+      month: ~D[2024-02-01],
+      mode: "range",
+      selected: %{from: ~D[2024-02-10], to: ~D[2024-02-12]},
+      disabled_before: ~D[2024-02-05],
+      disabled_after: ~D[2024-02-25],
+      start_month: ~D[2024-02-01],
+      end_month: ~D[2024-02-01]
+    }
+
+    for clicked <- ["2024-02-04", "2024-02-26"] do
+      assert Calendar.select_date(state, %{"date" => clicked}) == state
+    end
+
+    assert Calendar.select_date(state, %{"date" => "2024-02-05"}).selected ==
+             %{from: ~D[2024-02-05], to: ~D[2024-02-12]}
+
+    assert Calendar.select_date(state, %{"date" => "2024-02-25"}).selected ==
+             %{from: ~D[2024-02-10], to: ~D[2024-02-25]}
+
+    # Disabled dates inside a range do not reset it without excludeDisabled.
+    disabled_middle = Map.put(state, :disabled, [~D[2024-02-15]])
+    assert Calendar.select_date(disabled_middle, %{"date" => "2024-02-15"}) == disabled_middle
+
+    assert Calendar.select_date(disabled_middle, %{"date" => "2024-02-20"}).selected ==
+             %{from: ~D[2024-02-10], to: ~D[2024-02-20]}
   end
 
   test "multiple month grids cross the year boundary and advertise their layout" do

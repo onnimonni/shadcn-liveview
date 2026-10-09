@@ -3,7 +3,8 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
   Server-owned navigation selection. Pass the root's :let context to the list
   and items; each item's :let context goes to its trigger and content.
   on_value_change receives %{"id" => id, "value" => item_value}; an empty
-  value closes the menu. Links remain native anchors. IDs are caller-scoped.
+  value closes the menu. Events respect the nearest phx-target. Links remain
+  native anchors. IDs are caller-scoped.
   Optional <:indicator class="..." force_mount={false} /> is measured by the
   mounted hook, matching Radix's initially absent SSR indicator.
   Viewport relocation preserves the original DOM position and is undone before
@@ -122,7 +123,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
         },
         select(value) {
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.pushEvent(event,{id:this.el.id,value});
+          if (event) this.sendEvent(event,{id:this.el.id,value});
+        },
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
         },
         focusContent() {
           const content = document.getElementById("radix-" + this.el.id + "-content-" + this.pendingFocus);

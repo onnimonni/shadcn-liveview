@@ -1,5 +1,6 @@
 import React from "react"
 import type { ComponentFixture } from "../fixtures"
+import { bindLiveOverlayControls } from "../../assets/js/react-fixtures/overlay-controls"
 import { Button } from "../../vendor/shadcn/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../../vendor/shadcn/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle, AlertDialogTrigger } from "../../vendor/shadcn/ui/alert-dialog"
@@ -215,3 +216,5 @@ export const fixtures: LiveFixture[] = [
   ...(["top", "bottom", "left"] as const).map(side => sheetFixture(`sheet-${side}`, { id: `sheet-${side}-panel`, side, trigger: true, showCloseButton: false })),
   twoInstances("sheet", sheetFixture),
 ]
+
+bindLiveOverlayControls(fixtures)

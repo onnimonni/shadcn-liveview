@@ -8,15 +8,21 @@ defmodule ShadcnLiveview.Components.Chart do
   pairs may be used when CSS declaration order matters. Data is a list of row maps;
   series is a list of keys or maps with key, optional label and color.
 
-  The canvas supports grouped bars, lines and areas, signed values, missing samples,
-  axes, a pointer/keyboard tooltip and an optional legend. Its colocated SVG hook
-  observes the responsive container and redraws after LiveView data patches. It uses
-  only DOM/SVG APIs. chart_canvas creates a stable identified LiveView shell around
-  its server-owned geometry wrapper; the hook redraws only that wrapper's SVG,
-  tooltip and legend children. Caller attrs and the shell survive data updates.
+  The canvas follows the configured Recharts Cartesian defaults: 5px margins,
+  an optional categorical X axis (no implicit visible Y axis or grid), five
+  adaptive numeric-domain ticks, grouped bars with a 10% category gap and 4px
+  series gap, linear lines with white dots, and 60%-opacity areas without dots.
+  Missing samples break lines/areas; signed values expand the numeric domain.
+  Pointer/keyboard tooltips use ChartTooltipContent markup and series colors.
+  An optional bottom legend reserves its measured height. Each independent
+  colocated DOM/SVG hook observes its responsive container and redraws after
+  LiveView data patches, without React. The hook redraws only the server-owned
+  geometry wrapper's children, preserving the identified shell and caller attrs.
   A sized browser mounts the SVG; initial SSR deliberately emits the same empty
   geometry wrapper as Recharts 3, whose layout is initialized in effects.
   Ordinary container slots render on SSR when initial dimensions are positive.
+  The chart hook emits no LiveView events. Caller-rendered native controls retain
+  their Phoenix event bindings and phx-target attributes without interception.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
@@ -131,7 +137,7 @@ defmodule ShadcnLiveview.Components.Chart do
   attr :class, :string, default: nil
   attr :rest, :global
 
-  @doc "Renders data-driven SVG on mount/resize; each canvas requires its own stable DOM ID."
+  @doc "Renders responsive Cartesian SVG with Recharts defaults; axes toggles the X axis only. Each canvas needs a stable DOM ID."
   def chart_canvas(assigns) do
     unless Enum.all?(assigns.data, &is_map/1),
       do: raise(ArgumentError, "chart data must contain row maps")
@@ -187,6 +193,7 @@ defmodule ShadcnLiveview.Components.Chart do
       export default {
         mounted() {
           this.container = this.el.closest(".recharts-responsive-container");
+          this.listeners = [];
           this.resize = () => this.draw();
           this.observer = new ResizeObserver(this.resize);
           this.observer.observe(this.container);
@@ -198,6 +205,7 @@ defmodule ShadcnLiveview.Components.Chart do
           this.cleanListeners();
         },
         cleanListeners() {
+          cancelAnimationFrame(this.animation);
           for (const [node, event, handler] of this.listeners || []) node.removeEventListener(event, handler);
           this.listeners = [];
         },
@@ -208,8 +216,7 @@ defmodule ShadcnLiveview.Components.Chart do
           const box = this.container.getBoundingClientRect();
           if (box.width <= 0 || box.height <= 0) { this.canvas.replaceChildren(); return; }
           const width = Math.round(box.width), height = Math.round(box.height);
-          this.canvas.style.width = width + "px";
-          this.canvas.style.height = height + "px";
+          Object.assign(this.canvas.style, {width: width + "px", height: height + "px"});
           this.canvas.setAttribute("width", width);
           this.canvas.setAttribute("height", height);
           const svgNode = (tag, attrs, text) => {
@@ -218,127 +225,259 @@ defmodule ShadcnLiveview.Components.Chart do
             if (text !== undefined) node.textContent = String(text);
             return node;
           };
-          const svg = svgNode("svg", {width, height, viewBox: "0 0 " + width + " " + height,
-            role: "img", "aria-label": options.label, class: "recharts-surface"});
-          svg.append(svgNode("title", {}, options.label));
-          this.canvas.replaceChildren(svg);
-          const data = options.data, series = options.series;
-          if (!data.length || !series.length) {
-            svg.append(svgNode("text", {x: width / 2, y: height / 2, "text-anchor": "middle", fill: "currentColor"}, "No data"));
-            return;
-          }
-          const left = options.axes ? 44 : 8, top = 12;
-          const bottom = Math.max(top + 1, height - (options.axes ? 30 : 8) - (options.legend ? 24 : 0));
-          const right = Math.max(left + 1, width - 12), plotWidth = right - left, plotHeight = bottom - top;
-          const number = (row, key) => typeof row[key] === "number" && Number.isFinite(row[key]) ? row[key] : null;
-          const values = data.flatMap(row => series.map(item => number(row, item.key))).filter(value => value !== null);
-          const minimum = Math.min(0, ...values), maximum = Math.max(0, ...values);
-          const span = maximum - minimum || 1;
-          const y = value => bottom - (value - minimum) / span * plotHeight;
-          const step = plotWidth / data.length;
-          const x = index => left + step * (index + 0.5);
-          const zero = y(0);
-          if (options.axes) {
-            for (let index = 0; index <= 4; index++) {
-              const value = minimum + span * index / 4, yy = y(value);
-              svg.append(svgNode("line", {x1: left, y1: yy, x2: right, y2: yy, stroke: "var(--border, #ccc)", "stroke-opacity": 0.5}));
-              svg.append(svgNode("text", {x: left - 6, y: yy + 4, "text-anchor": "end", fill: "currentColor", "font-size": 10}, Number(value.toFixed(2)).toLocaleString()));
-            }
-            const interval = Math.max(1, Math.ceil(data.length / Math.max(1, Math.floor(plotWidth / 60))));
-            data.forEach((row, index) => {
-              if (index % interval === 0) svg.append(svgNode("text", {x: x(index), y: bottom + 18, "text-anchor": "middle", fill: "currentColor", "font-size": 10}, row[options.xKey] ?? index + 1));
-            });
-          }
-          const tooltip = document.createElement("div");
-          tooltip.className = "rounded-lg border bg-background px-2.5 py-1.5 text-xs shadow-xl";
-          Object.assign(tooltip.style, {position: "absolute", pointerEvents: "none", zIndex: "1", display: "none"});
-          if (options.tooltip) this.canvas.append(tooltip);
-          const show = index => {
-            if (!options.tooltip) return;
-            tooltip.replaceChildren();
-            const heading = document.createElement("div");
-            heading.className = "font-medium";
-            heading.textContent = String(data[index][options.xKey] ?? index + 1);
-            tooltip.append(heading);
-            series.forEach(item => {
-              const value = number(data[index], item.key);
-              if (value === null) return;
-              const row = document.createElement("div");
-              row.textContent = item.label + ": " + value.toLocaleString();
-              tooltip.append(row);
-            });
-            tooltip.style.display = "block";
-            tooltip.style.left = Math.min(x(index), Math.max(0, width - tooltip.offsetWidth)) + "px";
-            tooltip.style.top = top + "px";
+          const htmlNode = (tag, className, text) => {
+            const node = document.createElement(tag);
+            node.className = className;
+            if (text !== undefined) node.textContent = String(text);
+            return node;
           };
           const listen = (node, event, handler) => {
             node.addEventListener(event, handler);
             this.listeners.push([node, event, handler]);
           };
-          series.forEach((item, seriesIndex) => {
-            if (options.kind === "bar") {
-              const barWidth = step * 0.8 / series.length;
-              data.forEach((row, index) => {
-                const value = number(row, item.key);
-                if (value === null) return;
-                const rect = svgNode("rect", {x: x(index) - step * 0.4 + seriesIndex * barWidth,
-                  y: Math.min(zero, y(value)), width: Math.max(0.5, barWidth - 1),
-                  height: Math.abs(zero - y(value)), fill: item.color, class: "recharts-rectangle"});
-                rect.append(svgNode("title", {}, item.label + ": " + value.toLocaleString()));
-                svg.append(rect);
-              });
-            } else {
-              let segment = [];
-              const flush = () => {
-                if (!segment.length) return;
-                const points = segment.map(point => point.join(",")).join(" ");
-                if (options.kind === "area") {
-                  const areaPoints = segment[0][0] + "," + zero + " " + points + " " + segment[segment.length - 1][0] + "," + zero;
-                  svg.append(svgNode("polygon", {points: areaPoints, fill: item.color, "fill-opacity": 0.2}));
-                }
-                svg.append(svgNode("polyline", {points, fill: "none", stroke: item.color, "stroke-width": 2, class: "recharts-curve"}));
-                segment = [];
-              };
-              data.forEach((row, index) => {
-                const value = number(row, item.key);
-                if (value === null) { flush(); return; }
-                segment.push([x(index), y(value)]);
-                const dot = svgNode("circle", {cx: x(index), cy: y(value), r: 3, fill: item.color, class: "recharts-dot"});
-                dot.append(svgNode("title", {}, item.label + ": " + value.toLocaleString()));
-                svg.append(dot);
-              });
-              flush();
-            }
-          });
-          const targets = data.map((row, index) => {
-            const target = svgNode("rect", {x: left + index * step, y: top, width: step, height: plotHeight,
-              fill: "transparent", tabindex: 0, role: "graphics-symbol", "aria-label": String(row[options.xKey] ?? index + 1) + ": " + series.map(item => item.label + " " + (number(row, item.key) ?? "No data")).join(", ")});
-            svg.append(target);
-            listen(target, "pointerenter", () => show(index));
-            listen(target, "focus", () => show(index));
-            listen(target, "keydown", event => {
-              if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
-                event.preventDefault();
-                targets[(index + (event.key === "ArrowRight" ? 1 : data.length - 1)) % data.length].focus();
-              } else if (event.key === "Escape") tooltip.style.display = "none";
-            });
-            return target;
-          });
-          listen(svg, "pointerleave", () => tooltip.style.display = "none");
-          listen(svg, "focusout", event => { if (!svg.contains(event.relatedTarget)) tooltip.style.display = "none"; });
-          if (options.legend) {
-            const legend = document.createElement("div");
-            legend.className = "flex items-center justify-center gap-4 pt-3";
-            Object.assign(legend.style, {position: "absolute", bottom: "0", width: "100%"});
-            series.forEach(item => {
-              const entry = document.createElement("span"), swatch = document.createElement("span");
-              entry.className = "flex items-center gap-1.5";
-              swatch.className = "h-2 w-2 shrink-0 rounded-[2px]";
+          const svg = svgNode("svg", {width, height, viewBox: "0 0 " + width + " " + height,
+            role: "application", tabindex: 0, "aria-label": options.label, class: "recharts-surface"});
+          Object.assign(svg.style, {width: "100%", height: "100%", display: "block"});
+          this.canvas.replaceChildren(svg);
+          const data = options.data, series = options.series;
+          const number = (row, key) => typeof row[key] === "number" && Number.isFinite(row[key]) ? row[key] : null;
+          const label = index => data[index][options.xKey] ?? index;
+          let legendHeight = 0;
+          if (options.legend && series.length) {
+            const wrapper = htmlNode("div", "recharts-legend-wrapper");
+            Object.assign(wrapper.style, {position: "absolute", bottom: "5px", left: "5px", width: Math.max(0, width - 10) + "px"});
+            const legend = htmlNode("div", "flex items-center justify-center gap-4 pt-3");
+            for (const item of series) {
+              const entry = htmlNode("div", "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground");
+              const swatch = htmlNode("div", "h-2 w-2 shrink-0 rounded-[2px]");
               swatch.style.backgroundColor = item.color;
               entry.append(swatch, document.createTextNode(item.label));
               legend.append(entry);
-            });
-            this.canvas.append(legend);
+            }
+            wrapper.append(legend);
+            this.canvas.append(wrapper);
+            legendHeight = wrapper.getBoundingClientRect().height;
+          }
+          const left = 5, top = 5, right = Math.max(left, width - 5);
+          const bottom = Math.max(top, height - 5 - (options.axes ? 30 : 0) - legendHeight);
+          const plotWidth = right - left, plotHeight = bottom - top;
+          const values = data.flatMap(row => series.map(item => number(row, item.key))).filter(value => value !== null);
+          let minimum = Math.min(0, ...values), maximum = Math.max(0, ...values);
+          // Recharts' implicit numeric axis is [0, "auto"], five adaptive nice ticks.
+          // Its default allowDataOverflow=false expands the lower bound for signed data.
+          if (minimum === maximum) { minimum = 0; maximum = 4; }
+          else {
+            const rough = (maximum - minimum) / 4;
+            const digits = Math.floor(Math.log10(rough)) + 1;
+            const magnitude = Math.pow(10, digits), ratio = digits === 1 ? 0.1 : 0.05;
+            let correction = 0, lowCount, highCount, step;
+            do {
+              step = (Math.ceil(rough / magnitude / ratio - 1e-12) + correction++) * ratio * magnitude;
+              lowCount = Math.ceil(-minimum / step - 1e-12);
+              highCount = Math.ceil(maximum / step - 1e-12);
+            } while (lowCount + highCount + 1 > 5);
+            if (maximum > 0) highCount += 4 - lowCount - highCount;
+            else lowCount += 4 - lowCount - highCount;
+            minimum = -lowCount * step;
+            maximum = highCount * step;
+          }
+          const y = value => bottom - (value - minimum) / (maximum - minimum) * plotHeight;
+          const step = data.length ? plotWidth / data.length : 0;
+          const x = index => options.kind === "bar" || data.length === 1
+            ? left + step * (index + 0.5) : left + plotWidth * index / (data.length - 1);
+          const zero = y(0);
+          const cursor = svgNode("g", {"pointer-events": "none"});
+          const geometry = svgNode("g", {class: "recharts-layer"});
+          svg.append(cursor, geometry);
+          const animations = [], nextBars = new Map();
+          const signature = JSON.stringify([options.data, options.series, options.kind, width, height]);
+          const animate = signature !== this.signature && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+          this.signature = signature;
+          const round = value => Number(value.toFixed(4));
+          series.forEach((item, seriesIndex) => {
+            const group = svgNode("g", {class: "recharts-layer recharts-" + options.kind});
+            geometry.append(group);
+            if (options.kind === "bar") {
+              let gap = 4;
+              if (step * 0.8 - (series.length - 1) * gap <= 0) gap = 0;
+              let barWidth = (step * 0.8 - (series.length - 1) * gap) / series.length;
+              if (barWidth > 1) barWidth = Math.floor(barWidth);
+              const rectangles = svgNode("g", {class: "recharts-bar-rectangles"});
+              group.append(rectangles);
+              data.forEach((row, index) => {
+                const value = number(row, item.key);
+                if (value === null || value === 0 || barWidth <= 0) return;
+                const current = {x: left + index * step + step * 0.1 + seriesIndex * (barWidth + gap),
+                  y: y(value), width: barWidth, height: zero - y(value)};
+                const key = item.key + ":" + index;
+                nextBars.set(key, current);
+                const rect = svgNode("path", {fill: item.color, radius: 0, class: "recharts-rectangle"});
+                const render = shape => {
+                  for (const name of ["x", "y", "width", "height"]) rect.setAttribute(name, round(shape[name]));
+                  rect.setAttribute("d", "M " + round(shape.x) + "," + round(shape.y) + " h " + round(shape.width) + " v " + round(shape.height) + " h " + round(-shape.width) + " Z");
+                };
+                rectangles.append(rect);
+                render(current);
+                if (animate) {
+                  const previous = this.bars?.get(key) || {...current, y: zero, height: 0};
+                  animations.push(t => render(Object.fromEntries(Object.keys(current).map(name => [name, previous[name] + (current[name] - previous[name]) * t]))));
+                }
+              });
+            } else {
+              const segments = [];
+              let segment = [];
+              for (let index = 0; index < data.length; index++) {
+                const value = number(data[index], item.key);
+                if (value === null) { if (segment.length) segments.push(segment); segment = []; }
+                else segment.push([x(index), y(value)]);
+              }
+              if (segment.length) segments.push(segment);
+              const point = p => Number(p[0].toFixed(3)) + "," + Number(p[1].toFixed(3));
+              const curve = segments.map(points => "M" + points.map(point).join("L") + (points.length === 1 ? "Z" : "")).join("");
+              if (options.kind === "area") {
+                const area = svgNode("path", {d: segments.map(points => "M" + points.map(point).join("L") + "L" + point([points[points.length - 1][0], zero]) + "L" + point([points[0][0], zero]) + "Z").join(""),
+                  fill: item.color, "fill-opacity": 0.6, stroke: "none", class: "recharts-curve recharts-area-area"});
+                group.append(area);
+                if (animate && segments.length) {
+                  const clipId = this.el.id + "-area-animation-" + seriesIndex;
+                  const clip = svgNode("clipPath", {id: clipId});
+                  const clipRect = svgNode("rect", {x: left, y: 0, width: 0, height: Math.floor(Math.max(zero, ...segments.flat().map(p => p[1])) + 1)});
+                  clip.append(clipRect);
+                  svg.append(clip);
+                  group.setAttribute("clip-path", "url(#" + clipId + ")");
+                  animations.push(t => clipRect.setAttribute("width", t * plotWidth));
+                }
+              }
+              if (data.length > 1) {
+                const path = svgNode("path", {d: curve, fill: "none", stroke: item.color, "stroke-width": 1,
+                  class: "recharts-curve recharts-" + options.kind + "-curve"});
+                group.append(path);
+                if (animate && options.kind === "line") {
+                  const length = path.getTotalLength();
+                  animations.push(t => path.setAttribute("stroke-dasharray", t * length + "px " + length + "px"));
+                }
+              }
+              if (options.kind === "line") {
+                const dots = svgNode("g", {class: "recharts-layer recharts-line-dots"});
+                for (const points of segments) for (const p of points)
+                  dots.append(svgNode("circle", {cx: p[0], cy: p[1], r: 3, fill: "#fff", stroke: item.color,
+                    "stroke-width": 1, class: "recharts-dot recharts-line-dot"}));
+                group.append(dots);
+                if (animate && data.length > 1) animations.push(t => { dots.style.visibility = t === 1 ? "visible" : "hidden"; });
+              }
+            }
+          });
+          this.bars = nextBars;
+          if (options.axes && data.length) {
+            const axis = svgNode("g", {class: "recharts-layer recharts-cartesian-axis recharts-xAxis xAxis"});
+            axis.append(svgNode("line", {x1: left, x2: right, y1: bottom, y2: bottom, stroke: "#666", fill: "none", class: "recharts-cartesian-axis-line"}));
+            svg.append(axis);
+            // Default XAxis interval="preserveEnd" measures text, shifts the final tick,
+            // and rejects labels that would overlap or extend beyond the axis viewport.
+            const measure = htmlNode("span", "");
+            Object.assign(measure.style, {position: "absolute", whiteSpace: "pre", visibility: "hidden", fontSize: getComputedStyle(this.container).fontSize, letterSpacing: getComputedStyle(this.container).letterSpacing});
+            document.body.append(measure);
+            let end = width;
+            const ticks = [];
+            for (let index = data.length - 1; index >= 0; index--) {
+              measure.textContent = String(label(index));
+              const size = measure.getBoundingClientRect().width;
+              const coordinate = x(index);
+              const tickCoordinate = index === data.length - 1 ? Math.min(coordinate, width - size / 2) : coordinate;
+              if (tickCoordinate - size / 2 < 0 || tickCoordinate + size / 2 > end) continue;
+              end = tickCoordinate - size / 2 - 5;
+              ticks.unshift({index, coordinate, tickCoordinate});
+            }
+            measure.remove();
+            for (const tick of ticks) {
+              const layer = svgNode("g", {class: "recharts-layer recharts-cartesian-axis-tick"});
+              layer.append(svgNode("line", {x1: tick.coordinate, x2: tick.coordinate, y1: bottom + 6, y2: bottom, stroke: "#666", class: "recharts-cartesian-axis-tick-line"}));
+              const text = svgNode("text", {x: tick.tickCoordinate, y: bottom + 8, "text-anchor": "middle", fill: "#666", class: "recharts-text recharts-cartesian-axis-tick-value"});
+              text.append(svgNode("tspan", {x: tick.tickCoordinate, dy: "0.71em"}, label(tick.index)));
+              layer.append(text);
+              axis.append(layer);
+            }
+          }
+          const activeDots = svgNode("g", {class: "recharts-layer recharts-active-dot"});
+          svg.append(activeDots);
+          const tooltip = htmlNode("div", "recharts-tooltip-wrapper");
+          Object.assign(tooltip.style, {position: "absolute", top: "0", left: "0", pointerEvents: "none", visibility: "hidden", transition: "transform 400ms"});
+          if (options.tooltip) this.canvas.append(tooltip);
+          let keyboardIndex = 0, keyboardActive = false;
+          const hide = () => { tooltip.style.visibility = "hidden"; cursor.replaceChildren(); activeDots.replaceChildren(); };
+          const show = (index, pointerY) => {
+            if (!options.tooltip || index < 0 || index >= data.length) return;
+            tooltip.replaceChildren();
+            cursor.replaceChildren();
+            activeDots.replaceChildren();
+            if (options.kind === "bar") cursor.append(svgNode("rect", {x: left + index * step, y: top + 0.5, width: step, height: Math.max(0, plotHeight - 1), fill: "#ccc", stroke: "none", class: "recharts-rectangle recharts-tooltip-cursor"}));
+            else cursor.append(svgNode("path", {d: "M" + x(index) + "," + top + "L" + x(index) + "," + bottom, fill: "none", stroke: "#ccc", class: "recharts-curve recharts-tooltip-cursor"}));
+            const content = htmlNode("div", "grid min-w-32 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl");
+            content.append(htmlNode("div", "font-medium", label(index)));
+            const entries = htmlNode("div", "grid gap-1.5");
+            for (const item of series) {
+              const value = number(data[index], item.key);
+              if (value === null) continue;
+              const row = htmlNode("div", "flex w-full flex-wrap gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground items-center");
+              const indicator = htmlNode("div", "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg) h-2.5 w-2.5");
+              indicator.style.setProperty("--color-bg", item.color);
+              indicator.style.setProperty("--color-border", item.color);
+              const valueRow = htmlNode("div", "flex flex-1 justify-between leading-none items-center");
+              const name = htmlNode("div", "grid gap-1.5");
+              name.append(htmlNode("span", "text-muted-foreground", item.label));
+              valueRow.append(name, htmlNode("span", "font-mono font-medium text-foreground tabular-nums", value.toLocaleString()));
+              row.append(indicator, valueRow);
+              entries.append(row);
+              if (options.kind !== "bar") activeDots.append(svgNode("circle", {cx: x(index), cy: y(value), r: 4, fill: item.color, stroke: "#fff", "stroke-width": 2, class: "recharts-dot"}));
+            }
+            if (!entries.childElementCount) { tooltip.style.visibility = "hidden"; return; }
+            content.append(entries);
+            tooltip.append(content);
+            const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+            const coordinateY = pointerY ?? (top + height) / 2;
+            const tx = x(index) + 10 + tw > right ? Math.max(left, x(index) - tw - 10) : Math.max(left, x(index) + 10);
+            const ty = coordinateY + 10 + th > bottom ? Math.max(top, coordinateY - th - 10) : Math.max(top, coordinateY + 10);
+            tooltip.style.transform = "translate(" + tx + "px, " + ty + "px)";
+            tooltip.className = "recharts-tooltip-wrapper recharts-tooltip-wrapper-" + (tx >= x(index) ? "right" : "left") + " recharts-tooltip-wrapper-" + (ty >= coordinateY ? "bottom" : "top");
+            tooltip.style.visibility = "visible";
+          };
+          listen(svg, "pointermove", event => {
+            const bounds = svg.getBoundingClientRect(), px = event.clientX - bounds.left, py = event.clientY - bounds.top;
+            if (px < left || px > right || py < top || py > bottom || !data.length) { hide(); return; }
+            const index = options.kind === "bar" ? Math.min(data.length - 1, Math.floor((px - left) / step))
+              : data.length === 1 ? 0 : Math.max(0, Math.min(data.length - 1, Math.round((px - left) / plotWidth * (data.length - 1))));
+            show(index, py);
+          });
+          listen(svg, "pointerleave", hide);
+          listen(svg, "focus", () => { keyboardActive = true; show(keyboardIndex); });
+          listen(svg, "blur", () => { keyboardActive = false; hide(); });
+          listen(svg, "keydown", event => {
+            if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+              event.preventDefault();
+              keyboardIndex = Math.max(0, Math.min(data.length - 1, keyboardIndex + (event.key === "ArrowRight" ? 1 : -1)));
+              keyboardActive = true;
+              show(keyboardIndex);
+            } else if (event.key === "Enter") {
+              keyboardActive = !keyboardActive;
+              if (keyboardActive) show(keyboardIndex); else hide();
+            } else if (event.key === "Escape") tooltip.style.visibility = "hidden";
+          });
+          if (animate && animations.length) {
+            // CSS ease = cubic-bezier(.25,.1,.25,1), also Recharts' default easing.
+            const ease = t => {
+              const bezier = (s, a, b) => 3 * (1 - s) * (1 - s) * s * a + 3 * (1 - s) * s * s * b + s * s * s;
+              let low = 0, high = 1;
+              for (let i = 0; i < 16; i++) { const middle = (low + high) / 2; if (bezier(middle, 0.25, 0.25) < t) low = middle; else high = middle; }
+              return bezier((low + high) / 2, 0.1, 1);
+            };
+            const start = performance.now(), duration = options.kind === "bar" ? 400 : 1500;
+            const frame = now => {
+              const progress = Math.min(1, (now - start) / duration);
+              for (const render of animations) render(progress === 1 ? 1 : ease(progress));
+              if (progress < 1) this.animation = requestAnimationFrame(frame);
+            };
+            for (const render of animations) render(0);
+            this.animation = requestAnimationFrame(frame);
           }
         }
       }

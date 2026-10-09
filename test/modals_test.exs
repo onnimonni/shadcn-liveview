@@ -183,7 +183,6 @@ defmodule ShadcnLiveview.ModalsTest do
     assert Floki.attribute(document, "#top-drawer", "data-vaul-drawer-direction") == ["top"]
     assert Floki.attribute(document, "#top-drawer", "phx-value-dismissible") == ["false"]
     assert Floki.attribute(document, "#top-drawer", "phx-value-draggable") == ["true"]
-    assert Floki.attribute(document, "#top-drawer", "phx-modal-close") == ["[]"]
   end
 
   defp parse(rendered) do

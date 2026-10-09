@@ -1,6 +1,7 @@
 defmodule ShadcnLiveview.Components.MessageScroller do
   @moduledoc """
   Message stream scrolling with explicit provider context and a native viewport hook. Pass provider context through :let to every child. Initial end/last-anchor positioning is pending until mounted; the hook clears pending after measuring, preserves prepends, follows new messages only while at the end, and cleans up observers.
+  The scrolling hook emits no LiveView events; native child events retain their caller-supplied Phoenix bindings and targets.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers

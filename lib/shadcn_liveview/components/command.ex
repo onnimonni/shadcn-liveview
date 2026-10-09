@@ -1,5 +1,5 @@
 defmodule ShadcnLiveview.Components.Command do
-  @moduledoc "A command palette with explicit root context, native search inputs, and a colocated filtering/keyboard hook. Pass the root :let context to input and list. Items require stable IDs and explicit values. Filtering ranks items with CSS order while retaining server-owned DOM placement; keyboard navigation follows the same visual order. As in cmdk SSR, item registration and initial selection/filtering happen when the client mounts. on_select optionally pushes an event with id and value; the search input retains native name/form semantics."
+  @moduledoc "A command palette with explicit root context, native search inputs, and a colocated filtering/keyboard hook. Pass the root :let context to input and list. Items require stable IDs and explicit values. Filtering ranks items with CSS order while retaining server-owned DOM placement; keyboard navigation follows the same visual order. As in cmdk SSR, item registration and initial selection/filtering happen when the client mounts. on_select optionally pushes an event with id and value to the nearest phx-target ancestor, or the owning LiveView when absent; the search input retains native name/form semantics."
   use Phoenix.Component
   import ShadcnLiveview.Helpers
   alias ShadcnLiveview.Components.Icon
@@ -54,6 +54,11 @@ defmodule ShadcnLiveview.Components.Command do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Command">
         export default {
+      sendEvent(event, payload, onReply) {
+      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+      if (target) return this.pushEventTo(target, event, payload, onReply);
+      return this.pushEvent(event, payload, onReply);
+      },
       mounted() {
       this.listeners = [];
       this.itemOrder = [];
@@ -182,7 +187,7 @@ defmodule ShadcnLiveview.Components.Command do
       this.el.setAttribute("phx-value-selected", value);
       this.el.dispatchEvent(new CustomEvent("shadcn:command-change", {bubbles: true, detail: {id: this.el.id, value}}));
       const event = this.el.getAttribute("phx-value-event");
-      if (event) this.pushEvent(event, {id: this.el.id, value});
+      if (event) this.sendEvent(event, {id: this.el.id, value});
       },
       updated() { this.filter(); },
       destroyed() { this.listeners.forEach(([node, type, handler]) => node.removeEventListener(type, handler)); }

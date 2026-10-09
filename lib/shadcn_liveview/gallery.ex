@@ -317,6 +317,1434 @@ defmodule ShadcnLiveview.Gallery do
       "toggle"
     ]
 
+  def entries,
+    do: [
+      %{name: "accordion", title: "Accordion", category: "data-display", family: "accordion"},
+      %{
+        name: "accordion-closed",
+        title: "Accordion — initially closed",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{
+        name: "accordion-selected-details",
+        title: "Accordion — controlled different selection",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{
+        name: "accordion-multiple",
+        title: "Accordion — multiple open",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{
+        name: "accordion-disabled",
+        title: "Accordion — disabled items",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{
+        name: "accordion-force-mount",
+        title: "Accordion — retained closed content",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{
+        name: "accordion-instances",
+        title: "Accordion — independent instances",
+        category: "data-display",
+        family: "accordion"
+      },
+      %{name: "tabs", title: "Tabs", category: "navigation", family: "tabs"},
+      %{
+        name: "tabs-history",
+        title: "Tabs — controlled non-account selection",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{
+        name: "tabs-unselected",
+        title: "Tabs — initially unselected",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{
+        name: "tabs-disabled",
+        title: "Tabs — disabled and manual activation",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{
+        name: "tabs-line-rtl",
+        title: "Tabs — line variant, visual vertical and RTL",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{
+        name: "tabs-force-mount",
+        title: "Tabs — retained inactive content",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{
+        name: "tabs-instances",
+        title: "Tabs — independent instances",
+        category: "navigation",
+        family: "tabs"
+      },
+      %{name: "dialog", title: "Dialog", category: "overlay", family: "dialog"},
+      %{name: "dialog-closed", title: "Dialog closed", category: "overlay", family: "dialog"},
+      %{
+        name: "dialog-open-custom-ids",
+        title: "Dialog open-custom-ids",
+        category: "overlay",
+        family: "dialog"
+      },
+      %{
+        name: "dialog-no-close-icon-footer-close",
+        title: "Dialog no-close-icon-footer-close",
+        category: "overlay",
+        family: "dialog"
+      },
+      %{name: "dialog-nonmodal", title: "Dialog nonmodal", category: "overlay", family: "dialog"},
+      %{
+        name: "dialog-multiple-instances",
+        title: "dialog Multiple Instances",
+        category: "overlay",
+        family: "dialog"
+      },
+      %{name: "alert-dialog", title: "Alert Dialog", category: "overlay", family: "alert-dialog"},
+      %{
+        name: "alert-dialog-closed",
+        title: "Alert Dialog closed",
+        category: "overlay",
+        family: "alert-dialog"
+      },
+      %{
+        name: "alert-dialog-open-custom-ids",
+        title: "Alert Dialog open-custom-ids",
+        category: "overlay",
+        family: "alert-dialog"
+      },
+      %{
+        name: "alert-dialog-small-media",
+        title: "Alert Dialog small-media",
+        category: "overlay",
+        family: "alert-dialog"
+      },
+      %{
+        name: "alert-dialog-multiple-instances",
+        title: "alert-dialog Multiple Instances",
+        category: "overlay",
+        family: "alert-dialog"
+      },
+      %{name: "drawer", title: "Drawer", category: "overlay", family: "drawer"},
+      %{name: "drawer-closed", title: "Drawer closed", category: "overlay", family: "drawer"},
+      %{
+        name: "drawer-open-custom-ids",
+        title: "Drawer open-custom-ids",
+        category: "overlay",
+        family: "drawer"
+      },
+      %{name: "drawer-top", title: "Drawer top", category: "overlay", family: "drawer"},
+      %{name: "drawer-left", title: "Drawer left", category: "overlay", family: "drawer"},
+      %{name: "drawer-right", title: "Drawer right", category: "overlay", family: "drawer"},
+      %{
+        name: "drawer-nondismissible",
+        title: "Drawer nondismissible",
+        category: "overlay",
+        family: "drawer"
+      },
+      %{
+        name: "drawer-multiple-instances",
+        title: "drawer Multiple Instances",
+        category: "overlay",
+        family: "drawer"
+      },
+      %{name: "sheet", title: "Sheet", category: "overlay", family: "sheet"},
+      %{name: "sheet-closed", title: "Sheet closed", category: "overlay", family: "sheet"},
+      %{
+        name: "sheet-open-custom-ids",
+        title: "Sheet open-custom-ids",
+        category: "overlay",
+        family: "sheet"
+      },
+      %{name: "sheet-top", title: "Sheet top", category: "overlay", family: "sheet"},
+      %{name: "sheet-bottom", title: "Sheet bottom", category: "overlay", family: "sheet"},
+      %{name: "sheet-left", title: "Sheet left", category: "overlay", family: "sheet"},
+      %{
+        name: "sheet-multiple-instances",
+        title: "sheet Multiple Instances",
+        category: "overlay",
+        family: "sheet"
+      },
+      %{name: "context-menu", title: "Context Menu", category: "overlay", family: "context-menu"},
+      %{
+        name: "context-menu-disabled",
+        title: "Disabled context surface",
+        category: "overlay",
+        family: "context-menu"
+      },
+      %{
+        name: "context-menu-multiple",
+        title: "Independent context surfaces",
+        category: "overlay",
+        family: "context-menu"
+      },
+      %{
+        name: "dropdown-menu",
+        title: "Dropdown Menu",
+        category: "overlay",
+        family: "dropdown-menu"
+      },
+      %{
+        name: "dropdown-menu-closed-disabled",
+        title: "Disabled closed dropdown",
+        category: "overlay",
+        family: "dropdown-menu"
+      },
+      %{
+        name: "dropdown-menu-items",
+        title: "Dropdown item states and independent instances",
+        category: "overlay",
+        family: "dropdown-menu"
+      },
+      %{
+        name: "dropdown-menu-checks",
+        title: "Checkbox and radio menu selection",
+        category: "overlay",
+        family: "dropdown-menu"
+      },
+      %{name: "hover-card", title: "Hover Card", category: "overlay", family: "hover-card"},
+      %{
+        name: "hover-card-disabled",
+        title: "Disabled hover card trigger",
+        category: "overlay",
+        family: "hover-card"
+      },
+      %{
+        name: "hover-card-closed",
+        title: "Focus and hover disclosure",
+        category: "overlay",
+        family: "hover-card"
+      },
+      %{
+        name: "hover-card-multiple",
+        title: "Multiple hover cards and alternate placement",
+        category: "overlay",
+        family: "hover-card"
+      },
+      %{name: "popover", title: "Popover", category: "overlay", family: "popover"},
+      %{
+        name: "popover-closed",
+        title: "Closed popover with editable content",
+        category: "overlay",
+        family: "popover"
+      },
+      %{
+        name: "popover-multiple-disabled",
+        title: "Independent disabled and open popovers",
+        category: "overlay",
+        family: "popover"
+      },
+      %{name: "select", title: "Select", category: "forms", family: "select"},
+      %{
+        name: "select-value-disabled",
+        title: "Required form select with disabled option",
+        category: "forms",
+        family: "select"
+      },
+      %{
+        name: "select-closed-multiple",
+        title: "Closed small and disabled selects",
+        category: "forms",
+        family: "select"
+      },
+      %{
+        name: "select-popper",
+        title: "Popper select placement",
+        category: "forms",
+        family: "select"
+      },
+      %{
+        name: "select-groups",
+        title: "Labeled option groups",
+        category: "forms",
+        family: "select"
+      },
+      %{name: "tooltip", title: "Tooltip", category: "overlay", family: "tooltip"},
+      %{
+        name: "tooltip-closed-disabled",
+        title: "Closed disabled tooltip",
+        category: "overlay",
+        family: "tooltip"
+      },
+      %{
+        name: "tooltip-multiple",
+        title: "Independent tooltip descriptions",
+        category: "overlay",
+        family: "tooltip"
+      },
+      %{name: "combobox", title: "Combobox", category: "forms", family: "combobox"},
+      %{name: "combobox-empty", title: "Empty combobox", category: "forms", family: "combobox"},
+      %{
+        name: "combobox-value",
+        title: "Combobox selected form value",
+        category: "forms",
+        family: "combobox"
+      },
+      %{
+        name: "combobox-disabled",
+        title: "Disabled combobox",
+        category: "forms",
+        family: "combobox"
+      },
+      %{
+        name: "combobox-multiple-instances",
+        title: "Independent comboboxes",
+        category: "forms",
+        family: "combobox"
+      },
+      %{name: "command", title: "Command", category: "forms", family: "command"},
+      %{name: "command-empty", title: "Empty command list", category: "forms", family: "command"},
+      %{
+        name: "command-values-disabled",
+        title: "Command values, shortcuts and disabled items",
+        category: "forms",
+        family: "command"
+      },
+      %{
+        name: "command-multiple-instances",
+        title: "Independent commands",
+        category: "forms",
+        family: "command"
+      },
+      %{name: "input-otp", title: "Input OTP", category: "forms", family: "input-otp"},
+      %{
+        name: "input-otp-partial-value",
+        title: "OTP partially entered value",
+        category: "forms",
+        family: "input-otp"
+      },
+      %{
+        name: "input-otp-separated",
+        title: "OTP full value with separator",
+        category: "forms",
+        family: "input-otp"
+      },
+      %{
+        name: "input-otp-disabled",
+        title: "Disabled OTP",
+        category: "forms",
+        family: "input-otp"
+      },
+      %{
+        name: "input-otp-validation",
+        title: "OTP native form and validation attributes",
+        category: "forms",
+        family: "input-otp"
+      },
+      %{
+        name: "input-otp-multiple-instances",
+        title: "Independent OTP fields",
+        category: "forms",
+        family: "input-otp"
+      },
+      %{name: "calendar", title: "Calendar", category: "forms", family: "calendar"},
+      %{
+        name: "calendar-leap-selection",
+        title: "Leap day selection",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-common-february",
+        title: "Non-leap February",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-bounded-range",
+        title: "Bounded selected range",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-british-week",
+        title: "British locale and Monday weeks",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-fixed-multiple",
+        title: "Fixed six weeks with disabled multiple dates",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-year-boundary",
+        title: "Two months crossing a year boundary",
+        category: "forms",
+        family: "calendar"
+      },
+      %{
+        name: "calendar-independent-instances",
+        title: "Independent calendars",
+        category: "forms",
+        family: "calendar"
+      },
+      %{name: "carousel", title: "Carousel", category: "data-display", family: "carousel"},
+      %{
+        name: "carousel-vertical",
+        title: "Vertical carousel",
+        category: "data-display",
+        family: "carousel"
+      },
+      %{
+        name: "carousel-multiple",
+        title: "Independent looping carousels",
+        category: "data-display",
+        family: "carousel"
+      },
+      %{name: "resizable", title: "Resizable", category: "layout", family: "resizable"},
+      %{
+        name: "resizable-vertical",
+        title: "Vertical constrained panels",
+        category: "layout",
+        family: "resizable"
+      },
+      %{
+        name: "resizable-multiple",
+        title: "Default sizing and disabled separator",
+        category: "layout",
+        family: "resizable"
+      },
+      %{name: "sidebar", title: "Sidebar", category: "navigation", family: "sidebar"},
+      %{
+        name: "sidebar-collapsed-icon",
+        title: "Collapsed icon sidebar",
+        category: "navigation",
+        family: "sidebar"
+      },
+      %{
+        name: "sidebar-collapsed-offcanvas",
+        title: "Collapsed offcanvas sidebar",
+        category: "navigation",
+        family: "sidebar"
+      },
+      %{
+        name: "sidebar-multiple",
+        title: "Independent expanded and static sidebars",
+        category: "navigation",
+        family: "sidebar"
+      },
+      %{name: "chart", title: "Chart", category: "data-display", family: "chart"},
+      %{
+        name: "chart-config-theme",
+        title: "Chart light/dark configuration",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-label-only",
+        title: "Chart without color stylesheet",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-empty-config",
+        title: "Chart empty configuration",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-bar-series",
+        title: "Responsive signed multi-series bars",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-line-custom-dimensions",
+        title: "Line chart custom initial dimensions",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-area-gaps",
+        title: "Area chart missing samples",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-empty-data",
+        title: "Chart empty dataset",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-tooltip",
+        title: "Chart active multi-series tooltip",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-tooltip-line",
+        title: "Chart nested line-indicator tooltip",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-tooltip-hidden",
+        title: "Chart tooltip hidden label and indicator",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-tooltip-inactive",
+        title: "Chart inactive tooltip",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-tooltip-dashed",
+        title: "Chart dashed indicator with zero value",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-empty-payload",
+        title: "Chart empty tooltip and legend payloads",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-legend",
+        title: "Chart top legend and filtered payload",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-multiple-instances",
+        title: "Independent chart styles and canvases",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "message-scroller",
+        title: "Message Scroller",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "message-scroller-start",
+        title: "Message Scroller start",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "message-scroller-end",
+        title: "Message Scroller end",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "message-scroller-last-anchor",
+        title: "Message Scroller last-anchor",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "message-scroller-empty",
+        title: "Empty Message Scroller",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "message-scroller-multiple",
+        title: "Independent Message Scrollers",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "questionnaire",
+        title: "Questionnaire",
+        category: "data-display",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-flow",
+        title: "Questionnaire Form Flow",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-current-last",
+        title: "Questionnaire Last Question",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-invalid-multiple",
+        title: "Questionnaire Invalid Multiple Answers",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-empty",
+        title: "Empty Questionnaire",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-multiple",
+        title: "Independent Questionnaires",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "questionnaire-selected-choice",
+        title: "Questionnaire Controlled Selection",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{
+        name: "message-scroller-default-button",
+        title: "Message Scroller Accessible Button",
+        category: "layout",
+        family: "message-scroller"
+      },
+      %{
+        name: "questionnaire-input-states",
+        title: "Questionnaire Empty and Disabled Inputs",
+        category: "forms",
+        family: "questionnaire"
+      },
+      %{name: "radio-group", title: "Radio Group", category: "forms", family: "radio-group"},
+      %{
+        name: "radio-group-required-vertical",
+        title: "Required vertical radios",
+        category: "forms",
+        family: "radio-group"
+      },
+      %{
+        name: "radio-group-controlled",
+        title: "Controlled radios",
+        category: "forms",
+        family: "radio-group"
+      },
+      %{
+        name: "radio-group-disabled-external-form",
+        title: "Disabled external-form radios",
+        category: "forms",
+        family: "radio-group"
+      },
+      %{
+        name: "radio-group-multiple-instances",
+        title: "Independent radio instances",
+        category: "forms",
+        family: "radio-group"
+      },
+      %{name: "toggle-group", title: "Toggle Group", category: "actions", family: "toggle-group"},
+      %{
+        name: "toggle-group-single-vertical",
+        title: "Vertical single toggle",
+        category: "actions",
+        family: "toggle-group"
+      },
+      %{
+        name: "toggle-group-multiple-default",
+        title: "Multiple default values",
+        category: "actions",
+        family: "toggle-group"
+      },
+      %{
+        name: "toggle-group-controlled",
+        title: "Controlled toggle selection",
+        category: "actions",
+        family: "toggle-group"
+      },
+      %{
+        name: "toggle-group-disabled",
+        title: "Disabled toggle group",
+        category: "actions",
+        family: "toggle-group"
+      },
+      %{
+        name: "toggle-group-multiple-instances",
+        title: "Independent toggle groups",
+        category: "actions",
+        family: "toggle-group"
+      },
+      %{name: "menubar", title: "Menubar", category: "navigation", family: "menubar"},
+      %{
+        name: "menubar-default-open",
+        title: "Default-open menubar",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{
+        name: "menubar-controlled",
+        title: "Controlled menubar",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{
+        name: "menubar-check-radio-submenu",
+        title: "Menu selection and submenu",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{
+        name: "menubar-multiple-disabled",
+        title: "Independent menubars and disabled menus",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{
+        name: "menubar-submenu-open",
+        title: "Open nested menu",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{
+        name: "menubar-explicit-relations",
+        title: "Caller-owned menu relations",
+        category: "navigation",
+        family: "menubar"
+      },
+      %{name: "checkbox", title: "Checkbox", category: "forms", family: "checkbox"},
+      %{
+        name: "checkbox-false-enabled",
+        title: "Checkbox false Enabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-false-disabled",
+        title: "Checkbox false Disabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-true-enabled",
+        title: "Checkbox true Enabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-true-disabled",
+        title: "Checkbox true Disabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-indeterminate-enabled",
+        title: "Checkbox indeterminate Enabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-indeterminate-disabled",
+        title: "Checkbox indeterminate Disabled",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{
+        name: "checkbox-multiple-external-form",
+        title: "Checkbox Multiple External Form",
+        category: "forms",
+        family: "checkbox"
+      },
+      %{name: "switch", title: "Switch", category: "forms", family: "switch"},
+      %{
+        name: "switch-default-false-enabled",
+        title: "Switch default false Enabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-default-false-disabled",
+        title: "Switch default false Disabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-default-true-enabled",
+        title: "Switch default true Enabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-default-true-disabled",
+        title: "Switch default true Disabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-sm-false-enabled",
+        title: "Switch sm false Enabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-sm-false-disabled",
+        title: "Switch sm false Disabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-sm-true-enabled",
+        title: "Switch sm true Enabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-sm-true-disabled",
+        title: "Switch sm true Disabled",
+        category: "forms",
+        family: "switch"
+      },
+      %{
+        name: "switch-multiple-external-form",
+        title: "Switch Multiple External Form",
+        category: "forms",
+        family: "switch"
+      },
+      %{name: "slider", title: "Slider", category: "forms", family: "slider"},
+      %{
+        name: "slider-lower-bound",
+        title: "slider-lower-bound",
+        category: "forms",
+        family: "slider"
+      },
+      %{
+        name: "slider-upper-bound",
+        title: "slider-upper-bound",
+        category: "forms",
+        family: "slider"
+      },
+      %{name: "slider-range", title: "slider-range", category: "forms", family: "slider"},
+      %{
+        name: "slider-three-thumbs",
+        title: "slider-three-thumbs",
+        category: "forms",
+        family: "slider"
+      },
+      %{name: "slider-vertical", title: "slider-vertical", category: "forms", family: "slider"},
+      %{name: "slider-rtl", title: "slider-rtl", category: "forms", family: "slider"},
+      %{name: "slider-inverted", title: "slider-inverted", category: "forms", family: "slider"},
+      %{name: "slider-disabled", title: "slider-disabled", category: "forms", family: "slider"},
+      %{
+        name: "slider-default-extents",
+        title: "Slider Default Extents",
+        category: "forms",
+        family: "slider"
+      },
+      %{
+        name: "slider-multiple-instances",
+        title: "Slider Multiple Instances",
+        category: "forms",
+        family: "slider"
+      },
+      %{
+        name: "slider-external-form",
+        title: "Slider External Form",
+        category: "forms",
+        family: "slider"
+      },
+      %{
+        name: "slider-minimum-thumb-distance",
+        title: "Slider Minimum Thumb Distance",
+        category: "forms",
+        family: "slider"
+      },
+      %{name: "collapsible", title: "Collapsible", category: "layout", family: "collapsible"},
+      %{
+        name: "collapsible-closed-enabled",
+        title: "collapsible-closed-enabled",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "collapsible-closed-disabled",
+        title: "collapsible-closed-disabled",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "collapsible-open-enabled",
+        title: "collapsible-open-enabled",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "collapsible-open-disabled",
+        title: "collapsible-open-disabled",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "collapsible-force-mount",
+        title: "Collapsible Force Mount",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "collapsible-multiple-instances",
+        title: "Collapsible Multiple Instances",
+        category: "layout",
+        family: "collapsible"
+      },
+      %{
+        name: "navigation-menu",
+        title: "Navigation Menu",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-inline-closed",
+        title: "navigation-inline-closed",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-inline-docs",
+        title: "navigation-inline-docs",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-inline-about",
+        title: "navigation-inline-about",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-viewport-closed",
+        title: "navigation-viewport-closed",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-viewport-docs",
+        title: "navigation-viewport-docs",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-viewport-about",
+        title: "navigation-viewport-about",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-vertical-rtl-disabled",
+        title: "Navigation Vertical RTL Disabled",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-force-mount",
+        title: "Navigation Force Mount",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-multiple-instances",
+        title: "Navigation Multiple Instances",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "navigation-indicator",
+        title: "Navigation Indicator",
+        category: "navigation",
+        family: "navigation-menu"
+      },
+      %{
+        name: "button-default-default",
+        title: "Button default default",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-xs",
+        title: "Button default xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-sm",
+        title: "Button default sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-lg",
+        title: "Button default lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-icon",
+        title: "Button default icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-icon-xs",
+        title: "Button default icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-icon-sm",
+        title: "Button default icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-default-icon-lg",
+        title: "Button default icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-default",
+        title: "Button outline default",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-xs",
+        title: "Button outline xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-sm",
+        title: "Button outline sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-lg",
+        title: "Button outline lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-icon",
+        title: "Button outline icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-icon-xs",
+        title: "Button outline icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-icon-sm",
+        title: "Button outline icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-outline-icon-lg",
+        title: "Button outline icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-default",
+        title: "Button secondary default",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-xs",
+        title: "Button secondary xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-sm",
+        title: "Button secondary sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-lg",
+        title: "Button secondary lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-icon",
+        title: "Button secondary icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-icon-xs",
+        title: "Button secondary icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-icon-sm",
+        title: "Button secondary icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-secondary-icon-lg",
+        title: "Button secondary icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-ghost-default",
+        title: "Button ghost default",
+        category: "actions",
+        family: "button"
+      },
+      %{name: "button-ghost-xs", title: "Button ghost xs", category: "actions", family: "button"},
+      %{name: "button-ghost-sm", title: "Button ghost sm", category: "actions", family: "button"},
+      %{name: "button-ghost-lg", title: "Button ghost lg", category: "actions", family: "button"},
+      %{
+        name: "button-ghost-icon",
+        title: "Button ghost icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-ghost-icon-xs",
+        title: "Button ghost icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-ghost-icon-sm",
+        title: "Button ghost icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-ghost-icon-lg",
+        title: "Button ghost icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-default",
+        title: "Button destructive default",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-xs",
+        title: "Button destructive xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-sm",
+        title: "Button destructive sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-lg",
+        title: "Button destructive lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-icon",
+        title: "Button destructive icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-icon-xs",
+        title: "Button destructive icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-icon-sm",
+        title: "Button destructive icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-destructive-icon-lg",
+        title: "Button destructive icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-link-default",
+        title: "Button link default",
+        category: "actions",
+        family: "button"
+      },
+      %{name: "button-link-xs", title: "Button link xs", category: "actions", family: "button"},
+      %{name: "button-link-sm", title: "Button link sm", category: "actions", family: "button"},
+      %{name: "button-link-lg", title: "Button link lg", category: "actions", family: "button"},
+      %{
+        name: "button-link-icon",
+        title: "Button link icon",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-link-icon-xs",
+        title: "Button link icon-xs",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-link-icon-sm",
+        title: "Button link icon-sm",
+        category: "actions",
+        family: "button"
+      },
+      %{
+        name: "button-link-icon-lg",
+        title: "Button link icon-lg",
+        category: "actions",
+        family: "button"
+      },
+      %{name: "badge-default", title: "Badge default", category: "data-display", family: "badge"},
+      %{
+        name: "badge-secondary",
+        title: "Badge secondary",
+        category: "data-display",
+        family: "badge"
+      },
+      %{
+        name: "badge-destructive",
+        title: "Badge destructive",
+        category: "data-display",
+        family: "badge"
+      },
+      %{name: "badge-outline", title: "Badge outline", category: "data-display", family: "badge"},
+      %{name: "badge-ghost", title: "Badge ghost", category: "data-display", family: "badge"},
+      %{name: "badge-link", title: "Badge link", category: "data-display", family: "badge"},
+      %{
+        name: "toggle-default-default-off",
+        title: "Toggle default default off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-default-default-on",
+        title: "Toggle default default on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-default-sm-off",
+        title: "Toggle default sm off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-default-sm-on",
+        title: "Toggle default sm on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-default-lg-off",
+        title: "Toggle default lg off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-default-lg-on",
+        title: "Toggle default lg on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-default-off",
+        title: "Toggle outline default off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-default-on",
+        title: "Toggle outline default on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-sm-off",
+        title: "Toggle outline sm off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-sm-on",
+        title: "Toggle outline sm on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-lg-off",
+        title: "Toggle outline lg off",
+        category: "actions",
+        family: "toggle"
+      },
+      %{
+        name: "toggle-outline-lg-on",
+        title: "Toggle outline lg on",
+        category: "actions",
+        family: "toggle"
+      },
+      %{name: "card-small", title: "Small card", category: "data-display", family: "card"},
+      %{
+        name: "input-invalid-disabled",
+        title: "Invalid disabled native input",
+        category: "forms",
+        family: "input"
+      },
+      %{
+        name: "textarea-native-form",
+        title: "Named readonly textarea",
+        category: "forms",
+        family: "textarea"
+      },
+      %{name: "alert", title: "Alert", category: "feedback", family: "alert"},
+      %{name: "aspect-ratio", title: "Aspect Ratio", category: "layout", family: "aspect-ratio"},
+      %{name: "attachment", title: "Attachment", category: "data-display", family: "attachment"},
+      %{name: "avatar", title: "Avatar", category: "data-display", family: "avatar"},
+      %{name: "badge", title: "Badge", category: "data-display", family: "badge"},
+      %{name: "breadcrumb", title: "Breadcrumb", category: "navigation", family: "breadcrumb"},
+      %{name: "bubble", title: "Bubble", category: "feedback", family: "bubble"},
+      %{name: "button-group", title: "Button Group", category: "actions", family: "button-group"},
+      %{name: "button", title: "Button", category: "actions", family: "button"},
+      %{name: "card", title: "Card", category: "data-display", family: "card"},
+      %{name: "direction", title: "Direction", category: "layout", family: "direction"},
+      %{name: "empty", title: "Empty", category: "feedback", family: "empty"},
+      %{name: "field", title: "Field", category: "forms", family: "field"},
+      %{name: "input-group", title: "Input Group", category: "forms", family: "input-group"},
+      %{name: "input", title: "Input", category: "forms", family: "input"},
+      %{name: "item", title: "Item", category: "data-display", family: "item"},
+      %{name: "kbd", title: "Kbd", category: "data-display", family: "kbd"},
+      %{name: "label", title: "Label", category: "forms", family: "label"},
+      %{name: "marker", title: "Marker", category: "data-display", family: "marker"},
+      %{name: "message", title: "Message", category: "data-display", family: "message"},
+      %{
+        name: "native-select",
+        title: "Native Select",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-default-selection",
+        title: "Native Select Default Selection",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-controlled-small",
+        title: "Native Select Controlled Small",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-disabled-groups",
+        title: "Native Select Disabled Groups",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-multiple-instances",
+        title: "Native Select Multiple Instances",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-empty-controlled",
+        title: "Native Select Empty Controlled",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-controlled-multiple",
+        title: "Native Select Controlled Multiple",
+        category: "forms",
+        family: "native-select"
+      },
+      %{
+        name: "native-select-external-form-empty-multiple",
+        title: "Native Select External Form Empty Multiple",
+        category: "forms",
+        family: "native-select"
+      },
+      %{name: "pagination", title: "Pagination", category: "navigation", family: "pagination"},
+      %{name: "progress", title: "Progress", category: "feedback", family: "progress"},
+      %{
+        name: "progress-absent",
+        title: "Progress absent",
+        category: "feedback",
+        family: "progress"
+      },
+      %{name: "progress-null", title: "Progress null", category: "feedback", family: "progress"},
+      %{name: "progress-zero", title: "Progress zero", category: "feedback", family: "progress"},
+      %{
+        name: "progress-fractional",
+        title: "Progress fractional",
+        category: "feedback",
+        family: "progress"
+      },
+      %{
+        name: "progress-complete",
+        title: "Progress complete",
+        category: "feedback",
+        family: "progress"
+      },
+      %{
+        name: "progress-custom-max",
+        title: "Progress custom-max",
+        category: "feedback",
+        family: "progress"
+      },
+      %{
+        name: "progress-null-max",
+        title: "Progress null-max",
+        category: "feedback",
+        family: "progress"
+      },
+      %{
+        name: "progress-outside-visual-range",
+        title: "Progress outside-visual-range",
+        category: "feedback",
+        family: "progress"
+      },
+      %{
+        name: "progress-custom-class-aria",
+        title: "Progress custom-class-aria",
+        category: "feedback",
+        family: "progress"
+      },
+      %{name: "scroll-area", title: "Scroll Area", category: "layout", family: "scroll-area"},
+      %{name: "separator", title: "Separator", category: "layout", family: "separator"},
+      %{name: "skeleton", title: "Skeleton", category: "feedback", family: "skeleton"},
+      %{name: "sonner", title: "Sonner", category: "feedback", family: "sonner"},
+      %{name: "spinner", title: "Spinner", category: "feedback", family: "spinner"},
+      %{name: "table", title: "Table", category: "data-display", family: "table"},
+      %{name: "textarea", title: "Textarea", category: "forms", family: "textarea"},
+      %{name: "toggle", title: "Toggle", category: "actions", family: "toggle"}
+    ]
+
   def render_html(name) do
     case render_fixture(name) do
       nil -> nil
@@ -2616,7 +4044,7 @@ defmodule ShadcnLiveview.Gallery do
       :let={carousel}
       id="carousel-vertical-demo"
       orientation="vertical"
-      class="h-48 w-full max-w-xs"
+      class="my-12 h-48 w-full max-w-xs"
     >
       <.carousel_content carousel={carousel} class="h-48">
         <.carousel_item carousel={carousel}>First</.carousel_item><.carousel_item carousel={carousel}>
@@ -2632,14 +4060,14 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <div class="flex gap-28">
+    <div class="flex w-full flex-col items-center gap-12 px-12">
       <.carousel
         :let={carousel}
         :for={side <- ~w(left right)}
         id={"carousel-" <> side}
         loop={true}
         start_index={1}
-        class="w-48"
+        class="w-full max-w-48"
       >
         <.carousel_content carousel={carousel}>
           <.carousel_item :for={label <- ~w(A B C D)} carousel={carousel} class="basis-1/2">
@@ -2829,12 +4257,27 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <div class="flex gap-4">
-      <.sidebar_provider :let={sidebar} id="sidebar-inset">
-        <.sidebar id="sidebar-inset-panel" sidebar={sidebar} variant="inset">
+    <div class="flex w-full min-w-0 flex-col gap-4 md:flex-row">
+      <.sidebar_provider
+        :let={sidebar}
+        id="sidebar-inset"
+        class="relative h-64 min-h-0! min-w-0 overflow-hidden"
+      >
+        <.sidebar
+          id="sidebar-inset-panel"
+          sidebar={sidebar}
+          variant="inset"
+          class="md:absolute md:h-full"
+        >
           <.sidebar_header>Inset</.sidebar_header><.sidebar_content>Navigation</.sidebar_content>
-        </.sidebar><.sidebar_inset><.sidebar_trigger sidebar={sidebar} />Main</.sidebar_inset>
-      </.sidebar_provider><.sidebar_provider :let={sidebar} id="sidebar-static">
+        </.sidebar><.sidebar_inset class="min-w-0">
+          <.sidebar_trigger sidebar={sidebar} />Main
+        </.sidebar_inset>
+      </.sidebar_provider><.sidebar_provider
+        :let={sidebar}
+        id="sidebar-static"
+        class="h-48 min-h-0! min-w-0 md:h-64 md:w-48 md:shrink-0"
+      >
         <.sidebar id="sidebar-static-panel" sidebar={sidebar} collapsible="none" class="w-48">
           <.sidebar_content>Always visible</.sidebar_content>
         </.sidebar>
@@ -2992,7 +4435,14 @@ defmodule ShadcnLiveview.Gallery do
       config={%{desktop: %{label: "Desktop", color: "#2563eb"}}}
       class="h-[200px] w-full"
     >
-      <.chart_canvas id="empty-data-canvas" context={chart} data={[]} series={[:desktop]} />
+      <.chart_canvas
+        id="empty-data-canvas"
+        context={chart}
+        data={[]}
+        series={[:desktop]}
+        axes={false}
+        tooltip={false}
+      />
     </.chart_container>
     """
   end
@@ -3841,7 +5291,7 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <form id="shipping-form">
+    <form id="shipping-form" class="grid gap-4">
       <.radio_group
         :let={group}
         id="shipping"
@@ -3850,10 +5300,25 @@ defmodule ShadcnLiveview.Gallery do
         orientation="vertical"
         default_value="standard"
       >
-        <.radio_group_item context={group} id="standard" value="standard" aria-label="Standard" />
-        <.radio_group_item context={group} id="express" value="express" disabled aria-label="Express" />
-        <.radio_group_item context={group} id="overnight" value="overnight" aria-label="Overnight" />
-      </.radio_group>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="standard" value="standard" class="peer" /><.label for="standard">
+            Standard
+          </.label>
+        </div>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="express" value="express" disabled class="peer" /><.label for="express">
+            Express
+          </.label>
+        </div>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="overnight" value="overnight" class="peer" /><.label for="overnight">
+            Overnight
+          </.label>
+        </div>
+      </.radio_group><.button type="submit" class="justify-self-start">Submit shipping</.button><output
+        aria-live="polite"
+        class="text-sm text-muted-foreground"
+      >Submitted shipping: none</output>
     </form>
     """
   end
@@ -4828,7 +6293,7 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <form id="slider-multiple-form">
+    <form id="slider-multiple-form" class="w-64 space-y-4">
       <.slider id="slider-price" default_value={[5, 15]} min={0} max={20} step={1} name="price" /><.slider
         id="slider-rating"
         default_value={[3]}
@@ -4848,6 +6313,7 @@ defmodule ShadcnLiveview.Gallery do
     <div>
       <form id="slider-external-form"></form><.slider
         id="slider-external"
+        class="w-64"
         default_value={[2]}
         min={0}
         max={10}
@@ -5963,12 +7429,17 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <.field_set>
+    <.field_set class="w-full max-w-md">
       <.field_group>
         <.field>
-          <.field_label>Email address</.field_label>
-          <.input type="email" placeholder="m@example.com" />
-          <.field_description>We will never share your email.</.field_description>
+          <.field_label for="field-email">Email address</.field_label>
+          <.input
+            id="field-email"
+            type="email"
+            placeholder="m@example.com"
+            aria-describedby="field-help"
+          />
+          <.field_description id="field-help">We will never share your email.</.field_description>
         </.field>
       </.field_group>
     </.field_set>
@@ -6019,7 +7490,9 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <.label for="test-input">Your email address</.label>
+    <div>
+      <.label for="test-input">Your email address</.label><.input id="test-input" type="email" />
+    </div>
     """
   end
 
@@ -6342,8 +7815,8 @@ defmodule ShadcnLiveview.Gallery do
     assigns = %{}
 
     ~H"""
-    <.scroll_area class="h-32 w-48 rounded-md border p-4">
-      Long scrolling text item list inside scroll area.
+    <.scroll_area id="scroll-area-demo" class="h-32 w-48 rounded-md border p-4">
+      <div :for={n <- 1..20} class="py-2">Item {n}</div>
     </.scroll_area>
     """
   end
@@ -6423,7 +7896,8 @@ defmodule ShadcnLiveview.Gallery do
 
   attr :fixture, :string, required: true
   attr :state, :map, required: true
-  @doc "Renders a connected fixture using the caller's tracked LiveView assigns."
+  attr :form_data, :map, required: true
+  @doc "Renders a connected fixture using the caller's tracked state and submitted form data."
 
   def live_fixture(%{fixture: "accordion"} = assigns) do
     ~H"""
@@ -8069,34 +9543,31 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "select"} = assigns) do
     ~H"""
-    <form id="select-demo-form" phx-change="preview:form" phx-submit="preview:form">
-      <.select
-        id="select-demo"
-        open={Map.get(@state, "select-demo-open", true)}
-        placeholder="Select a fruit"
-        value={Map.get(@state, "select-demo-value", nil)}
-        name="fruit"
-        on_change="shadcn:popup-change"
+    <.select
+      id="select-demo"
+      open={Map.get(@state, "select-demo-open", true)}
+      placeholder="Select a fruit"
+      value={Map.get(@state, "select-demo-value", nil)}
+      on_change="shadcn:popup-change"
+    >
+      <:trigger :let={popup}>
+        <.select_trigger context={popup} class="w-[180px]">
+          <.select_value context={popup} placeholder="Select a fruit" />
+        </.select_trigger>
+      </:trigger><:option id="select-demo-apple" value="apple" label="Apple">Apple</:option><:option
+        id="select-demo-banana"
+        value="banana"
+        label="Banana"
       >
-        <:trigger :let={popup}>
-          <.select_trigger context={popup} class="w-[180px]">
-            <.select_value context={popup} placeholder="Select a fruit" />
-          </.select_trigger>
-        </:trigger><:option id="select-demo-apple" value="apple" label="Apple">Apple</:option><:option
-          id="select-demo-banana"
-          value="banana"
-          label="Banana"
-        >
-          Banana
-        </:option>
-      </.select><button type="reset">Reset</button><button type="submit">Submit</button>
-    </form>
+        Banana
+      </:option>
+    </.select>
     """
   end
 
   def live_fixture(%{fixture: "select-value-disabled"} = assigns) do
     ~H"""
-    <form id="select-value-form" phx-change="preview:form" phx-submit="preview:form">
+    <form>
       <.select
         id="select-value"
         open={Map.get(@state, "select-value-open", true)}
@@ -8110,7 +9581,7 @@ defmodule ShadcnLiveview.Gallery do
         </:trigger><:option id="select-value-apple" value="apple" label="Apple" disabled>
           Apple
         </:option><:option id="select-value-banana" value="banana" label="Banana">Banana</:option>
-      </.select><button type="reset">Reset</button><button type="submit">Submit</button>
+      </.select>
     </form>
     """
   end
@@ -8310,7 +9781,12 @@ defmodule ShadcnLiveview.Gallery do
             <.combobox_empty>No frameworks found.</.combobox_empty>
           </.combobox_content>
         </:content>
-      </.combobox><button type="submit">Submit framework</button>
+      </.combobox><button type="submit">Submit framework</button><output
+        :if={Map.has_key?(@form_data, "framework")}
+        aria-live="polite"
+      >Submitted framework: {if Map.get(@form_data, "framework") == "",
+        do: "None",
+        else: Map.get(@form_data, "framework")}</output>
     </form>
     """
   end
@@ -8380,7 +9856,12 @@ defmodule ShadcnLiveview.Gallery do
             <.combobox_empty>No frameworks found.</.combobox_empty>
           </.combobox_content>
         </:content>
-      </.combobox><button type="submit">Submit framework</button>
+      </.combobox><button type="submit">Submit framework</button><output
+        :if={Map.has_key?(@form_data, "framework")}
+        aria-live="polite"
+      >Submitted framework: {if Map.get(@form_data, "framework") == "",
+        do: "None",
+        else: Map.get(@form_data, "framework")}</output>
     </form>
     """
   end
@@ -8520,22 +10001,41 @@ defmodule ShadcnLiveview.Gallery do
         </.command_group>
       </.command_list>
     </.command>
+    <output :if={Map.get(@state, "command-demo", "") != ""} aria-live="polite">Selected command: {Map.get(
+      @state,
+      "command-demo"
+    )}</output>
     """
   end
 
   def live_fixture(%{fixture: "command-empty"} = assigns) do
     ~H"""
-    <.command :let={command} id="empty-command" label="Actions">
+    <.command
+      :let={command}
+      id="empty-command"
+      label="Actions"
+      value={Map.get(@state, "empty-command", "")}
+      on_select="shadcn:command-change"
+    >
       <.command_input context={command} /><.command_list context={command} label="Actions">
         <.command_empty>No actions available.</.command_empty>
       </.command_list>
-    </.command>
+    </.command><output :if={Map.get(@state, "empty-command", "") != ""} aria-live="polite">Selected command: {Map.get(
+      @state,
+      "empty-command"
+    )}</output>
     """
   end
 
   def live_fixture(%{fixture: "command-values-disabled"} = assigns) do
     ~H"""
-    <.command :let={command} id="valued-command" value="save" label="Editor actions">
+    <.command
+      :let={command}
+      id="valued-command"
+      value={Map.get(@state, "valued-command", "save")}
+      on_select="shadcn:command-change"
+      label="Editor actions"
+    >
       <.command_input context={command} name="query" value="sav" disabled /><.command_list context={
         command
       }>
@@ -8555,22 +10055,41 @@ defmodule ShadcnLiveview.Gallery do
           Close
         </.command_item>
       </.command_list>
-    </.command>
+    </.command><output :if={Map.get(@state, "valued-command", "") != ""} aria-live="polite">Selected command: {Map.get(
+      @state,
+      "valued-command"
+    )}</output>
     """
   end
 
   def live_fixture(%{fixture: "command-multiple-instances"} = assigns) do
     ~H"""
     <div>
-      <.command :let={command} id="first-command">
+      <.command
+        :let={command}
+        id="first-command"
+        value={Map.get(@state, "first-command", "")}
+        on_select="shadcn:command-change"
+      >
         <.command_input context={command} /><.command_list context={command}>
           <.command_item id="radix-first-command-open" value="open">Open</.command_item>
         </.command_list>
-      </.command><.command :let={command} id="second-command">
+      </.command><output :if={Map.get(@state, "first-command", "") != ""} aria-live="polite">Selected command: {Map.get(
+        @state,
+        "first-command"
+      )}</output><.command
+        :let={command}
+        id="second-command"
+        value={Map.get(@state, "second-command", "")}
+        on_select="shadcn:command-change"
+      >
         <.command_input context={command} /><.command_list context={command}>
           <.command_item id="radix-second-command-open" value="open">Open</.command_item>
         </.command_list>
-      </.command>
+      </.command><output :if={Map.get(@state, "second-command", "") != ""} aria-live="polite">Selected command: {Map.get(
+        @state,
+        "second-command"
+      )}</output>
     </div>
     """
   end
@@ -8588,9 +10107,9 @@ defmodule ShadcnLiveview.Gallery do
         required
         minlength={4}
         pattern="^[0-9]+$"
+        paste_transform="strip-separators"
         on_change="shadcn:otp-change"
         on_complete="shadcn:otp-complete"
-        paste_transform="strip-separators"
       >
         <.input_otp_group>
           <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
@@ -8604,14 +10123,26 @@ defmodule ShadcnLiveview.Gallery do
         value="9021"
         phx-click="shadcn:otp-change"
         phx-value-id="otp-demo"
-      >Set server code to 9021</button>
+      >Set server code to 9021</button><output
+        :if={Map.has_key?(@form_data, "code")}
+        aria-live="polite"
+      >Submitted code: {Map.get(@form_data, "code")}</output>
     </form>
     """
   end
 
   def live_fixture(%{fixture: "input-otp-partial-value"} = assigns) do
     ~H"""
-    <.input_otp :let={otp} id="partial-otp" max_length={4} value="12" disabled={false} name="code">
+    <.input_otp
+      :let={otp}
+      id="partial-otp"
+      max_length={4}
+      value={Map.get(@state, "partial-otp", "12")}
+      disabled={false}
+      name="code"
+      on_change="shadcn:otp-change"
+      on_complete="shadcn:otp-complete"
+    >
       <.input_otp_group>
         <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
           context={otp}
@@ -8628,9 +10159,11 @@ defmodule ShadcnLiveview.Gallery do
       :let={otp}
       id="separated-otp"
       max_length={6}
-      value="123456"
+      value={Map.get(@state, "separated-otp", "123456")}
       disabled={false}
       name="code"
+      on_change="shadcn:otp-change"
+      on_complete="shadcn:otp-complete"
     >
       <.input_otp_group>
         <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
@@ -8649,7 +10182,16 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "input-otp-disabled"} = assigns) do
     ~H"""
-    <.input_otp :let={otp} id="disabled-otp" max_length={4} value="9876" disabled={true} name="code">
+    <.input_otp
+      :let={otp}
+      id="disabled-otp"
+      max_length={4}
+      value={Map.get(@state, "disabled-otp", "9876")}
+      disabled={true}
+      name="code"
+      on_change="shadcn:otp-change"
+      on_complete="shadcn:otp-complete"
+    >
       <.input_otp_group>
         <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
           context={otp}
@@ -8693,14 +10235,30 @@ defmodule ShadcnLiveview.Gallery do
   def live_fixture(%{fixture: "input-otp-multiple-instances"} = assigns) do
     ~H"""
     <div>
-      <.input_otp :let={otp} id="first-otp" max_length={4} value="" disabled={false}>
+      <.input_otp
+        :let={otp}
+        id="first-otp"
+        max_length={4}
+        value={Map.get(@state, "first-otp", "")}
+        disabled={false}
+        on_change="shadcn:otp-change"
+        on_complete="shadcn:otp-complete"
+      >
         <.input_otp_group>
           <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
             context={otp}
             index={2}
           /><.input_otp_slot context={otp} index={3} />
         </.input_otp_group>
-      </.input_otp><.input_otp :let={otp} id="second-otp" max_length={4} value="23" disabled={false}>
+      </.input_otp><.input_otp
+        :let={otp}
+        id="second-otp"
+        max_length={4}
+        value={Map.get(@state, "second-otp", "23")}
+        disabled={false}
+        on_change="shadcn:otp-change"
+        on_complete="shadcn:otp-complete"
+      >
         <.input_otp_group>
           <.input_otp_slot context={otp} index={0} /><.input_otp_slot context={otp} index={1} /><.input_otp_slot
             context={otp}
@@ -8714,7 +10272,11 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "calendar"} = assigns) do
     ~H"""
-    <.calendar id="calendar-default" month={~D[2024-10-01]} today={~D[2024-02-15]} />
+    <.calendar
+      id="calendar-default"
+      month={Map.get(@state, "calendar-default", %{month: ~D[2024-10-01]}).month}
+      today={~D[2024-02-15]}
+    />
     """
   end
 
@@ -8734,7 +10296,7 @@ defmodule ShadcnLiveview.Gallery do
     ~H"""
     <.calendar
       id="calendar-common"
-      month={~D[2023-02-01]}
+      month={Map.get(@state, "calendar-common", %{month: ~D[2023-02-01]}).month}
       today={~D[2024-02-15]}
       show_outside_days={false}
     />
@@ -8745,10 +10307,15 @@ defmodule ShadcnLiveview.Gallery do
     ~H"""
     <.calendar
       id="calendar-range"
-      month={~D[2024-02-01]}
+      month={Map.get(@state, "calendar-range", %{month: ~D[2024-02-01]}).month}
       today={~D[2024-02-15]}
       mode="range"
-      selected={%{from: ~D[2024-02-10], to: ~D[2024-02-12]}}
+      selected={
+        Map.get(Map.get(@state, "calendar-range", %{}), :selected, %{
+          from: ~D[2024-02-10],
+          to: ~D[2024-02-12]
+        })
+      }
       disabled_before={~D[2024-02-05]}
       disabled_after={~D[2024-02-25]}
       start_month={~D[2024-02-01]}
@@ -8762,10 +10329,11 @@ defmodule ShadcnLiveview.Gallery do
     ~H"""
     <.calendar
       id="calendar-british"
-      month={~D[2024-02-01]}
+      month={Map.get(@state, "calendar-british", %{month: ~D[2024-02-01]}).month}
       today={~D[2024-02-15]}
       locale="en-GB"
       mode="single"
+      selected={Map.get(Map.get(@state, "calendar-british", %{}), :selected)}
     />
     """
   end
@@ -8774,10 +10342,12 @@ defmodule ShadcnLiveview.Gallery do
     ~H"""
     <.calendar
       id="calendar-multiple"
-      month={~D[2024-02-01]}
+      month={Map.get(@state, "calendar-multiple", %{month: ~D[2024-02-01]}).month}
       today={~D[2024-02-15]}
       mode="multiple"
-      selected={[~D[2024-02-05], ~D[2024-02-21]]}
+      selected={
+        Map.get(Map.get(@state, "calendar-multiple", %{}), :selected, [~D[2024-02-05], ~D[2024-02-21]])
+      }
       disabled={[~D[2024-02-08], ~D[2024-02-09]]}
       week_starts_on={1}
       fixed_weeks
@@ -8787,7 +10357,12 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "calendar-year-boundary"} = assigns) do
     ~H"""
-    <.calendar id="calendar-year" month={~D[2024-12-01]} today={~D[2024-02-15]} number_of_months={2} />
+    <.calendar
+      id="calendar-year"
+      month={Map.get(@state, "calendar-year", %{month: ~D[2024-12-01]}).month}
+      today={~D[2024-02-15]}
+      number_of_months={2}
+    />
     """
   end
 
@@ -8795,23 +10370,28 @@ defmodule ShadcnLiveview.Gallery do
     ~H"""
     <.calendar
       id="calendar-first"
-      month={~D[2024-01-01]}
+      month={Map.get(@state, "calendar-first", %{month: ~D[2024-01-01]}).month}
       today={~D[2024-02-15]}
       mode="single"
-      selected={~D[2024-01-10]}
+      selected={Map.get(Map.get(@state, "calendar-first", %{}), :selected, ~D[2024-01-10])}
     /><.calendar
       id="calendar-second"
-      month={~D[2024-03-01]}
+      month={Map.get(@state, "calendar-second", %{month: ~D[2024-03-01]}).month}
       today={~D[2024-02-15]}
       mode="single"
-      selected={~D[2024-03-20]}
+      selected={Map.get(Map.get(@state, "calendar-second", %{}), :selected, ~D[2024-03-20])}
     />
     """
   end
 
   def live_fixture(%{fixture: "carousel"} = assigns) do
     ~H"""
-    <.carousel :let={carousel} id="carousel-demo" class="w-full max-w-xs">
+    <.carousel
+      :let={carousel}
+      id="carousel-demo"
+      start_index={Map.get(@state, "carousel-demo", 0)}
+      class="w-full max-w-xs"
+    >
       <.carousel_content carousel={carousel}>
         <.carousel_item carousel={carousel}>
           <div class="p-1">
@@ -8834,7 +10414,8 @@ defmodule ShadcnLiveview.Gallery do
       :let={carousel}
       id="carousel-vertical-demo"
       orientation="vertical"
-      class="h-48 w-full max-w-xs"
+      start_index={Map.get(@state, "carousel-vertical-demo", 0)}
+      class="my-12 h-48 w-full max-w-xs"
     >
       <.carousel_content carousel={carousel} class="h-48">
         <.carousel_item carousel={carousel}>First</.carousel_item><.carousel_item carousel={carousel}>
@@ -8848,14 +10429,14 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "carousel-multiple"} = assigns) do
     ~H"""
-    <div class="flex gap-28">
+    <div class="flex w-full flex-col items-center gap-12 px-12">
       <.carousel
         :let={carousel}
         :for={side <- ~w(left right)}
         id={"carousel-" <> side}
         loop={true}
         start_index={Map.get(@state, "carousel-" <> side, 1)}
-        class="w-48"
+        class="w-full max-w-48"
       >
         <.carousel_content carousel={carousel}>
           <.carousel_item :for={label <- ~w(A B C D)} carousel={carousel} class="basis-1/2">
@@ -8874,6 +10455,7 @@ defmodule ShadcnLiveview.Gallery do
     <.resizable_panel_group
       :let={group}
       id="resizable-demo"
+      layout={Map.get(@state, "resizable-demo")}
       orientation="horizontal"
       class="max-w-md rounded-lg border"
     >
@@ -8893,13 +10475,14 @@ defmodule ShadcnLiveview.Gallery do
     <.resizable_panel_group
       :let={group}
       id="resizable-vertical-demo"
+      layout={Map.get(@state, "resizable-vertical-demo")}
       orientation="vertical"
       class="min-h-64 max-w-md border"
     >
       <.resizable_panel
         group={group}
         id="resizable-vertical-one"
-        default_size={to_string(Map.get(Map.get(@state, "resizable-vertical-demo", %{}), "resizable-vertical-one", 30)) <> "%"}
+        default_size="30%"
         min_size="10%"
         max_size="80%"
       >
@@ -8911,7 +10494,7 @@ defmodule ShadcnLiveview.Gallery do
       /><.resizable_panel
         group={group}
         id="resizable-vertical-two"
-        default_size={to_string(Map.get(Map.get(@state, "resizable-vertical-demo", %{}), "resizable-vertical-two", 70)) <> "%"}
+        default_size="70%"
         min_size="20%"
         max_size="90%"
       >
@@ -8924,7 +10507,12 @@ defmodule ShadcnLiveview.Gallery do
   def live_fixture(%{fixture: "resizable-multiple"} = assigns) do
     ~H"""
     <div class="flex gap-4">
-      <.resizable_panel_group :let={group} id="resize-auto" class="min-h-32">
+      <.resizable_panel_group
+        :let={group}
+        id="resize-auto"
+        layout={Map.get(@state, "resize-auto")}
+        class="min-h-32"
+      >
         <.resizable_panel id="resize-auto-a" group={group}>Automatic</.resizable_panel><.resizable_handle
           id="resize-auto-h"
           group={group}
@@ -8957,7 +10545,12 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "sidebar"} = assigns) do
     ~H"""
-    <.sidebar_provider :let={sidebar} id="sidebar-demo">
+    <.sidebar_provider
+      :let={sidebar}
+      id="sidebar-demo"
+      open={Map.get(@state, "sidebar-demo", true)}
+      mobile_open={Map.get(@state, "sidebar-demo-mobile", false)}
+    >
       <.sidebar id="sidebar-demo-panel" sidebar={sidebar}>
         <.sidebar_header>
           <h4 class="font-semibold text-sm">Application</h4>
@@ -9041,12 +10634,31 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "sidebar-multiple"} = assigns) do
     ~H"""
-    <div class="flex gap-4">
-      <.sidebar_provider :let={sidebar} id="sidebar-inset">
-        <.sidebar id="sidebar-inset-panel" sidebar={sidebar} variant="inset">
+    <div class="flex w-full min-w-0 flex-col gap-4 md:flex-row">
+      <.sidebar_provider
+        :let={sidebar}
+        id="sidebar-inset"
+        class="relative h-64 min-h-0! min-w-0 overflow-hidden"
+        open={Map.get(@state, "sidebar-inset", true)}
+        mobile_open={Map.get(@state, "sidebar-inset-mobile", false)}
+      >
+        <.sidebar
+          id="sidebar-inset-panel"
+          sidebar={sidebar}
+          variant="inset"
+          class="md:absolute md:h-full"
+        >
           <.sidebar_header>Inset</.sidebar_header><.sidebar_content>Navigation</.sidebar_content>
-        </.sidebar><.sidebar_inset><.sidebar_trigger sidebar={sidebar} />Main</.sidebar_inset>
-      </.sidebar_provider><.sidebar_provider :let={sidebar} id="sidebar-static">
+        </.sidebar><.sidebar_inset class="min-w-0">
+          <.sidebar_trigger sidebar={sidebar} />Main
+        </.sidebar_inset>
+      </.sidebar_provider><.sidebar_provider
+        :let={sidebar}
+        id="sidebar-static"
+        class="h-48 min-h-0! min-w-0 md:h-64 md:w-48 md:shrink-0"
+        open={Map.get(@state, "sidebar-static", true)}
+        mobile_open={Map.get(@state, "sidebar-static-mobile", false)}
+      >
         <.sidebar id="sidebar-static-panel" sidebar={sidebar} collapsible="none" class="w-48">
           <.sidebar_content>Always visible</.sidebar_content>
         </.sidebar>
@@ -9099,7 +10711,7 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "chart-bar-series"} = assigns) do
     ~H"""
-    <section>
+    <section class="w-full min-w-0">
       <button type="button" phx-click="shadcn:chart-data" phx-value-id="sales-bars" value="alternate">Change chart data</button><.chart_container
         :let={chart}
         id="sales-bars"
@@ -9197,7 +10809,14 @@ defmodule ShadcnLiveview.Gallery do
       config={%{desktop: %{label: "Desktop", color: "#2563eb"}}}
       class="h-[200px] w-full"
     >
-      <.chart_canvas id="empty-data-canvas" context={chart} data={[]} series={[:desktop]} />
+      <.chart_canvas
+        id="empty-data-canvas"
+        context={chart}
+        data={[]}
+        series={[:desktop]}
+        axes={false}
+        tooltip={false}
+      />
     </.chart_container>
     """
   end
@@ -9581,7 +11200,16 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "questionnaire"} = assigns) do
     ~H"""
-    <.questionnaire :let={questionnaire} id="questionnaire-demo" items={[%{name: "satisfaction"}]}>
+    <.questionnaire
+      :let={questionnaire}
+      id="questionnaire-demo"
+      items={[%{name: "satisfaction"}]}
+      item={Map.get(@state, "questionnaire-demo", "satisfaction")}
+      on_item_change="shadcn:questionnaire-change"
+      phx-value-id="questionnaire-demo"
+      phx-submit="shadcn:questionnaire-submit"
+      phx-change="shadcn:questionnaire-answer"
+    >
       <.questionnaire_item context={questionnaire} name="satisfaction">
         How satisfied are you with our service?
       </.questionnaire_item>
@@ -9669,6 +11297,10 @@ defmodule ShadcnLiveview.Gallery do
         } />
       </.questionnaire_actions>
     </.questionnaire>
+    <output :if={!is_nil(Map.get(@state, "questionnaire-flow-submitted"))} aria-live="polite">Submitted answers: {Map.get(
+      @state,
+      "questionnaire-flow-submitted"
+    )}</output>
     """
   end
 
@@ -9686,8 +11318,12 @@ defmodule ShadcnLiveview.Gallery do
         %{name: "comment"},
         %{name: "archived", disabled: true}
       ]}
-      item="comment"
+      item={Map.get(@state, "questionnaire-last", "comment")}
       shortcuts="letters"
+      on_item_change="shadcn:questionnaire-change"
+      phx-value-id="questionnaire-last"
+      phx-submit="shadcn:questionnaire-submit"
+      phx-change="shadcn:questionnaire-answer"
     >
       <.questionnaire_progress context={questionnaire} />
       <.questionnaire_item
@@ -9703,12 +11339,22 @@ defmodule ShadcnLiveview.Gallery do
           Choose an answer.
         </.questionnaire_description>
         <.questionnaire_choices context={question}>
-          <.questionnaire_choice context={question} value="good" index={0}>
+          <.questionnaire_choice
+            context={question}
+            value="good"
+            checked={Map.get(Map.get(@state, "questionnaire-last-answers", %{}), "rating") == "good"}
+            index={0}
+          >
             Good<.questionnaire_choice_description>
               A pleasant visit.
             </.questionnaire_choice_description>
           </.questionnaire_choice>
-          <.questionnaire_choice context={question} value="great" index={1}>
+          <.questionnaire_choice
+            context={question}
+            value="great"
+            checked={Map.get(Map.get(@state, "questionnaire-last-answers", %{}), "rating") == "great"}
+            index={1}
+          >
             Great
           </.questionnaire_choice>
           <.questionnaire_choice context={question} value="unavailable" disabled index={2}>
@@ -9722,7 +11368,7 @@ defmodule ShadcnLiveview.Gallery do
         <.questionnaire_input
           context={question}
           id="questionnaire-last-comment-input"
-          value="Thanks!"
+          value={Map.get(Map.get(@state, "questionnaire-last-answers", %{}), "comment", "Thanks!")}
           placeholder="Your feedback"
         />
         <.questionnaire_error context={question} id="questionnaire-last-comment-error" />
@@ -9738,6 +11384,10 @@ defmodule ShadcnLiveview.Gallery do
         } />
       </.questionnaire_actions>
     </.questionnaire>
+    <output :if={!is_nil(Map.get(@state, "questionnaire-last-submitted"))} aria-live="polite">Submitted answers: {Map.get(
+      @state,
+      "questionnaire-last-submitted"
+    )}</output>
     """
   end
 
@@ -9755,8 +11405,12 @@ defmodule ShadcnLiveview.Gallery do
         %{name: "comment"},
         %{name: "archived", disabled: true}
       ]}
-      item="rating"
+      item={Map.get(@state, "questionnaire-invalid", "rating")}
       shortcuts="numbers"
+      on_item_change="shadcn:questionnaire-change"
+      phx-value-id="questionnaire-invalid"
+      phx-submit="shadcn:questionnaire-submit"
+      phx-change="shadcn:questionnaire-answer"
     >
       <.questionnaire_progress context={questionnaire} />
       <.questionnaire_item
@@ -9765,19 +11419,33 @@ defmodule ShadcnLiveview.Gallery do
         name="rating"
         required
         multiple={true}
-        invalid={true}
+        invalid={not Map.has_key?(Map.get(@state, "questionnaire-invalid-answers", %{}), "rating")}
       >
         <.questionnaire_title>How was your visit?</.questionnaire_title>
         <.questionnaire_description id="questionnaire-invalid-rating-description">
           Choose an answer.
         </.questionnaire_description>
         <.questionnaire_choices context={question}>
-          <.questionnaire_choice context={question} value="good" index={0}>
+          <.questionnaire_choice
+            context={question}
+            value="good"
+            checked={
+              "good" in Map.get(Map.get(@state, "questionnaire-invalid-answers", %{}), "rating", [])
+            }
+            index={0}
+          >
             Good<.questionnaire_choice_description>
               A pleasant visit.
             </.questionnaire_choice_description>
           </.questionnaire_choice>
-          <.questionnaire_choice context={question} value="great" index={1}>
+          <.questionnaire_choice
+            context={question}
+            value="great"
+            checked={
+              "great" in Map.get(Map.get(@state, "questionnaire-invalid-answers", %{}), "rating", [])
+            }
+            index={1}
+          >
             Great
           </.questionnaire_choice>
           <.questionnaire_choice context={question} value="unavailable" disabled index={2}>
@@ -9791,7 +11459,7 @@ defmodule ShadcnLiveview.Gallery do
         <.questionnaire_input
           context={question}
           id="questionnaire-invalid-comment-input"
-          value="Thanks!"
+          value={Map.get(Map.get(@state, "questionnaire-invalid-answers", %{}), "comment", "Thanks!")}
           placeholder="Your feedback"
         />
         <.questionnaire_error context={question} id="questionnaire-invalid-comment-error" />
@@ -9807,6 +11475,10 @@ defmodule ShadcnLiveview.Gallery do
         } />
       </.questionnaire_actions>
     </.questionnaire>
+    <output :if={!is_nil(Map.get(@state, "questionnaire-invalid-submitted"))} aria-live="polite">Submitted answers: {Map.get(
+      @state,
+      "questionnaire-invalid-submitted"
+    )}</output>
     """
   end
 
@@ -9839,8 +11511,12 @@ defmodule ShadcnLiveview.Gallery do
           %{name: "comment"},
           %{name: "archived", disabled: true}
         ]}
-        item="rating"
+        item={Map.get(@state, "questionnaire-a", "rating")}
         shortcuts="letters"
+        on_item_change="shadcn:questionnaire-change"
+        phx-value-id="questionnaire-a"
+        phx-submit="shadcn:questionnaire-submit"
+        phx-change="shadcn:questionnaire-answer"
       >
         <.questionnaire_progress context={questionnaire} />
         <.questionnaire_item
@@ -9856,12 +11532,22 @@ defmodule ShadcnLiveview.Gallery do
             Choose an answer.
           </.questionnaire_description>
           <.questionnaire_choices context={question}>
-            <.questionnaire_choice context={question} value="good" index={0}>
+            <.questionnaire_choice
+              context={question}
+              value="good"
+              checked={Map.get(Map.get(@state, "questionnaire-a-answers", %{}), "rating") == "good"}
+              index={0}
+            >
               Good<.questionnaire_choice_description>
                 A pleasant visit.
               </.questionnaire_choice_description>
             </.questionnaire_choice>
-            <.questionnaire_choice context={question} value="great" index={1}>
+            <.questionnaire_choice
+              context={question}
+              value="great"
+              checked={Map.get(Map.get(@state, "questionnaire-a-answers", %{}), "rating") == "great"}
+              index={1}
+            >
               Great
             </.questionnaire_choice>
             <.questionnaire_choice context={question} value="unavailable" disabled index={2}>
@@ -9875,7 +11561,7 @@ defmodule ShadcnLiveview.Gallery do
           <.questionnaire_input
             context={question}
             id="questionnaire-a-comment-input"
-            value="Thanks!"
+            value={Map.get(Map.get(@state, "questionnaire-a-answers", %{}), "comment", "Thanks!")}
             placeholder="Your feedback"
           />
           <.questionnaire_error context={question} id="questionnaire-a-comment-error" />
@@ -9890,7 +11576,11 @@ defmodule ShadcnLiveview.Gallery do
             questionnaire
           } />
         </.questionnaire_actions>
-      </.questionnaire><.questionnaire
+      </.questionnaire>
+      <output :if={!is_nil(Map.get(@state, "questionnaire-a-submitted"))} aria-live="polite">Submitted answers: {Map.get(
+        @state,
+        "questionnaire-a-submitted"
+      )}</output><.questionnaire
         :let={questionnaire}
         id="questionnaire-b"
         items={[
@@ -9902,8 +11592,12 @@ defmodule ShadcnLiveview.Gallery do
           %{name: "comment"},
           %{name: "archived", disabled: true}
         ]}
-        item="comment"
+        item={Map.get(@state, "questionnaire-b", "comment")}
         shortcuts="letters"
+        on_item_change="shadcn:questionnaire-change"
+        phx-value-id="questionnaire-b"
+        phx-submit="shadcn:questionnaire-submit"
+        phx-change="shadcn:questionnaire-answer"
       >
         <.questionnaire_progress context={questionnaire} />
         <.questionnaire_item
@@ -9919,12 +11613,22 @@ defmodule ShadcnLiveview.Gallery do
             Choose an answer.
           </.questionnaire_description>
           <.questionnaire_choices context={question}>
-            <.questionnaire_choice context={question} value="good" index={0}>
+            <.questionnaire_choice
+              context={question}
+              value="good"
+              checked={Map.get(Map.get(@state, "questionnaire-b-answers", %{}), "rating") == "good"}
+              index={0}
+            >
               Good<.questionnaire_choice_description>
                 A pleasant visit.
               </.questionnaire_choice_description>
             </.questionnaire_choice>
-            <.questionnaire_choice context={question} value="great" index={1}>
+            <.questionnaire_choice
+              context={question}
+              value="great"
+              checked={Map.get(Map.get(@state, "questionnaire-b-answers", %{}), "rating") == "great"}
+              index={1}
+            >
               Great
             </.questionnaire_choice>
             <.questionnaire_choice context={question} value="unavailable" disabled index={2}>
@@ -9938,7 +11642,7 @@ defmodule ShadcnLiveview.Gallery do
           <.questionnaire_input
             context={question}
             id="questionnaire-b-comment-input"
-            value="Thanks!"
+            value={Map.get(Map.get(@state, "questionnaire-b-answers", %{}), "comment", "Thanks!")}
             placeholder="Your feedback"
           />
           <.questionnaire_error context={question} id="questionnaire-b-comment-error" />
@@ -9954,6 +11658,10 @@ defmodule ShadcnLiveview.Gallery do
           } />
         </.questionnaire_actions>
       </.questionnaire>
+      <output :if={!is_nil(Map.get(@state, "questionnaire-b-submitted"))} aria-live="polite">Submitted answers: {Map.get(
+        @state,
+        "questionnaire-b-submitted"
+      )}</output>
     </div>
     """
   end
@@ -9964,16 +11672,32 @@ defmodule ShadcnLiveview.Gallery do
       :let={questionnaire}
       id="questionnaire-selected"
       items={[%{name: "color", choices: [%{value: "red"}, %{value: "blue"}]}]}
+      item={Map.get(@state, "questionnaire-selected", "color")}
       shortcuts="numbers"
+      on_item_change="shadcn:questionnaire-change"
+      phx-value-id="questionnaire-selected"
+      phx-submit="shadcn:questionnaire-submit"
+      phx-change="shadcn:questionnaire-answer"
     >
       <.questionnaire_item :let={question} context={questionnaire} name="color">
         <.questionnaire_title>Color</.questionnaire_title><.questionnaire_choices context={question}>
-          <.questionnaire_choice context={question} value="red" checked index={0}>
+          <.questionnaire_choice
+            context={question}
+            value="red"
+            checked={
+              not Map.has_key?(Map.get(@state, "questionnaire-selected-answers", %{}), "color") or
+                Map.get(Map.get(@state, "questionnaire-selected-answers", %{}), "color") == "red"
+            }
+            index={0}
+          >
             Red
           </.questionnaire_choice><.questionnaire_choice
             context={question}
             value="blue"
-            default_checked
+            checked={
+              not Map.has_key?(Map.get(@state, "questionnaire-selected-answers", %{}), "color") or
+                Map.get(Map.get(@state, "questionnaire-selected-answers", %{}), "color") == "blue"
+            }
             index={1}
           >
             Blue
@@ -10000,13 +11724,19 @@ defmodule ShadcnLiveview.Gallery do
       :let={questionnaire}
       id="questionnaire-inputs"
       items={[%{name: "email", required: true}]}
+      item={Map.get(@state, "questionnaire-inputs", "email")}
       no_validate={false}
+      on_item_change="shadcn:questionnaire-change"
+      phx-value-id="questionnaire-inputs"
+      phx-submit="shadcn:questionnaire-submit"
+      phx-change="shadcn:questionnaire-answer"
     >
       <.questionnaire_item :let={question} context={questionnaire} name="email" required>
         <.questionnaire_title>Your email</.questionnaire_title><.questionnaire_input
           context={question}
           id="questionnaire-email"
           type="email"
+          value={Map.get(Map.get(@state, "questionnaire-inputs-answers", %{}), "email", "")}
           placeholder="you@example.com"
           required
         /><.questionnaire_input context={question} id="questionnaire-locked" value="locked" disabled /><.questionnaire_error
@@ -10014,13 +11744,21 @@ defmodule ShadcnLiveview.Gallery do
           id="questionnaire-email-error"
         />
       </.questionnaire_item>
-    </.questionnaire>
+    </.questionnaire><output
+      :if={!is_nil(Map.get(@state, "questionnaire-inputs-submitted"))}
+      aria-live="polite"
+    >Submitted email: {Map.get(@state, "questionnaire-inputs-submitted")}</output>
     """
   end
 
   def live_fixture(%{fixture: "radio-group"} = assigns) do
     ~H"""
-    <.radio_group :let={group} id="density" default_value="comfortable">
+    <.radio_group
+      :let={group}
+      id="density"
+      value={Map.get(@state, "density", "comfortable")}
+      on_value_change="shadcn:selection-change"
+    >
       <div class="flex items-center space-x-2">
         <.radio_group_item context={group} value="default" id="r1" /><.label for="r1">Default</.label>
       </div>
@@ -10035,7 +11773,7 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "radio-group-required-vertical"} = assigns) do
     ~H"""
-    <form id="shipping-form" phx-submit="preview:form">
+    <form id="shipping-form" class="grid gap-4" phx-submit="preview:form">
       <.radio_group
         :let={group}
         id="shipping"
@@ -10045,10 +11783,25 @@ defmodule ShadcnLiveview.Gallery do
         value={Map.get(@state, "shipping", "standard")}
         on_value_change="shadcn:selection-change"
       >
-        <.radio_group_item context={group} id="standard" value="standard" aria-label="Standard" />
-        <.radio_group_item context={group} id="express" value="express" disabled aria-label="Express" />
-        <.radio_group_item context={group} id="overnight" value="overnight" aria-label="Overnight" />
-      </.radio_group><button type="submit">Submit shipping</button>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="standard" value="standard" class="peer" /><.label for="standard">
+            Standard
+          </.label>
+        </div>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="express" value="express" disabled class="peer" /><.label for="express">
+            Express
+          </.label>
+        </div>
+        <div class="flex items-center space-x-2">
+          <.radio_group_item context={group} id="overnight" value="overnight" class="peer" /><.label for="overnight">
+            Overnight
+          </.label>
+        </div>
+      </.radio_group><.button type="submit" class="justify-self-start">Submit shipping</.button><output
+        aria-live="polite"
+        class="text-sm text-muted-foreground"
+      >Submitted shipping: {Map.get(@form_data, "shipping", "none")}</output>
     </form>
     """
   end
@@ -10084,7 +11837,8 @@ defmodule ShadcnLiveview.Gallery do
         name="choice"
         form="external-radio-form"
         disabled
-        default_value="yes"
+        value={Map.get(@state, "disabled-radios", "yes")}
+        on_value_change="shadcn:selection-change"
       >
         <.radio_group_item context={group} id="disabled-yes" value="yes" /><.radio_group_item
           context={group}
@@ -10128,7 +11882,13 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "toggle-group"} = assigns) do
     ~H"""
-    <.toggle_group :let={group} id="formatting" type="multiple">
+    <.toggle_group
+      :let={group}
+      id="formatting"
+      type="multiple"
+      value={Map.get(@state, "formatting", [])}
+      on_value_change="shadcn:selection-change"
+    >
       <.toggle_group_item context={group} id="format-bold" value="bold" aria-label="Toggle bold">
         B
       </.toggle_group_item><.toggle_group_item
@@ -10156,11 +11916,12 @@ defmodule ShadcnLiveview.Gallery do
       :let={group}
       id="alignment"
       type="single"
-      default_value="center"
       orientation="vertical"
       spacing={0}
       variant="outline"
       size="sm"
+      value={Map.get(@state, "alignment", "center")}
+      on_value_change="shadcn:selection-change"
     >
       <.toggle_group_item context={group} id="align-left" value="left" aria-label="Left">
         L
@@ -10190,9 +11951,10 @@ defmodule ShadcnLiveview.Gallery do
       :let={group}
       id="styles"
       type="multiple"
-      default_value={["bold", "italic"]}
       spacing={3}
       size="lg"
+      value={Map.get(@state, "styles", ["bold", "italic"])}
+      on_value_change="shadcn:selection-change"
     >
       <.toggle_group_item context={group} id="styles-bold" value="bold">B</.toggle_group_item><.toggle_group_item
         context={group}
@@ -10234,8 +11996,9 @@ defmodule ShadcnLiveview.Gallery do
       id="disabled-toggles"
       type="single"
       disabled
-      default_value="one"
       roving_focus={false}
+      value={Map.get(@state, "disabled-toggles", "one")}
+      on_value_change="shadcn:selection-change"
     >
       <.toggle_group_item context={group} id="disabled-toggle-one" value="one">
         One
@@ -11019,13 +12782,20 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "slider-default-extents"} = assigns) do
     ~H"""
-    <.slider id="slider-default-extents" min={10} max={30} />
+    <.slider
+      id="slider-default-extents"
+      value={Map.get(@state, "slider-default-extents", [10, 30])}
+      default_value={[10, 30]}
+      on_change="control_change"
+      min={10}
+      max={30}
+    />
     """
   end
 
   def live_fixture(%{fixture: "slider-multiple-instances"} = assigns) do
     ~H"""
-    <form id="slider-multiple-form">
+    <form id="slider-multiple-form" class="w-64 space-y-4">
       <.slider
         id="slider-price"
         value={Map.get(@state, "slider-price", [5, 15])}
@@ -11054,6 +12824,7 @@ defmodule ShadcnLiveview.Gallery do
     <div>
       <form id="slider-external-form"></form><.slider
         id="slider-external"
+        class="w-64"
         value={Map.get(@state, "slider-external", [2])}
         default_value={[2]}
         on_change="control_change"
@@ -11167,7 +12938,11 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "collapsible-force-mount"} = assigns) do
     ~H"""
-    <.collapsible :let={context} id="collapsible-forced" open={false}>
+    <.collapsible
+      :let={context}
+      id="collapsible-forced"
+      open={Map.get(@state, "collapsible-forced", false)}
+    >
       <.collapsible_trigger context={context}>More</.collapsible_trigger><.collapsible_content
         context={context}
         force_mount={true}
@@ -11204,7 +12979,11 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "navigation-menu"} = assigns) do
     ~H"""
-    <.navigation_menu :let={context} id="navigation-base">
+    <.navigation_menu
+      :let={context}
+      id="navigation-base"
+      value={Map.get(@state, "navigation-base", "")}
+    >
       <.navigation_menu_list context={context}>
         <.navigation_menu_item context={context} value="docs">
           <.navigation_menu_link href="/docs">Documentation</.navigation_menu_link>
@@ -11393,6 +13172,7 @@ defmodule ShadcnLiveview.Gallery do
     <.navigation_menu
       :let={context}
       id="navigation-vertical"
+      value={Map.get(@state, "navigation-vertical", "")}
       orientation="vertical"
       dir="rtl"
       viewport={false}
@@ -11414,7 +13194,12 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "navigation-force-mount"} = assigns) do
     ~H"""
-    <.navigation_menu :let={context} id="navigation-forced" viewport={false}>
+    <.navigation_menu
+      :let={context}
+      id="navigation-forced"
+      value={Map.get(@state, "navigation-forced", "")}
+      viewport={false}
+    >
       <.navigation_menu_list context={context}>
         <.navigation_menu_item :let={item} context={context} value="docs">
           <.navigation_menu_trigger context={item}>Docs</.navigation_menu_trigger><.navigation_menu_content
@@ -11996,7 +13781,14 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "button"} = assigns) do
     ~H"""
-    <.button variant="default">Click me</.button>
+    <.button phx-click="preview:increment" phx-value-id="button-clicks">{if Map.get(
+                                                                              @state,
+                                                                              "button-clicks",
+                                                                              0
+                                                                            ) == 0,
+                                                                            do: "Click me",
+                                                                            else:
+                                                                              "Clicked #{Map.get(@state, "button-clicks")} times"}</.button>
     """
   end
 
@@ -12038,12 +13830,17 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "field"} = assigns) do
     ~H"""
-    <.field_set>
+    <.field_set class="w-full max-w-md">
       <.field_group>
         <.field>
-          <.field_label>Email address</.field_label>
-          <.input type="email" placeholder="m@example.com" />
-          <.field_description>We will never share your email.</.field_description>
+          <.field_label for="field-email">Email address</.field_label>
+          <.input
+            id="field-email"
+            type="email"
+            placeholder="m@example.com"
+            aria-describedby="field-help"
+          />
+          <.field_description id="field-help">We will never share your email.</.field_description>
         </.field>
       </.field_group>
     </.field_set>
@@ -12084,7 +13881,9 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "label"} = assigns) do
     ~H"""
-    <.label for="test-input">Your email address</.label>
+    <div>
+      <.label for="test-input">Your email address</.label><.input id="test-input" type="email" />
+    </div>
     """
   end
 
@@ -12282,13 +14081,26 @@ defmodule ShadcnLiveview.Gallery do
     <.pagination>
       <.pagination_content>
         <.pagination_item>
-          <.pagination_previous href="#" />
+          <.pagination_previous
+            href="#page-1"
+            phx-click="preview:page"
+            phx-value-page={max(1, Map.get(@state, "page", 1) - 1)}
+          />
+        </.pagination_item>
+        <.pagination_item :for={page <- 1..3}>
+          <.pagination_link
+            href={"#page-#{page}"}
+            is_active={Map.get(@state, "page", 1) == page}
+            phx-click="preview:page"
+            phx-value-page={page}
+          >{page}</.pagination_link>
         </.pagination_item>
         <.pagination_item>
-          <.pagination_link href="#" is_active={true}>1</.pagination_link>
-        </.pagination_item>
-        <.pagination_item>
-          <.pagination_next href="#" />
+          <.pagination_next
+            href="#page-3"
+            phx-click="preview:page"
+            phx-value-page={min(3, Map.get(@state, "page", 1) + 1)}
+          />
         </.pagination_item>
       </.pagination_content>
     </.pagination>
@@ -12363,8 +14175,8 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "scroll-area"} = assigns) do
     ~H"""
-    <.scroll_area class="h-32 w-48 rounded-md border p-4">
-      Long scrolling text item list inside scroll area.
+    <.scroll_area id="scroll-area-demo" class="h-32 w-48 rounded-md border p-4">
+      <div :for={n <- 1..20} class="py-2">Item {n}</div>
     </.scroll_area>
     """
   end
@@ -12383,7 +14195,11 @@ defmodule ShadcnLiveview.Gallery do
 
   def live_fixture(%{fixture: "sonner"} = assigns) do
     ~H"""
-    <.toaster />
+    <form phx-submit="preview:toast" class="grid gap-2">
+      <.input name="message" aria-label="Notification message" value="Event has been created" />
+      <.button type="submit" name="duration" value="0">Show notification</.button>
+      <.button type="submit" name="duration" value="1000">Show brief notification</.button>
+    </form><.toaster id="preview-toaster" />
     """
   end
 

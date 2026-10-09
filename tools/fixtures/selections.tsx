@@ -1,8 +1,29 @@
+import { useState } from "react"
+import { Button } from "../../vendor/shadcn/ui/button"
 import type { ComponentFixture } from "../fixtures"
+import { bindLiveOverlayControls } from "../../assets/js/react-fixtures/overlay-controls"
 import { Label } from "../../vendor/shadcn/ui/label"
 import { RadioGroup, RadioGroupItem } from "../../vendor/shadcn/ui/radio-group"
 import { ToggleGroup, ToggleGroupItem } from "../../vendor/shadcn/ui/toggle-group"
 import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarCheckboxItem, MenubarRadioGroup, MenubarRadioItem, MenubarLabel, MenubarSeparator, MenubarShortcut, MenubarSub, MenubarSubTrigger, MenubarSubContent } from "../../vendor/shadcn/ui/menubar"
+
+function ShippingForm() {
+  const [submitted, setSubmitted] = useState("none")
+  return (
+    <form id="shipping-form" className="grid gap-4" onSubmit={event => {
+      event.preventDefault()
+      setSubmitted(String(new FormData(event.currentTarget).get("shipping") ?? "none"))
+    }}>
+      <RadioGroup id="shipping" name="shipping" required orientation="vertical" defaultValue="standard">
+        <div className="flex items-center space-x-2"><RadioGroupItem id="standard" value="standard" className="peer" /><Label htmlFor="standard">Standard</Label></div>
+        <div className="flex items-center space-x-2"><RadioGroupItem id="express" value="express" disabled className="peer" /><Label htmlFor="express">Express</Label></div>
+        <div className="flex items-center space-x-2"><RadioGroupItem id="overnight" value="overnight" className="peer" /><Label htmlFor="overnight">Overnight</Label></div>
+      </RadioGroup>
+      <Button type="submit" className="justify-self-start">Submit shipping</Button>
+      <output aria-live="polite" className="text-sm text-muted-foreground">Submitted shipping: {submitted}</output>
+    </form>
+  )
+}
 
 export const fixtures: ComponentFixture[] = [
   {
@@ -15,17 +36,17 @@ export const fixtures: ComponentFixture[] = [
   },
   {
     name: "radio-group-required-vertical", family: "radio-group", title: "Required vertical radios", category: "forms",
-    renderReact: () => <form id="shipping-form"><RadioGroup id="shipping" name="shipping" required orientation="vertical" defaultValue="standard"><RadioGroupItem id="standard" value="standard" aria-label="Standard" /><RadioGroupItem id="express" value="express" disabled aria-label="Express" /><RadioGroupItem id="overnight" value="overnight" aria-label="Overnight" /></RadioGroup></form>,
-    heex: `<form id="shipping-form"><.radio_group id="shipping" name="shipping" required orientation="vertical" default_value="standard" :let={group}>
-  <.radio_group_item context={group} id="standard" value="standard" aria-label="Standard" />
-  <.radio_group_item context={group} id="express" value="express" disabled aria-label="Express" />
-  <.radio_group_item context={group} id="overnight" value="overnight" aria-label="Overnight" />
-</.radio_group></form>`,
-    liveHeex: `<form id="shipping-form" phx-submit="preview:form"><.radio_group id="shipping" name="shipping" required orientation="vertical" value={Map.get(@state, "shipping", "standard")} on_value_change="shadcn:selection-change" :let={group}>
-  <.radio_group_item context={group} id="standard" value="standard" aria-label="Standard" />
-  <.radio_group_item context={group} id="express" value="express" disabled aria-label="Express" />
-  <.radio_group_item context={group} id="overnight" value="overnight" aria-label="Overnight" />
-</.radio_group><button type="submit">Submit shipping</button></form>`,
+    renderReact: () => <ShippingForm />,
+    heex: `<form id="shipping-form" class="grid gap-4"><.radio_group id="shipping" name="shipping" required orientation="vertical" default_value="standard" :let={group}>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="standard" value="standard" class="peer" /><.label for="standard">Standard</.label></div>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="express" value="express" disabled class="peer" /><.label for="express">Express</.label></div>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="overnight" value="overnight" class="peer" /><.label for="overnight">Overnight</.label></div>
+</.radio_group><.button type="submit" class="justify-self-start">Submit shipping</.button><output aria-live="polite" class="text-sm text-muted-foreground">Submitted shipping: none</output></form>`,
+    liveHeex: `<form id="shipping-form" class="grid gap-4" phx-submit="preview:form"><.radio_group id="shipping" name="shipping" required orientation="vertical" value={Map.get(@state, "shipping", "standard")} on_value_change="shadcn:selection-change" :let={group}>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="standard" value="standard" class="peer" /><.label for="standard">Standard</.label></div>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="express" value="express" disabled class="peer" /><.label for="express">Express</.label></div>
+  <div class="flex items-center space-x-2"><.radio_group_item context={group} id="overnight" value="overnight" class="peer" /><.label for="overnight">Overnight</.label></div>
+</.radio_group><.button type="submit" class="justify-self-start">Submit shipping</.button><output aria-live="polite" class="text-sm text-muted-foreground">Submitted shipping: {Map.get(@form_data, "shipping", "none")}</output></form>`,
   },
   {
     name: "radio-group-controlled", family: "radio-group", title: "Controlled radios", category: "forms",
@@ -119,3 +140,18 @@ export const fixtures: ComponentFixture[] = [
     liveHeex: `<.menubar id="explicit-menu" value={Map.get(@state, "explicit-menu", "file")} :let={bar}><.menubar_menu id="explicit-file" trigger_id="explicit-file-trigger" content_id="explicit-file-content" context={bar} value="file"><:trigger :let={menu}><.menubar_trigger context={menu}>File</.menubar_trigger></:trigger><:content :let={menu}><.menubar_content context={menu} align="end" side_offset={12} align_offset={0}><.menubar_item>New</.menubar_item></.menubar_content></:content></.menubar_menu></.menubar>`,
   },
 ]
+
+for (const fixture of fixtures) {
+  if (fixture.liveHeex) continue
+  const family = fixture.family ?? fixture.name
+  if (family !== "radio-group" && family !== "toggle-group") continue
+  const root = family.replaceAll("-", "_")
+  fixture.liveHeex = fixture.heex.replace(new RegExp(`<\\.${root}(?=\\s)([^>]*?)id="([^"]+)"([^>]*)>`, "g"), (_match, before: string, id: string, after: string) => {
+    const selection = after.match(/\s(?:default_value|value)=("[^"]*"|\{[^}]*\})/)
+    const initial = selection ? selection[1].replace(/^\{|\}$/g, "") : /\stype="multiple"/.test(after) ? "[]" : '""'
+    after = after.replace(/\s(?:default_value|value)=("[^"]*"|\{[^}]*\})/, "")
+    return `<.${root}${before}id="${id}"${after} value={Map.get(@state, "${id}", ${initial})} on_value_change="shadcn:selection-change">`
+  })
+}
+
+bindLiveOverlayControls(fixtures)

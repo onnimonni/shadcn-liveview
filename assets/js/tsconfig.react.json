@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/registry/radix-nova/ui/*": ["../../vendor/shadcn/ui/*"],
+      "@/registry/radix-nova/hooks/*": ["../../vendor/shadcn/hooks/*"],
+      "@/app/*": ["../../vendor/shadcn/app/*"],
+      "@/ui/*": ["../../vendor/shadcn/ui/*"],
+      "@/*": ["../../vendor/shadcn/*"]
+    }
+  }
+}

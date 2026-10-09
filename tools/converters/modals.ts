@@ -39,6 +39,11 @@ function upstreamClasses(family: string): Map<string, string> {
 // has neither relationship nor aria-modal. The hook installs them on connection.
 const modalHook = `
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          if (target) return this.pushEventTo(target, event, payload, onReply);
+          return this.pushEvent(event, payload, onReply);
+        },
         mounted() {
           const key = Symbol.for("shadcn-liveview.modal-stack");
           this.registry = window[key] ||= { stack: [], overflow: null };
@@ -111,7 +116,9 @@ const modalHook = `
         close() {
           if (this.closing) return;
           this.closing = true;
-          this.liveSocket.execJS(this.el, this.el.getAttribute("phx-modal-close"));
+          const event = this.el.getAttribute("phx-modal-close-event");
+          if (event) return this.sendEvent(event, {id: this.el.id});
+          return this.liveSocket.execJS(this.el, this.el.getAttribute("phx-modal-close"));
         },
         focusable() {
           return [...this.el.querySelectorAll('button, [href], input, select, textarea, [tabindex]')]
@@ -230,7 +237,7 @@ ${global}
     ~H"""
     <button type={@type} data-slot="${spec.name}-${suffix}"${variant ? " data-variant={@variant} data-size={@size}" : ""}
       class={${variant ? "classes([Map.fetch!(@button_classes, {@variant, @size}), @class])" : "@class"}}
-      phx-click={JS.concat(@on_click, @context.on_close)} {@rest}>
+      phx-target={@context.target} phx-click={JS.concat(@on_click, @context.on_close)} {@rest}>
       {render_slot(@inner_block)}
     </button>
     """
@@ -240,7 +247,7 @@ ${global}
   const variantButtons = alert ? plainButton("action", "default") + plainButton("cancel", "outline") : plainButton("close")
   const automaticClose = closeButton ? `
       <button :if={@show_close_button} type="button" data-slot="${spec.name}-close" data-variant="ghost" data-size="icon-sm"
-        class={classes([Map.fetch!(@button_classes, {"ghost", "icon-sm"}), "absolute ${spec.name === "sheet" ? "top-3 right-3" : "top-2 right-2"}"])} phx-click={@context.on_close}>
+        class={classes([Map.fetch!(@button_classes, {"ghost", "icon-sm"}), "absolute ${spec.name === "sheet" ? "top-3 right-3" : "top-2 right-2"}"])} phx-target={@context.target} phx-click={@context.on_close}>
         <Icon.icon name="x" /><span class="sr-only">Close</span>
       </button>` : ""
   // Use an assign for the compiled map in each function that needs it.
@@ -258,6 +265,11 @@ ${global}
   \`-title\` and \`-description\`. Title/description IDs can be overridden
   on the root. Native action/close buttons accept \`on_click\` JS that
   runs before the root's close command, plus ordinary form attributes.
+  Set phx-target on the wrapperless root (or optional \`target\`) to route
+  default open/close commands and hook dismissal to a LiveComponent. Context
+  forwards this target to native triggers, overlays, content and close controls.
+  Hook dismissal also inherits the nearest containing phx-target; caller-supplied
+  JS commands keep their operation order and explicitly supplied push targets.
 
   Closed content is absent, as with Radix portals. Initial SSR intentionally
   omits Radix's effect-installed ARIA links; the colocated hook establishes
@@ -280,6 +292,8 @@ ${alert ? "" : "  attr :modal, :boolean, default: true\n"}
   attr :trigger_id, :string, default: nil
   attr :on_open, JS, default: nil
   attr :on_close, JS, default: nil
+  attr :target, :any, default: nil
+  attr :rest, :global
 ${drawer ? `  attr :direction, :string, default: "bottom", values: ~w(top right bottom left)
   attr :draggable, :boolean, default: true
   attr :close_threshold, :float, default: 0.25
@@ -287,14 +301,16 @@ ${drawer ? `  attr :direction, :string, default: "bottom", values: ~w(top right 
   slot :content, required: true
   @doc "Renders trigger and open content slots, yielding the explicit modal context."
   def ${prefix}(assigns) do
+    target = assigns.target || Map.get(assigns.rest, :"phx-target")
     context = %{
-      id: assigns.id, open: assigns.open, modal: ${alert ? "true" : "assigns.modal"},
+      id: assigns.id, open: assigns.open, modal: ${alert ? "true" : "assigns.modal"}, target: target,
       dismissible: assigns.dismissible,
       title_id: assigns.title_id || assigns.id <> "-title",
       description_id: assigns.description_id || assigns.id <> "-description",
       trigger_id: assigns.trigger_id || assigns.id <> "-trigger",
-      on_open: assigns.on_open || JS.push("shadcn:modal-open", value: %{id: assigns.id}),
-      on_close: ${drawer ? 'if(assigns.dismissible, do: assigns.on_close || JS.push("shadcn:modal-close", value: %{id: assigns.id}), else: %JS{})' : 'assigns.on_close || JS.push("shadcn:modal-close", value: %{id: assigns.id})'}${drawer ? ",\n      direction: assigns.direction, draggable: assigns.draggable, close_threshold: assigns.close_threshold" : ""}
+      close_event: if(is_nil(assigns.on_close), do: "shadcn:modal-close"),
+      on_open: assigns.on_open || push("shadcn:modal-open", assigns.id, target),
+      on_close: assigns.on_close || push("shadcn:modal-close", assigns.id, target)${drawer ? ",\n      direction: assigns.direction, draggable: assigns.draggable, close_threshold: assigns.close_threshold" : ""}
     }
     assigns = assign(assigns, :context, context)
     ~H"""
@@ -302,6 +318,9 @@ ${drawer ? `  attr :direction, :string, default: "bottom", values: ~w(top right 
     {render_slot(@content, @context)}
     """
   end
+
+  defp push(event, id, target) when target in [nil, ""], do: JS.push(event, value: %{id: id})
+  defp push(event, id, target), do: JS.push(event, value: %{id: id}, target: target)
 
 ${context}
   attr :class, :string, default: nil
@@ -312,7 +331,7 @@ ${global}
     ~H"""
     <button type="button" id={@context.trigger_id} aria-haspopup="dialog" aria-expanded={to_string(@context.open)}
       aria-controls={if @context.open, do: @context.id} data-state={if @context.open, do: "open", else: "closed"}
-      data-slot="${spec.name}-trigger" class={@class} phx-click={if @context.open, do: @context.on_close, else: @context.on_open} {@rest}>
+      data-slot="${spec.name}-trigger" class={@class} phx-target={@context.target} phx-click={if @context.open, do: @context.on_close, else: @context.on_open} {@rest}>
       {render_slot(@inner_block)}
     </button>
     """
@@ -326,7 +345,7 @@ ${global}
     ~H"""
     <div :if={@context.open and @context.modal} data-state="open" data-slot="${spec.name}-overlay"
       class={classes([${cls("overlay")}, @class])} style={"pointer-events:auto;" <> (@style || "")}
-      phx-click={${alert ? "nil" : "if @context.dismissible, do: @context.on_close"}}${drawer ? ' data-vaul-overlay="" data-vaul-snap-points="false" data-vaul-snap-points-overlay="true" data-vaul-animate="true"' : ""} {@rest}></div>
+      phx-target={@context.target} phx-click={${alert ? "nil" : "if @context.dismissible, do: @context.on_close"}}${drawer ? ' data-vaul-overlay="" data-vaul-snap-points="false" data-vaul-snap-points-overlay="true" data-vaul-animate="true"' : ""} {@rest}></div>
     """
   end
 
@@ -341,9 +360,9 @@ ${closeButton ? "    assigns = assign(assigns, :button_classes, @button_classes)
     <.${prefix}_overlay context={@context} />
     <div :if={@context.open} role="${alert ? "alertdialog" : "dialog"}" id={@context.id} data-state="open" data-slot="${spec.name}-content"
       ${alert ? 'data-size={@size}' : spec.name === "sheet" ? 'data-side={@side}' : drawer ? 'data-vaul-drawer-direction={@context.direction} data-vaul-drawer="" data-vaul-delayed-snap-points="false" data-vaul-snap-points="false" data-vaul-custom-container="false" data-vaul-animate="true"' : ""}
-      class={classes([${cls("content")}, @class])} tabindex="-1" phx-hook=".Modal"
+      class={classes([${cls("content")}, @class])} tabindex="-1" phx-hook=".Modal" phx-target={@context.target}
       phx-value-modal={to_string(@context.modal)} phx-value-dismissible={to_string(@context.dismissible)}
-      phx-value-trigger-id={@context.trigger_id} phx-modal-close={@context.on_close}${drawer ? ' phx-value-draggable={to_string(@context.draggable)} phx-value-close-threshold={@context.close_threshold}' : ""} {@rest}>
+      phx-value-trigger-id={@context.trigger_id} phx-modal-close={@context.on_close} phx-modal-close-event={@context.close_event}${drawer ? ' phx-value-draggable={to_string(@context.draggable)} phx-value-close-threshold={@context.close_threshold}' : ""} {@rest}>
 ${drawer ? '      <div class="mx-auto mt-4 hidden h-1 w-[100px] shrink-0 rounded-full bg-muted group-data-[vaul-drawer-direction=bottom]/drawer-content:block" />\n' : ""}      {render_slot(@inner_block)}${automaticClose}
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Modal">${modalHook}    </script>
@@ -361,7 +380,7 @@ ${global}
     <div data-slot="dialog-footer" class={classes([${cls("footer")}, @class])} {@rest}>
       {render_slot(@inner_block)}
       <button :if={@show_close_button} type="button" data-slot="button" data-variant="outline" data-size="default"
-        class={Map.fetch!(@button_classes, {"outline", "default"})} phx-click={@context.on_close}>Close</button>
+        class={Map.fetch!(@button_classes, {"outline", "default"})} phx-target={@context.target} phx-click={@context.on_close}>Close</button>
     </div>
     """
   end

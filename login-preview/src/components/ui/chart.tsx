@@ -80,22 +80,58 @@ function ChartContainer({
   )
 }
 
+function validateChartKey(value: string) {
+  if (typeof value !== "string" || !/^[a-zA-Z0-9_-]+$/.test(value)) {
+    throw new Error("Chart IDs and series keys must be CSS identifiers")
+  }
+}
+
+function validateChartColor(value: string) {
+  // Allow CSS variables and modern color functions, but no CSS rule delimiters,
+  // escapes, strings, or comments that could escape a custom-property value.
+  if (
+    typeof value !== "string" ||
+    !value.trim() ||
+    !/^[a-zA-Z0-9#().,%+_*/ \t-]+$/.test(value) ||
+    /\/\*|\*\//.test(value)
+  ) {
+    throw new Error("Invalid chart color")
+  }
+
+  let depth = 0
+  for (const character of value) {
+    if (character === "(") depth += 1
+    if (character === ")") depth -= 1
+    if (depth < 0) throw new Error("Invalid chart color")
+  }
+  if (depth !== 0) throw new Error("Invalid chart color")
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(
-    ([, config]) => config.theme ?? config.color
-  )
+  validateChartKey(id)
+  const colorConfig = Object.entries(config).filter(([key, itemConfig]) => {
+    validateChartKey(key)
+    if (itemConfig.color !== undefined) {
+      validateChartColor(itemConfig.color)
+    }
+    if (itemConfig.theme !== undefined) {
+      for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
+        validateChartColor(itemConfig.theme[theme])
+      }
+    }
+    return itemConfig.theme ?? itemConfig.color
+  })
 
   if (!colorConfig.length) {
     return null
   }
 
   return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+    <style>
+      {Object.entries(THEMES)
+        .map(
+          ([theme, prefix]) => `
+${prefix} [data-chart="${id}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color =
@@ -106,10 +142,9 @@ ${colorConfig
   .join("\n")}
 }
 `
-          )
-          .join("\n"),
-      }}
-    />
+        )
+        .join("\n")}
+    </style>
   )
 }
 

@@ -1,9 +1,13 @@
 defmodule ShadcnLiveview.Components.Switch do
   @moduledoc """
   Native-form switch with a stable caller ID. checked controls server state;
-  default_checked supplies the initial uncontrolled state. Form reset restores
-  the mounted initial state, even after server patches. on_change receives
-  %{id => id, value => boolean}. Labels target the button ID.
+  default_checked supplies the initial uncontrolled state. Uncontrolled values
+  survive unrelated patches and retain their current value when checked becomes
+  nil. Explicit checked values are authoritative on every patch.
+  Reset of the containing or explicitly associated form restores the mounted
+  initial state, even after server patches.
+  on_change receives %{id => id, value => boolean} and respects the nearest phx-target.
+  Labels target the button ID.
   Inline layout is preserved when placed beside other native controls.
   Space and Enter use native button activation.
   """
@@ -50,6 +54,7 @@ defmodule ShadcnLiveview.Components.Switch do
       phx-value-change={@on_change}
       phx-value-state={@state}
       phx-value-initial={@initial}
+      phx-value-controlled={to_string(!is_nil(@checked))}
       {@rest}
     >
       <span
@@ -81,19 +86,39 @@ defmodule ShadcnLiveview.Components.Switch do
               this.input = input;
             }
             this.serverState = this.el.getAttribute("phx-value-state");
+            const controlled = this.el.getAttribute("phx-value-controlled") === "true";
             this.serverChildren = Array.from(this.el.childNodes);
-            if (this.form !== this.input.form) {
+            // Checkbox reset follows the trigger's form; Switch also follows form=.
+            const form = this.el.getAttribute("role") === "checkbox" ? this.el.form : this.input.form;
+            if (this.form !== form) {
               if (this.form) this.form.removeEventListener("reset", this.reset);
-              this.form = this.input.form;
+              this.form = form;
               if (this.form) this.form.addEventListener("reset", this.reset);
             }
-            this.setState(this.serverState, false);
+            const state = controlled || this.state === undefined ? this.serverState : this.state;
+            const preserveSubmittedState = this.el.getAttribute("role") === "checkbox" &&
+              !this.form && this.input.form && state === this.state && this.patchedInputState;
+            this.setState(state, false);
+            this.input.defaultChecked = this.initial === "checked";
+            if (preserveSubmittedState) {
+              this.input.checked = this.patchedInputState.checked;
+              this.input.indeterminate = this.patchedInputState.indeterminate;
+            }
+            this.patchedInputState = undefined;
           },
           beforeUpdate() {
+            const state = this.state;
+            const checked = this.input.checked;
+            const indeterminate = this.input.indeterminate;
+            this.patchedInputState = {checked, indeterminate};
             this.el.replaceChildren(...this.serverChildren);
             this.setState(this.serverState, false);
+            this.state = state;
+            this.input.checked = checked;
+            this.input.indeterminate = indeterminate;
           },
           setState(state, notify) {
+            this.state = state;
             const checked = state === "checked";
             this.el.setAttribute("data-state", state);
             this.el.setAttribute("aria-checked", state === "indeterminate" ? "mixed" : String(checked));
@@ -120,7 +145,12 @@ defmodule ShadcnLiveview.Components.Switch do
             this.input.dispatchEvent(new Event("input", {bubbles:true}));
             this.input.dispatchEvent(new Event("change", {bubbles:true}));
             const event = this.el.getAttribute("phx-value-change");
-            if (event) this.pushEvent(event, {id:this.el.id, value:checked});
+            if (event) this.sendEvent(event, {id:this.el.id, value:checked});
+          },
+          sendEvent(event, payload, onReply) {
+            const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
+            if (target) return this.pushEventTo(target, event, payload, onReply);
+            return this.pushEvent(event, payload, onReply);
           },
           destroyed() {
             cancelAnimationFrame(this.resetFrame);
