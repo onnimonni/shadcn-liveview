@@ -14,14 +14,19 @@ function radio(spec: ComponentSpec): string {
   The root yields its context through :let; pass it to each radio_group_item.
   IDs belong to the caller. value enables server control and on_value_change
   names a LiveView event receiving %{id, value}. Without value, default_value
-  initializes local selection. Arrow keys select, Space checks, and form reset
-  restores the initial value. SSR focus stops are activated by the colocated hook.
+  initializes local selection. field={@form[:plan]} infers id, name and a
+  controlled value (nothing selected when nil) and composes with form_field.
+  Selections update immediately and dispatch native input and change events in
+  both modes, so phx-change sees them; server values win on the next patch.
+  Arrow keys select, Space checks, and form reset restores the initial value.
+  SSR focus stops are activated by the colocated hook.
   Hook events honor phx-target on the root or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :field, Phoenix.HTML.FormField, default: nil
+  attr :id, :string, default: nil
   attr :value, :string, default: nil
   attr :default_value, :string, default: nil
   attr :name, :string, default: nil
@@ -32,14 +37,16 @@ function radio(spec: ComponentSpec): string {
   attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :loop, :boolean, default: true
   attr :on_value_change, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
   @doc "Yields the radio selection and native form context to its item slot."
   def radio_group(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :radio_group)
+    if is_nil(assigns.id), do: raise(ArgumentError, "radio_group requires an id or form field")
     value = if is_nil(assigns.value), do: assigns.default_value, else: assigns.value
-    assigns = assign(assigns, context: %{value: value, name: assigns.name, form: assigns.form, required: assigns.required, disabled: assigns.disabled, orientation: assigns.orientation}, values: if(is_nil(value), do: [], else: [value]))
+    assigns = assign(assigns, context: %{value: value, name: assigns.name, form: assigns.form, required: assigns.required, disabled: assigns.disabled, orientation: assigns.orientation, invalid: assigns.rest[:"aria-invalid"]}, values: if(is_nil(value), do: [], else: [value]))
     ~H"""
     <div id={@id} role="radiogroup" aria-required={to_string(@required)} aria-orientation={@orientation} data-disabled={if @disabled, do: ""} dir={@dir} data-slot="radio-group" tabindex="-1" data-orientation={@orientation} style="outline:none" class={classes(["grid w-full gap-2", @class])} phx-hook=".RadioGroup" phx-values={Jason.encode!(@values)} phx-controlled={to_string(not is_nil(@value))} phx-orientation={@orientation} phx-loop={to_string(@loop)} phx-roving="true" phx-form={@form} phx-change-event={@on_value_change} {@rest}>
       {render_slot(@inner_block, @context)}
@@ -52,12 +59,12 @@ function radio(spec: ComponentSpec): string {
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(aria-invalid)
 
   @doc "Renders a radio button and its real, successful native radio input."
   def radio_group_item(assigns) do
-    assigns = assign(assigns, checked: assigns.context.value == assigns.value, disabled: assigns.disabled or assigns.context.disabled)
+    assigns = assign(assigns, checked: assigns.context.value == assigns.value, disabled: assigns.disabled or assigns.context.disabled, rest: Map.put_new(assigns.rest, :"aria-invalid", assigns.context[:invalid]))
     ~H"""
     <button id={@id} type="button" role="radio" aria-checked={to_string(@checked)} data-state={if @checked, do: "checked", else: "unchecked"} data-disabled={if @disabled, do: ""} disabled={@disabled} value={@value} data-slot="radio-group-item" tabindex="-1" data-orientation={@context.orientation} class={classes(["${radioClasses}", @class])} {@rest}>
       <.indicator :if={@checked} disabled={@disabled} />
@@ -109,7 +116,7 @@ function toggle(spec: ComponentSpec): string {
   attr :roving_focus, :boolean, default: true
   attr :loop, :boolean, default: true
   attr :on_value_change, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -132,7 +139,7 @@ function toggle(spec: ComponentSpec): string {
   attr :variant, :string, default: "default", values: ["default", "outline"]
   attr :size, :string, default: "default", values: ["default", "sm", "lg"]
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -163,7 +170,7 @@ function menubar(spec: ComponentSpec): string {
     ["menubar_separator", "div", 'role="separator" aria-orientation="horizontal"'],
     ["menubar_shortcut", "span", ""],
   ].map(([name, tag, attrs]) => String.raw`
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   ${name === "menubar_label" ? "attr :inset, :boolean, default: nil" : ""}
   attr :rest, :global
   slot :inner_block
@@ -196,7 +203,7 @@ function menubar(spec: ComponentSpec): string {
   attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :loop, :boolean, default: true
   attr :on_value_change, :string, default: "shadcn:menubar-change"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -233,7 +240,7 @@ function menubar(spec: ComponentSpec): string {
   attr :context, :map, required: true
   attr :id, :string, default: nil
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -245,11 +252,11 @@ function menubar(spec: ComponentSpec): string {
 
   attr :context, :map, required: true
   attr :id, :string, default: nil
-  attr :align, :string, default: "start"
-  attr :side, :string, default: "bottom"
+  attr :align, :string, default: "start", values: ["start", "center", "end"]
+  attr :side, :string, default: "bottom", values: ["top", "right", "bottom", "left"]
   attr :side_offset, :integer, default: 8
   attr :align_offset, :integer, default: -4
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -264,7 +271,7 @@ function menubar(spec: ComponentSpec): string {
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
   attr :variant, :string, default: "default", values: ["default", "destructive"]
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def menubar_item(assigns) do
@@ -281,7 +288,7 @@ function menubar(spec: ComponentSpec): string {
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
   attr :on_checked_change, :string, default: "shadcn:menu-check-change"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def menubar_checkbox_item(assigns) do
@@ -310,7 +317,7 @@ function menubar(spec: ComponentSpec): string {
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def menubar_radio_item(assigns) do
@@ -324,7 +331,7 @@ function menubar(spec: ComponentSpec): string {
   end
 
   attr :id, :string, required: true
-  attr :dir, :string, default: "ltr"
+  attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :open, :boolean, default: false
   attr :on_open_change, :string, default: "shadcn:menubar-sub-change"
   slot :trigger, required: true
@@ -340,7 +347,7 @@ function menubar(spec: ComponentSpec): string {
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def menubar_sub_trigger(assigns) do
@@ -350,7 +357,7 @@ function menubar(spec: ComponentSpec): string {
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def menubar_sub_content(assigns) do

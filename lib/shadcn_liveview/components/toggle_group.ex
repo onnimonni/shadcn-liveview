@@ -12,10 +12,18 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :type, :string, required: true, values: ["single", "multiple"]
   attr :value, :any, default: nil
-  attr :default_value, :any, default: nil
+
+  attr :default_value, :any,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :variant, :string, default: nil, values: [nil, "default", "outline"]
   attr :size, :string, default: nil, values: [nil, "default", "sm", "lg"]
   attr :spacing, :integer, default: 2
@@ -24,8 +32,17 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
   attr :disabled, :boolean, default: false
   attr :roving_focus, :boolean, default: true
   attr :loop, :boolean, default: true
-  attr :on_value_change, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_value_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on value change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -86,8 +103,16 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.radio = this.el.dataset.slot === "radio-group";
@@ -131,9 +156,13 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
           this.el.addEventListener("keydown", this.key);
           this.el.addEventListener("focusin", this.focus);
           this.form = this.radio ? (document.getElementById(this.el.getAttribute("phx-form")) || this.el.closest("form")) : null;
+          // Reset after the native form reset so native inputs match the restored selection.
           this.reset = () => {
-            if (this.controlled) this.change([...this.initial], null);
-            else { this.values = [...this.initial]; this.paint(); }
+            cancelAnimationFrame(this.resetFrame);
+            this.resetFrame = requestAnimationFrame(() => {
+              if (this.controlled) this.change([...this.initial], null);
+              else { this.values = [...this.initial]; this.paint(); }
+            });
           };
           this.form?.addEventListener("reset", this.reset);
           this.paint();
@@ -143,12 +172,16 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
         tabstop(item) { if (this.el.getAttribute("phx-roving") === "false") return; this.items().forEach(i => i.tabIndex = i === item && !i.disabled ? 0 : -1); },
         change(next, item) {
           if (JSON.stringify(next) === JSON.stringify(this.values)) return;
-          if (!this.controlled) { this.values = next; this.paint(); }
+          // Radio selections are optimistic like checkbox and switch; updated() applies server values.
+          if (!this.controlled || this.radio) { this.values = next; this.paint(); }
           const value = this.radio || this.el.getAttribute("phx-selection-type") === "single" ? (next[0] || "") : next;
           const event = this.el.getAttribute("phx-change-event");
-          if (event) this.sendEvent(event, {id: this.el.id, value});
+          // Controlled values come from the server, so a failed push restores them.
+          if (event) this.sendEvent(event, {id: this.el.id, value}).catch(() => {
+            if (this.controlled) { this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); }
+          });
           this.el.dispatchEvent(new CustomEvent("selection-change", {bubbles: true, detail: {value}}));
-          if (this.radio && !this.controlled) {
+          if (this.radio && item) {
             const input = item.nextElementSibling;
             input?.dispatchEvent(new Event("input", {bubbles: true}));
             input?.dispatchEvent(new Event("change", {bubbles: true}));
@@ -185,19 +218,28 @@ defmodule ShadcnLiveview.Components.ToggleGroup do
           }
         },
         updated() { this.controlled = this.el.getAttribute("phx-controlled") === "true"; if (this.controlled) this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); },
-        destroyed() { this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
+        destroyed() { cancelAnimationFrame(this.resetFrame); this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
       }
     </script>
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :variant, :string, default: "default", values: ["default", "outline"]
   attr :size, :string, default: "default", values: ["default", "sm", "lg"]
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 

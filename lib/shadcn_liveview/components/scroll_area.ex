@@ -1,9 +1,26 @@
 defmodule ShadcnLiveview.Components.ScrollArea do
-  @moduledoc false
+  @moduledoc ~S"""
+  Scrollable region styled like Radix ScrollArea.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/scroll-area
+
+  Components: `scroll_area/1`, `scroll_bar/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.scroll_area id="scroll-area-demo" class="h-32 w-48 rounded-md border p-4">
+    <div :for={n <- 1..20} class="py-2">Item {n}</div>
+  </.scroll_area>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -40,7 +57,10 @@ defmodule ShadcnLiveview.Components.ScrollArea do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

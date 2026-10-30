@@ -1,3 +1,5 @@
+import { sendEventMethod } from "./hook-events"
+
 export const messageScrollerHook = `      export default {
         mounted() {
           this.initialized = false; this.following = this.el.getAttribute("phx-value-auto-scroll") === "true";
@@ -96,11 +98,7 @@ export const messageScrollerHook = `      export default {
       }`
 
 export const questionnaireHook = `export default {
-  sendEvent(event, payload, onReply) {
-    const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-    if (target) return this.pushEventTo(target, event, payload, onReply);
-    return this.pushEvent(event, payload, onReply);
-  },
+${sendEventMethod("  ")}
   mounted() {
     this.states = new Map(); this.controlDefaults = new Map(); this.initialItem = this.el.getAttribute("phx-value-item"); this.current = this.initialItem; this.serverItem = this.initialItem;
     this.change = e => {

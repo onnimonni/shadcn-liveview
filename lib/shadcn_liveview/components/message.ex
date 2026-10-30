@@ -1,9 +1,26 @@
 defmodule ShadcnLiveview.Components.Message do
-  @moduledoc false
+  @moduledoc ~S"""
+  Chat message layout with avatar, header, content and footer.
+
+  Upstream: https://ui.shadcn.com/r/styles/radix-nova/message.json
+
+  Components: `message_group/1`, `message/1`, `message_avatar/1`, `message_content/1`, `message_header/1`, `message_footer/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.message>
+    <.message_content>Hi, how can I help you today?</.message_content>
+  </.message>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -23,8 +40,12 @@ defmodule ShadcnLiveview.Components.Message do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :align, :string, default: "start"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :align, :string, default: "start", values: ~w(start end)
 
   attr :rest, :global,
     include:
@@ -50,7 +71,10 @@ defmodule ShadcnLiveview.Components.Message do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -75,7 +99,10 @@ defmodule ShadcnLiveview.Components.Message do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -100,7 +127,10 @@ defmodule ShadcnLiveview.Components.Message do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -125,7 +155,10 @@ defmodule ShadcnLiveview.Components.Message do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

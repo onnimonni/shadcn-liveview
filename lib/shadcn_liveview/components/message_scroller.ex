@@ -33,9 +33,17 @@ defmodule ShadcnLiveview.Components.MessageScroller do
   end
 
   @doc "Scrollable root; id is stable and context comes from message_scroller_provider."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -170,7 +178,11 @@ defmodule ShadcnLiveview.Components.MessageScroller do
 
   attr :context, :map, required: true
   attr :preserve_scroll_on_prepend, :boolean, default: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -201,7 +213,11 @@ defmodule ShadcnLiveview.Components.MessageScroller do
   end
 
   attr :spacer_class, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -226,7 +242,11 @@ defmodule ShadcnLiveview.Components.MessageScroller do
 
   attr :message_id, :string, default: nil
   attr :scroll_anchor, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -256,10 +276,21 @@ defmodule ShadcnLiveview.Components.MessageScroller do
   attr :direction, :string, values: ~w(start end), default: "end"
   attr :behavior, :string, values: ~w(auto instant smooth), default: "smooth"
   attr :active, :boolean, default: false
-  attr :variant, :string, default: "secondary"
-  attr :size, :string, default: "icon-sm"
+
+  attr :variant, :string,
+    default: "secondary",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "icon-sm",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
   attr :tabindex, :integer, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

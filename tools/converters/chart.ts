@@ -28,6 +28,13 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   A sized browser mounts the SVG; initial SSR deliberately emits the same empty
   geometry wrapper as Recharts 3, whose layout is initialized in effects.
   Ordinary container slots render on SSR when initial dimensions are positive.
+  Recharts-parity slot content sits in a zero-size wrapper (Recharts 3 SSR shell), so
+  percentage-sized children of the default slot measure 0×0. Custom renderers (own SVG,
+  canvas or hook) belong in the :custom slot, which receives the same context and renders
+  in a box filling the responsive container (width/height 100%); hooks measure that box.
+  Optional canvas features follow Recharts semantics and default off: stack (stackId),
+  curve (natural/monotone/step), gradient fills, Cartesian grid, axis/tick-line toggles,
+  tick margin, minTickGap thinning, server-side tick/tooltip label formats and cursor.
   The chart hook emits no LiveView events. Caller-rendered native controls retain
   their Phoenix event bindings and phx-target attributes without interception.
   """
@@ -43,9 +50,10 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :id, :string, required: true
   attr :config, :any, required: true
   attr :initial_dimension, :map, default: %{width: 320, height: 200}
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
-  slot :inner_block
+  slot :inner_block, doc: "Recharts-parity content (chart_canvas, tooltip and legend content) inside the zero-size SSR wrapper."
+  slot :custom, doc: "Custom renderer content; receives the chart context and fills the responsive container (100% width and height)."
 
   @doc "Wraps responsive content and passes explicit configuration/dimensions through the slot."
   def chart_container(assigns) do
@@ -62,6 +70,9 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
       <div class="recharts-responsive-container" style="width:100%;height:100%;min-width:0">
         <div style="width:0;height:0;overflow:visible">
           {if @visible, do: render_slot(@inner_block, @context)}
+        </div>
+        <div :if={@custom != []} data-slot="chart-custom" style="position:relative;width:100%;height:100%">
+          {render_slot(@custom, @context)}
         </div>
       </div>
     </div>
@@ -101,28 +112,46 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :id, :string, required: true
   attr :context, :map, required: true
   attr :data, :list, default: []
-  attr :series, :list, default: []
+  attr :series, :list, default: [],
+    doc: "Keys or maps with key and optional label, color, stack, fill_opacity and gradient_opacity overrides."
   attr :kind, :string, default: "bar", values: ~w(bar line area)
   attr :x_key, :string, default: "name"
   attr :label, :string, default: "Chart"
   attr :axes, :boolean, default: true
   attr :tooltip, :boolean, default: true
   attr :legend, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :stack, :any, default: false,
+    doc: "Stacks area/bar series like Recharts stackId: true (one shared stack) or a stack ID; series maps may set their own stack (false opts out). Lines ignore it."
+  attr :curve, :string, default: "linear", values: ~w(linear natural monotone step),
+    doc: "Line/area interpolation: d3 curveLinear, curveNatural, curveMonotoneX or curveStep."
+  attr :fill, :string, default: "solid", values: ~w(solid gradient),
+    doc: "Area/bar fill: series color, or a vertical linearGradient per series (stops at 5% and 95%)."
+  attr :fill_opacity, :any, default: 0.6, doc: "Area fill-opacity (Recharts fillOpacity), also applied on top of gradients."
+  attr :gradient_opacity, :list, default: [0.8, 0.1], doc: "Gradient stop opacities at 5% and 95%."
+  attr :grid, :string, default: "none", values: ~w(none horizontal vertical both),
+    doc: "CartesianGrid lines (stroke #ccc): horizontal at Y ticks, vertical at X ticks."
+  attr :axis_line, :boolean, default: true, doc: "Draws the X axis line (Recharts axisLine)."
+  attr :tick_line, :boolean, default: true, doc: "Draws X tick lines (Recharts tickLine)."
+  attr :tick_margin, :integer, default: 2, doc: "Gap between tick line end and label (Recharts tickMargin)."
+  attr :min_tick_gap, :integer, default: 5, doc: "Minimum label gap for interval=\"preserveEnd\" tick thinning (Recharts minTickGap)."
+  attr :tick_format, :any, default: nil,
+    doc: "X tick label format: \"date_short\" (en-US \"Apr 5\") or a 1-arity function of the x value; applied on the server."
+  attr :tooltip_label_format, :any, default: nil, doc: "Tooltip label format; same values as tick_format."
+  attr :cursor, :boolean, default: true, doc: "Draws the tooltip cursor (Recharts Tooltip cursor)."
+  attr :class, :any, default: nil
   attr :rest, :global
 
   @doc "Renders responsive Cartesian SVG with Recharts defaults; axes toggles the X axis only. Each canvas needs a stable DOM ID."
   def chart_canvas(assigns) do
     unless Enum.all?(assigns.data, &is_map/1), do: raise(ArgumentError, "chart data must contain row maps")
     config = Map.new(assigns.context.config)
-    series = Enum.map(assigns.series, fn item ->
-      key = safe_key!(if is_map(item), do: field(item, :key), else: item)
-      item_config = config_item(config, key)
-      %{key: key, label: if(is_map(item), do: field(item, :label), else: nil) || field(item_config, :label, key),
-        color: if(is_map(item), do: field(item, :color), else: nil) || "var(--color-#{key}, currentColor)"}
-    end)
+    series = Enum.map(assigns.series, &canvas_series(&1, config, assigns.stack))
     payload = %{data: assigns.data, series: series, kind: assigns.kind, xKey: assigns.x_key,
       label: assigns.label, axes: assigns.axes, tooltip: assigns.tooltip, legend: assigns.legend}
+    payload = Enum.reduce(canvas_options(assigns), payload, fn
+      {_, value, value}, acc -> acc
+      {key, value, _default}, acc -> Map.put(acc, key, value)
+    end)
     assigns = assign(assigns, width: assigns.context.width, height: assigns.context.height, payload: Jason.encode!(payload))
     ~H"""
     <div id={@id} phx-hook=".ChartCanvas" phx-value-chart={@payload}>
@@ -135,12 +164,72 @@ ${chartHook}
     """
   end
 
+  defp canvas_series(item, config, stack) do
+    key = safe_key!(if is_map(item), do: field(item, :key), else: item)
+    item_config = config_item(config, key)
+    %{key: key, label: if(is_map(item), do: field(item, :label), else: nil) || field(item_config, :label, key),
+      color: if(is_map(item), do: field(item, :color), else: nil) || "var(--color-#{key}, currentColor)"}
+    |> put_present(:stack, stack_id!(if(is_nil(field(item, :stack)), do: stack, else: field(item, :stack))))
+    |> put_present(:fillOpacity, opacity!(field(item, :fill_opacity)))
+    |> put_present(:gradientOpacity, gradient_opacity!(field(item, :gradient_opacity)))
+  end
+
+  defp canvas_options(assigns) do
+    [{:curve, assigns.curve, "linear"}, {:fill, assigns.fill, "solid"},
+     {:fillOpacity, opacity!(assigns.fill_opacity), 0.6},
+     {:gradientOpacity, gradient_opacity!(assigns.gradient_opacity), [0.8, 0.1]},
+     {:grid, assigns.grid, "none"}, {:axisLine, assigns.axis_line, true}, {:tickLine, assigns.tick_line, true},
+     {:tickMargin, assigns.tick_margin, 2}, {:minTickGap, assigns.min_tick_gap, 5}, {:cursor, assigns.cursor, true},
+     {:ticks, format_labels(assigns.data, assigns.x_key, assigns.tick_format), nil},
+     {:tooltipLabels, format_labels(assigns.data, assigns.x_key, assigns.tooltip_label_format), nil}]
+  end
+
+  defp put_present(map, _, nil), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  defp stack_id!(value) when value in [nil, false], do: nil
+  defp stack_id!(true), do: "stack"
+  defp stack_id!(value) when is_atom(value), do: Atom.to_string(value)
+  defp stack_id!(value) when is_binary(value), do: value
+  defp stack_id!(_), do: raise(ArgumentError, "chart stack must be a boolean or a stack ID")
+
+  defp opacity!(nil), do: nil
+  defp opacity!(value) when is_number(value), do: value
+  defp opacity!(_), do: raise(ArgumentError, "chart opacities must be numbers")
+
+  defp gradient_opacity!(nil), do: nil
+  defp gradient_opacity!([from, to]) when is_number(from) and is_number(to), do: [from, to]
+  defp gradient_opacity!(_), do: raise(ArgumentError, "chart gradient_opacity must be two numbers")
+
+  defp format_labels(_, _, nil), do: nil
+  defp format_labels(data, key, format), do: Enum.map(data, &format_label(field(&1, key), format))
+
+  defp format_label(value, format) when is_function(format, 1), do: to_string(format.(value))
+  defp format_label(value, "date_short") do
+    case label_date(value) do
+      nil -> to_string(value)
+      date -> Calendar.strftime(date, "%b %-d")
+    end
+  end
+  defp format_label(_, format), do: raise(ArgumentError, "unsupported chart label format: #{inspect(format)}")
+
+  defp label_date(%Date{} = date), do: date
+  defp label_date(%NaiveDateTime{} = value), do: NaiveDateTime.to_date(value)
+  defp label_date(%DateTime{} = value), do: DateTime.to_date(value)
+  defp label_date(value) when is_binary(value) do
+    case Date.from_iso8601(String.slice(value, 0, 10)) do
+      {:ok, date} -> date
+      _ -> nil
+    end
+  end
+  defp label_date(_), do: nil
+
   attr :context, :map, required: true
   attr :payload, :list, default: []
   attr :vertical_align, :string, default: "bottom"
   attr :hide_icon, :boolean, default: false
   attr :name_key, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :icon
   slot :label
@@ -175,7 +264,7 @@ ${chartHook}
   attr :label_key, :string, default: nil
   attr :color, :string, default: nil
   attr :label_class, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :label_content
   slot :value
@@ -230,7 +319,7 @@ ${chartHook}
   end
 
   attr :label, :any, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :content, :list, default: []
   attr :payload, :list, default: []
 

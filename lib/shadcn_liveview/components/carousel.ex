@@ -115,11 +115,19 @@ defmodule ShadcnLiveview.Components.Carousel do
       "group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 text-primary underline-offset-4 hover:underline size-9 absolute touch-manipulation rounded-full"
   }
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
   attr :loop, :boolean, default: false
   attr :start_index, :integer, default: 0
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -151,8 +159,16 @@ defmodule ShadcnLiveview.Components.Carousel do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.abort = new AbortController();
@@ -227,7 +243,11 @@ defmodule ShadcnLiveview.Components.Carousel do
   end
 
   attr :carousel, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -255,7 +275,11 @@ defmodule ShadcnLiveview.Components.Carousel do
   end
 
   attr :carousel, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -265,7 +289,7 @@ defmodule ShadcnLiveview.Components.Carousel do
   @doc "Renders a layout primitive with explicit slot context and caller-owned state."
   def carousel_item(assigns) do
     basis =
-      if Enum.any?(String.split(assigns.class || ""), &String.starts_with?(&1, "basis-")),
+      if Enum.any?(String.split(classes(assigns.class)), &String.starts_with?(&1, "basis-")),
         do: nil,
         else: "basis-full"
 
@@ -302,7 +326,11 @@ defmodule ShadcnLiveview.Components.Carousel do
     values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
 
   attr :disabled, :boolean, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -347,7 +375,11 @@ defmodule ShadcnLiveview.Components.Carousel do
     values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
 
   attr :disabled, :boolean, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

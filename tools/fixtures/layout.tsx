@@ -4,6 +4,7 @@ import { Card, CardContent } from "../../vendor/shadcn/ui/card"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "../../vendor/shadcn/ui/carousel"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "../../vendor/shadcn/ui/resizable"
 import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarProvider, SidebarTrigger, SidebarRail, SidebarInset, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarMenuSub, SidebarMenuSubItem, SidebarMenuSubButton } from "../../vendor/shadcn/ui/sidebar"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../vendor/shadcn/ui/dropdown-menu"
 
 export const fixtures: ComponentFixture[] = [
   {
@@ -84,4 +85,18 @@ export const fixtures: ComponentFixture[] = [
     heex: `<div class="flex w-full min-w-0 flex-col gap-4 md:flex-row"><.sidebar_provider id="sidebar-inset" class="relative h-64 min-h-0! min-w-0 overflow-hidden" :let={sidebar}><.sidebar id="sidebar-inset-panel" sidebar={sidebar} variant="inset" class="md:absolute md:h-full"><.sidebar_header>Inset</.sidebar_header><.sidebar_content>Navigation</.sidebar_content></.sidebar><.sidebar_inset class="min-w-0"><.sidebar_trigger sidebar={sidebar} />Main</.sidebar_inset></.sidebar_provider><.sidebar_provider id="sidebar-static" class="h-48 min-h-0! min-w-0 md:h-64 md:w-48 md:shrink-0" :let={sidebar}><.sidebar id="sidebar-static-panel" sidebar={sidebar} collapsible="none" class="w-48"><.sidebar_content>Always visible</.sidebar_content></.sidebar></.sidebar_provider></div>`,
     liveHeex: `<div class="flex w-full min-w-0 flex-col gap-4 md:flex-row"><.sidebar_provider id="sidebar-inset" class="relative h-64 min-h-0! min-w-0 overflow-hidden" open={Map.get(@state, "sidebar-inset", true)} mobile_open={Map.get(@state, "sidebar-inset-mobile", false)} :let={sidebar}><.sidebar id="sidebar-inset-panel" sidebar={sidebar} variant="inset" class="md:absolute md:h-full"><.sidebar_header>Inset</.sidebar_header><.sidebar_content>Navigation</.sidebar_content></.sidebar><.sidebar_inset class="min-w-0"><.sidebar_trigger sidebar={sidebar} />Main</.sidebar_inset></.sidebar_provider><.sidebar_provider id="sidebar-static" class="h-48 min-h-0! min-w-0 md:h-64 md:w-48 md:shrink-0" open={Map.get(@state, "sidebar-static", true)} mobile_open={Map.get(@state, "sidebar-static-mobile", false)} :let={sidebar}><.sidebar id="sidebar-static-panel" sidebar={sidebar} collapsible="none" class="w-48"><.sidebar_content>Always visible</.sidebar_content></.sidebar></.sidebar_provider></div>`,
   },
+  {
+    // Mobile sheet with a popup inside: patches and Escape must leave the popup owning focus.
+    name: "sidebar-menu-popup", family: "sidebar", title: "Sidebar with a menu popup", category: "navigation",
+    renderReact: () => <SidebarProvider id="sidebar-popup"><Sidebar id="sidebar-popup-panel"><SidebarContent><SidebarGroup><SidebarGroupContent><SidebarMenu><SidebarMenuItem><DropdownMenu><DropdownMenuTrigger id="sidebar-popup-menu-trigger" asChild><SidebarMenuButton>Team</SidebarMenuButton></DropdownMenuTrigger><DropdownMenuContent><DropdownMenuItem>Acme</DropdownMenuItem><DropdownMenuItem>Globex</DropdownMenuItem></DropdownMenuContent></DropdownMenu></SidebarMenuItem></SidebarMenu></SidebarGroupContent></SidebarGroup></SidebarContent></Sidebar><SidebarInset><SidebarTrigger />Main</SidebarInset></SidebarProvider>,
+    heex: sidebarPopup(false),
+    liveHeex: sidebarPopup(true),
+  },
 ]
+
+function sidebarPopup(live: boolean): string {
+  const provider = live ? ` open={Map.get(@state, "sidebar-popup", true)} mobile_open={Map.get(@state, "sidebar-popup-mobile", false)}` : ""
+  const menu = live ? ` open={Map.get(@state, "sidebar-popup-menu-open", false)} on_change="shadcn:popup-change"` : ""
+  const ticks = live ? `<span id="sidebar-popup-ticks">{Map.get(@state, "sidebar-popup-ticks", 0)}</span>` : ""
+  return `<.sidebar_provider id="sidebar-popup"${provider} :let={sidebar}><.sidebar id="sidebar-popup-panel" sidebar={sidebar}><.sidebar_content><.sidebar_group><.sidebar_group_content><.sidebar_menu><.sidebar_menu_item><.dropdown_menu id="sidebar-popup-menu"${menu}><:trigger :let={popup}><.sidebar_menu_button {popup.trigger}>Team</.sidebar_menu_button></:trigger><:content :let={popup}><.dropdown_menu_content context={popup}><.dropdown_menu_item>Acme</.dropdown_menu_item><.dropdown_menu_item>Globex</.dropdown_menu_item></.dropdown_menu_content></:content></.dropdown_menu></.sidebar_menu_item></.sidebar_menu></.sidebar_group_content></.sidebar_group></.sidebar_content></.sidebar><.sidebar_inset><.sidebar_trigger sidebar={sidebar} />Main${ticks}</.sidebar_inset></.sidebar_provider>`
+}

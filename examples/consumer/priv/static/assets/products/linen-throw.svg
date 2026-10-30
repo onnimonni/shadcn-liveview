@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="760" viewBox="0 0 640 760" fill="none">
+  <defs><linearGradient id="linen" x1="156" y1="253" x2="503" y2="539" gradientUnits="userSpaceOnUse"><stop stop-color="#e9dcc1"/><stop offset=".6" stop-color="#cfc0a3"/><stop offset="1" stop-color="#b7a484"/></linearGradient><pattern id="weave" width="7" height="7" patternUnits="userSpaceOnUse"><path d="M1 0v7M4 0v7M0 2h7M0 5h7" stroke="#7b6a4e" stroke-width=".65" stroke-opacity=".18"/></pattern><filter id="shadow"><feDropShadow dx="4" dy="16" stdDeviation="12" flood-color="#594e37" flood-opacity=".2"/></filter></defs>
+  <ellipse cx="320" cy="629" rx="186" ry="18" fill="#b9b29d" opacity=".3"/>
+  <g filter="url(#shadow)"><path d="m133 456 285-137 98 173-285 128Z" fill="#b6a88c" stroke="#9d8b6c" stroke-width="2" stroke-linejoin="round"/><path d="m133 456 6 32 90 142 285-130 2-8-285 128Z" fill="#c5b69a"/>
+  <path d="m133 407 285-137 98 173-285 130Z" fill="#dbccb0" stroke="#b3a07d" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m133 407 6 34 90 143 285-130 2-11-285 130Z" fill="#bca98a"/>
+  <path d="m133 355 285-137 98 173-285 131Z" fill="url(#linen)" stroke="#b39f7d" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m133 355 285-137 98 173-285 131Z" fill="url(#weave)"/>
+  <path d="m173 336 98 166m21-224 97 165m-84-171 98 165" stroke="#f1e8d4" stroke-width="8" opacity=".55"/>
+  <path d="m139 374 87 145 287-129" stroke="#bda987" stroke-width="2"/>
+  <path d="m151 485-13 21m23-6-15 24m24-11-12 20m23-5-13 23m23-6-13 22m22-4-10 20m22-5-11 22m28-14-10 25m24-32-8 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27m24-34-7 27m23-34-7 27" stroke="#cab997" stroke-width="4" stroke-linecap="round"/>
+  <path d="m174 452 51-24 12 21-52 25Z" fill="#e5dbc4" stroke="#af9f80"/><path d="m186 449 29-14" stroke="#7d8969" stroke-width="2"/>
+  </g>
+</svg>

@@ -1,6 +1,8 @@
 import type { ComponentSpec } from "../generate"
+import { sendEventMethod } from "./hook-events"
 
 const hook = (family: "accordion" | "tabs") => `      export default {
+${sendEventMethod("        ")}
         mounted() {
           this.pending = null;
           this.click = event => {
@@ -64,9 +66,8 @@ const hook = (family: "accordion" | "tabs") => `      export default {
           } else {
             payload.value = current.includes(item) && this.el.getAttribute("phx-value-collapsible") === "true" ? null : item;
           }` : ""}
-          const target = this.el.getAttribute("phx-target");
-          if (target) this.pushEventTo(target, event, payload);
-          else this.pushEvent(event, payload);
+          // A failed push leaves the server-rendered selection untouched.
+          ${family === "tabs" ? "this.sendEvent(event, payload).catch(() => { if (this.pending === trigger.id) this.pending = null; });" : "this.sendEvent(event, payload);"}
         },
         sync() {
           ${family === "tabs" ? `const items = this.triggers().filter(trigger => !trigger.disabled);
@@ -109,9 +110,13 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   assign the result of \`accordion_next_value/4\` back to \`value\`. This renders
   previously closed slots, whose children Radix deliberately omits in SSR.
   Slots are retained as render functions, never discarded or cached HTML.
+  \`use ShadcnLiveview\` imports components only, so call the helper through its
+  module (or \`import ShadcnLiveview.Components.Accordion, only: [accordion_next_value: 4]\`):
+
+      alias ShadcnLiveview.Components.Accordion
 
       def handle_event("shadcn:accordion-change", %{"item" => item}, socket) do
-        value = accordion_next_value(socket.assigns.expanded, item, "single", true)
+        value = Accordion.accordion_next_value(socket.assigns.expanded, item, "single", true)
         {:noreply, assign(socket, :expanded, value)}
       end
 
@@ -132,7 +137,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :dir, :string, values: ~w(ltr rtl), default: "ltr"
   attr :on_change, :string, default: "shadcn:accordion-change"
   attr :target, :any, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -171,7 +176,7 @@ ${hook("accordion")}
   attr :disabled, :boolean, default: false
   attr :trigger_id, :string, default: nil
   attr :content_id, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -195,7 +200,7 @@ ${hook("accordion")}
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(name value form)
   slot :inner_block, required: true
 
@@ -223,7 +228,7 @@ ${hook("accordion")}
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: false
 
@@ -292,7 +297,7 @@ end
   attr :loop, :boolean, default: true
   attr :on_change, :string, default: "shadcn:tabs-change"
   attr :target, :any, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -317,7 +322,7 @@ ${hook("tabs")}
 
   attr :context, :map, required: true
   attr :variant, :string, values: ~w(default line), default: "default"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -337,7 +342,7 @@ ${hook("tabs")}
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(name form)
   slot :inner_block, required: true
 
@@ -359,7 +364,7 @@ ${hook("tabs")}
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: false
 

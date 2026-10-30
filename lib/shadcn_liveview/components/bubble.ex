@@ -1,9 +1,26 @@
 defmodule ShadcnLiveview.Components.Bubble do
-  @moduledoc false
+  @moduledoc ~S"""
+  Chat message bubbles with grouping, content and reactions.
+
+  Upstream: https://ui.shadcn.com/r/styles/radix-nova/bubble.json
+
+  Components: `bubble_group/1`, `bubble/1`, `bubble_content/1`, `bubble_reactions/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.bubble>
+    <.bubble_content>Hello from bubble chat!</.bubble_content>
+  </.bubble>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -23,9 +40,16 @@ defmodule ShadcnLiveview.Components.Bubble do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
-  attr :align, :string, default: "start"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default secondary muted tinted outline ghost destructive)
+
+  attr :align, :string, default: "start", values: ~w(start end)
 
   attr :rest, :global,
     include:
@@ -72,7 +96,10 @@ defmodule ShadcnLiveview.Components.Bubble do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -97,9 +124,13 @@ defmodule ShadcnLiveview.Components.Bubble do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :side, :string, default: "bottom"
-  attr :align, :string, default: "end"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :side, :string, default: "bottom", values: ~w(top bottom)
+  attr :align, :string, default: "end", values: ~w(start end)
 
   attr :rest, :global,
     include:

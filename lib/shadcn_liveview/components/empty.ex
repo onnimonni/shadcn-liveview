@@ -1,9 +1,29 @@
 defmodule ShadcnLiveview.Components.Empty do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays an empty state with media, title, description and actions.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/empty
+
+  Components: `empty/1`, `empty_header/1`, `empty_media/1`, `empty_title/1`, `empty_description/1`, `empty_content/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.empty>
+    <.empty_header>
+      <.empty_title>No data available</.empty_title>
+      <.empty_description>Get started by creating your first project.</.empty_description>
+    </.empty_header>
+  </.empty>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -28,7 +48,10 @@ defmodule ShadcnLiveview.Components.Empty do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -48,8 +71,12 @@ defmodule ShadcnLiveview.Components.Empty do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "default", values: ~w(default icon)
 
   attr :rest, :global,
     include:
@@ -85,7 +112,10 @@ defmodule ShadcnLiveview.Components.Empty do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -105,7 +135,10 @@ defmodule ShadcnLiveview.Components.Empty do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -130,7 +163,10 @@ defmodule ShadcnLiveview.Components.Empty do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

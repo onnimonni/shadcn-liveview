@@ -10,8 +10,9 @@
     "dump:phoenix": "mix run -e 'File.write!(\"priv/phoenix_ssr.json\", ShadcnLiveview.Gallery.dump_all())'",
     "test:parity": "mix assets.build && bun run dump:phoenix && tsx tools/parity.tsx",
     "test:browser": "bash tools/test-browser.sh",
+    "test:a11y": "bash tools/test-accessibility.sh",
     "audit:visual": "bun tools/screenshot-review.ts",
-    "test": "bun run generate && mix quality && bun run test:tools && mix test && bun run test:parity",
+    "test": "bun run generate && mix quality && mix assets.build && bun run test:tools && mix test && bun run dump:phoenix && tsx tools/parity.tsx",
     "build:assets": "mix assets.build",
     "check:elixir": "mix quality"
   },
@@ -40,6 +41,8 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@babel/parser": "7.29.9",
     "@fontsource-variable/geist": "^5.3.0",
     "@playwright/test": "1.64.0",
     "@tailwindcss/cli": "^4.3.3",

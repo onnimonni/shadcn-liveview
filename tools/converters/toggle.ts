@@ -1,5 +1,6 @@
 import { cn } from "cn"
 import type { ComponentSpec } from "../generate"
+import { sendEventMethod } from "./hook-events"
 
 export function generateComponent(spec: ComponentSpec): string | undefined {
   if (spec.name !== "toggle") return undefined
@@ -29,7 +30,7 @@ ${styles}
   attr :variant, :string, default: "default", values: ${JSON.stringify(Object.keys(variants))}
   attr :size, :string, default: "default", values: ${JSON.stringify(Object.keys(sizes))}
   attr :on_change, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(form name value)
   slot :inner_block, required: true
 
@@ -45,11 +46,7 @@ ${styles}
     </button>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Toggle">
       export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
+${sendEventMethod("        ")}
         mounted() {
           this.serverPressed = this.el.getAttribute("phx-pressed");
           this.click = () => {

@@ -1,7 +1,8 @@
 import type { ComponentFunctionSpec } from "../generate"
+import { linkAttrs, linkOrElement } from "./links"
 
 function breadcrumbSeparator(): string {
-    return `  attr :class, :string, default: nil
+    return `  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
@@ -21,7 +22,8 @@ function breadcrumbSeparator(): string {
 }
 
 function pagination(): string {
-    return `  attr :class, :string, default: nil
+    return `  attr :"aria-label", :string, default: "pagination", doc: "accessible name of the navigation landmark"
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
@@ -29,7 +31,7 @@ function pagination(): string {
     ~H"""
     <nav
       role="navigation"
-      aria-label="pagination"
+      aria-label={assigns[:"aria-label"]}
       data-slot="pagination"
       class={classes(["mx-auto flex w-full justify-center", @class])}
       {@rest}
@@ -43,13 +45,14 @@ function pagination(): string {
 function paginationLink(): string {
     return `  attr :is_active, :boolean, default: false
   attr :size, :string, default: "icon"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
+${linkAttrs.join("\n")}
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
   def pagination_link(assigns) do
     ~H"""
-    <a
+${linkOrElement({ open: "a", close: "a", attrs: `
       data-slot="pagination-link"
       data-variant={if @is_active, do: "outline", else: "ghost"}
       data-size={@size}
@@ -62,9 +65,9 @@ function paginationLink(): string {
         @class
       ])}
       {@rest}
-    >
+    `, body: `
       {render_slot(@inner_block)}
-    </a>
+    ` })}
     """
   end`
 }
@@ -79,13 +82,14 @@ function paginationAdjacent(previous: boolean): string {
   const text = '      <span class="hidden sm:block">{@text}</span>'
   const content = previous ? icon + "\n" + text : text + "\n" + icon
   return `  attr :text, :string, default: "${label}"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
+${linkAttrs.join("\n")}
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
   def pagination_${direction}(assigns) do
     ~H"""
-    <a
+${linkOrElement({ open: "a", close: "a", attrs: `
       aria-label="Go to ${direction} page"
       data-slot="pagination-link"
       data-variant="ghost"
@@ -95,9 +99,9 @@ function paginationAdjacent(previous: boolean): string {
         @class
       ])}
       {@rest}
-    >
+    `, body: `
 ${content}
-    </a>
+    ` })}
     """
   end`
 }

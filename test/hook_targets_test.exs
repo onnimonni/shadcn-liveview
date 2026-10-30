@@ -107,6 +107,9 @@ defmodule ShadcnLiveview.HookTargetsTest do
       assert Floki.attribute(document, selector, "phx-target") == ["11"]
     end
 
+    # An explicit target is final; only untargeted controls inherit at click time.
+    assert Floki.find(document, "[phx-inherit-target]") == []
+
     assert Floki.attribute(document, "#targeted-dialog", "phx-modal-close-event") == [
              "shadcn:modal-close"
            ]
@@ -138,6 +141,41 @@ defmodule ShadcnLiveview.HookTargetsTest do
              ]
            ] =
              Jason.decode!(open)
+  end
+
+  test "untargeted modal controls inherit the nearest phx-target and close accepts button styles" do
+    assigns = %{}
+
+    document =
+      parse(~H"""
+      <.drawer id="inherit-drawer" open>
+        <:trigger :let={modal}>
+          <.drawer_trigger context={modal}>Open</.drawer_trigger>
+        </:trigger>
+        <:content :let={modal}>
+          <.drawer_content context={modal}>
+            <.drawer_close context={modal} variant="outline" size="sm">Done</.drawer_close>
+            <.drawer_close context={modal} id="plain-close">Plain</.drawer_close>
+          </.drawer_content>
+        </:content>
+      </.drawer>
+      """)
+
+    for selector <- [
+          "#inherit-drawer-trigger",
+          "[data-slot=drawer-overlay]",
+          "[data-slot=drawer-close]"
+        ] do
+      assert Floki.find(document, selector <> "[phx-inherit-target]") != []
+      assert Floki.attribute(document, selector, "phx-target") == []
+    end
+
+    [styled] = Floki.find(document, "[data-slot=drawer-close][data-variant=outline]")
+    assert Floki.attribute(styled, "data-size") == ["sm"]
+    [class] = Floki.attribute(styled, "class")
+    assert class =~ "border-border" and class =~ "h-7"
+    assert Floki.attribute(document, "#plain-close", "class") in [[], [""]]
+    assert Floki.attribute(document, "#plain-close", "data-variant") == []
   end
 
   test "caller-supplied modal JS retains its explicitly selected target" do

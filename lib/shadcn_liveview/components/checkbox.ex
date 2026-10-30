@@ -15,23 +15,52 @@ defmodule ShadcnLiveview.Components.Checkbox do
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
 
-  attr :id, :string, required: true
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
+
+  attr :id, :string, default: nil
   attr :checked, :any, default: nil
-  attr :default_checked, :any, default: nil
+
+  attr :default_checked, :any,
+    default: nil,
+    doc: "Uncontrolled initial `checked`; ignored once `checked` is supplied."
+
   attr :name, :string, default: nil
-  attr :value, :string, default: "on"
+  attr :value, :string, default: nil
   attr :form, :string, default: nil
   attr :disabled, :boolean, default: false
   attr :required, :boolean, default: false
-  attr :on_change, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def checkbox(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :checkbox)
+    if is_nil(assigns.id), do: raise(ArgumentError, "checkbox requires an id or form field")
+    assigns = assign(assigns, :value, assigns.value || if(assigns.field, do: "true", else: "on"))
     checked = if is_nil(assigns.checked), do: assigns.default_checked, else: assigns.checked
     assigns = assign(assigns, state: state(checked), initial: state(checked))
 
     ~H"""
+    <input
+      :if={@field && @name}
+      type="hidden"
+      name={@name}
+      value="false"
+      disabled={@disabled}
+      form={@form}
+    />
     <button
       id={@id}
       type="button"
@@ -68,65 +97,92 @@ defmodule ShadcnLiveview.Components.Checkbox do
       </span>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".BinaryControl">
         export default {
+          sendEvent(event, payload, onReply) {
+            const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+            const push = target
+              ? this.pushEventTo(target, event, payload).then(results => {
+                  const failed = results.find(result => result.status === "rejected");
+                  if (failed) throw failed.reason;
+                  return results[0]?.value.reply;
+                })
+              : this.pushEvent(event, payload);
+            push.catch(() => {});
+            if (onReply) push.then(onReply, () => {});
+            return push;
+          },
           mounted() {
-            this.input = this.el.nextElementSibling;
             this.initial = this.el.getAttribute("phx-value-initial");
             this.click = () => {
               if (this.el.disabled) return;
               this.setState(this.el.getAttribute("data-state") === "checked" ? "unchecked" : "checked", true);
             };
             this.reset = () => { this.resetFrame = requestAnimationFrame(() => this.setState(this.initial, true)); };
+            // As in Radix, an external form reset restores only the native input's mounted value.
+            this.nativeReset = () => {
+              this.nativeFrame = requestAnimationFrame(() => { this.nativeState = this.initial; this.syncInput(); });
+            };
             this.invalid = () => this.el.focus();
+            // LiveView derives the native checked property from its checked attribute, including
+            // when it applies cloned trees of locked forms without updating this hook.
+            this.observer = new MutationObserver(() => this.syncInput());
             this.el.addEventListener("click", this.click);
-            this.input.addEventListener("invalid", this.invalid);
             this.updated();
           },
           updated() {
             const input = this.el.nextElementSibling;
             if (input !== this.input) {
-              this.input.removeEventListener("invalid", this.invalid);
+              this.input?.removeEventListener("invalid", this.invalid);
               input.addEventListener("invalid", this.invalid);
+              this.observer.disconnect();
+              this.observer.observe(input, {attributes: true, attributeFilter: ["checked"]});
               this.input = input;
             }
             this.serverState = this.el.getAttribute("phx-value-state");
             const controlled = this.el.getAttribute("phx-value-controlled") === "true";
             this.serverChildren = Array.from(this.el.childNodes);
             // Checkbox reset follows the trigger's form; Switch also follows form=.
-            const form = this.el.getAttribute("role") === "checkbox" ? this.el.form : this.input.form;
-            if (this.form !== form) {
-              if (this.form) this.form.removeEventListener("reset", this.reset);
-              this.form = form;
-              if (this.form) this.form.addEventListener("reset", this.reset);
-            }
-            const state = controlled || this.state === undefined ? this.serverState : this.state;
-            const preserveSubmittedState = this.el.getAttribute("role") === "checkbox" &&
-              !this.form && this.input.form && state === this.state && this.patchedInputState;
-            this.setState(state, false);
-            this.input.defaultChecked = this.initial === "checked";
-            if (preserveSubmittedState) {
-              this.input.checked = this.patchedInputState.checked;
-              this.input.indeterminate = this.patchedInputState.indeterminate;
-            }
-            this.patchedInputState = undefined;
+            const checkbox = this.el.getAttribute("role") === "checkbox";
+            const form = checkbox ? this.el.form : this.input.form;
+            this.listenReset("form", form, this.reset);
+            this.listenReset("nativeForm", checkbox && this.input.form !== form ? this.input.form : null, this.nativeReset);
+            this.setState(controlled || this.state === undefined ? this.serverState : this.state, false);
           },
           beforeUpdate() {
-            const state = this.state;
-            const checked = this.input.checked;
-            const indeterminate = this.input.indeterminate;
-            this.patchedInputState = {checked, indeterminate};
+            // Morph from the server-rendered trigger; updated() reapplies local state.
             this.el.replaceChildren(...this.serverChildren);
-            this.setState(this.serverState, false);
-            this.state = state;
-            this.input.checked = checked;
-            this.input.indeterminate = indeterminate;
+            this.paint(this.serverState);
+          },
+          listenReset(key, form, listener) {
+            if (this[key] === form) return;
+            if (this[key]) this[key].removeEventListener("reset", listener);
+            this[key] = form;
+            if (form) form.addEventListener("reset", listener);
           },
           setState(state, notify) {
+            if (state !== this.state) this.nativeState = undefined;
             this.state = state;
+            this.paint(state);
+            this.syncInput();
+            if (!notify) return;
+            this.input.dispatchEvent(new Event("input", {bubbles:true}));
+            this.input.dispatchEvent(new Event("change", {bubbles:true}));
+            const event = this.el.getAttribute("phx-value-change");
+            // Controlled state comes from the server, so a failed push restores it.
+            if (event) this.sendEvent(event, {id:this.el.id, value:state === "checked"}).catch(() => {
+              if (this.el.getAttribute("phx-value-controlled") === "true") this.setState(this.serverState, false);
+            });
+          },
+          // The checked attribute mirrors the property so LiveView patches and clones keep it.
+          syncInput() {
+            const state = this.nativeState ?? this.state;
             const checked = state === "checked";
-            this.el.setAttribute("data-state", state);
-            this.el.setAttribute("aria-checked", state === "indeterminate" ? "mixed" : String(checked));
             this.input.checked = checked;
             this.input.indeterminate = state === "indeterminate";
+            if (this.input.defaultChecked !== checked) this.input.defaultChecked = checked;
+          },
+          paint(state) {
+            this.el.setAttribute("data-state", state);
+            this.el.setAttribute("aria-checked", state === "indeterminate" ? "mixed" : String(state === "checked"));
             let child = this.el.firstElementChild;
             if (this.el.getAttribute("role") === "checkbox") {
               if (state === "unchecked") { if (child) child.remove(); }
@@ -144,22 +200,15 @@ defmodule ShadcnLiveview.Components.Checkbox do
             }
             if (child && state !== "unchecked") child.setAttribute("data-state", state);
             if (child && this.el.getAttribute("role") === "switch") child.setAttribute("data-state", state);
-            if (!notify) return;
-            this.input.dispatchEvent(new Event("input", {bubbles:true}));
-            this.input.dispatchEvent(new Event("change", {bubbles:true}));
-            const event = this.el.getAttribute("phx-value-change");
-            if (event) this.sendEvent(event, {id:this.el.id, value:checked});
-          },
-          sendEvent(event, payload, onReply) {
-            const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-            if (target) return this.pushEventTo(target, event, payload, onReply);
-            return this.pushEvent(event, payload, onReply);
           },
           destroyed() {
             cancelAnimationFrame(this.resetFrame);
+            cancelAnimationFrame(this.nativeFrame);
+            this.observer.disconnect();
             this.el.removeEventListener("click", this.click);
             this.input.removeEventListener("invalid", this.invalid);
-            if (this.form) this.form.removeEventListener("reset", this.reset);
+            this.listenReset("form", null, this.reset);
+            this.listenReset("nativeForm", null, this.nativeReset);
           }
         }
       </script>

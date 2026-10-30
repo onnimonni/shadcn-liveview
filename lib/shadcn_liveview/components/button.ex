@@ -1,16 +1,56 @@
 defmodule ShadcnLiveview.Components.Button do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a button or a component that looks like a button.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/button
+
+  Components: `button/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.button variant="default">Click me</.button>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "default",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
+  attr :navigate, :string,
+    default: nil,
+    doc:
+      "LiveView `navigate` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :patch, :string,
+    default: nil,
+    doc:
+      "LiveView `patch` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :replace, :boolean,
+    default: false,
+    doc: "Replaces the browser history entry for `navigate` and `patch` links."
+
+  attr :href, :any,
+    default: nil,
+    doc: "Plain link destination; renders `Phoenix.Component.link/1` instead of a `<button>`."
 
   attr :rest, :global,
     include:
-      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
 
+  @doc "Renders a native `<button>`, or `Phoenix.Component.link/1` with identical styling when `navigate`, `patch` or `href` is given."
   slot :inner_block, required: false
 
   def button(assigns) do
@@ -18,11 +58,29 @@ defmodule ShadcnLiveview.Components.Button do
       assign(assigns,
         data_slot:
           Map.get(assigns.rest, :"data-slot", Map.get(assigns.rest, "data-slot", "button")),
-        rest: Map.drop(assigns.rest, [:"data-slot", "data-slot"])
+        rest:
+          assigns.rest
+          |> Map.drop([:"data-slot", "data-slot"])
+          |> trigger_rest!(Map.get(assigns.rest, "id"), "button")
       )
 
     ~H"""
+    <.link
+      :if={@navigate || @patch || @href}
+      navigate={@navigate}
+      patch={@patch}
+      href={@href}
+      replace={@replace}
+      data-slot={@data_slot}
+      data-variant={@variant}
+      data-size={@size}
+      class={classes([button_classes(@variant, @size), @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
     <button
+      :if={!(@navigate || @patch || @href)}
       data-slot={@data_slot}
       data-variant={@variant}
       data-size={@size}

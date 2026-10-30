@@ -24,13 +24,26 @@ defmodule ShadcnLiveview.Components.Toggle do
       "group/toggle inline-flex items-center justify-center gap-1 rounded-lg text-sm font-medium whitespace-nowrap transition-all outline-none hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 aria-pressed:bg-muted data-[state=on]:bg-muted dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border border-input bg-transparent hover:bg-muted h-9 min-w-9 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2"
   }
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :pressed, :boolean, default: false
   attr :disabled, :boolean, default: false
   attr :variant, :string, default: "default", values: ["default", "outline"]
   attr :size, :string, default: "default", values: ["default", "sm", "lg"]
-  attr :on_change, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(form name value)
   slot :inner_block, required: true
 
@@ -59,8 +72,16 @@ defmodule ShadcnLiveview.Components.Toggle do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.serverPressed = this.el.getAttribute("phx-pressed");

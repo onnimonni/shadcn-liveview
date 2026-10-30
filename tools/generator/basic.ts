@@ -1,33 +1,64 @@
 import { cn } from "cn"
 import type { ComponentFunctionSpec } from "../generate"
+import { linkAttrs, linkOrElement } from "./links"
+
+const globalAttrs = "accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width".split(" ")
+// Table cell attributes beyond the shared inventory; scope and abbr are obsolete on td.
+const cellAttrs: Record<string, string[]> = { th: ["abbr", "colspan", "headers", "rowspan", "scope"], td: ["colspan", "headers", "rowspan"] }
+
+// button renders Phoenix.Component.link/1 for navigate, patch or href; anchors for navigate or patch.
+function linkMode(fn: ComponentFunctionSpec): "button" | "anchor" | undefined {
+  if (fn.name === "button") return "button"
+  return fn.tag === "a" ? "anchor" : undefined
+}
+
+function globalInclude(fn: ComponentFunctionSpec): string {
+  // href is an explicit button attr that selects link mode.
+  const names = linkMode(fn) === "button" ? globalAttrs.filter(name => name !== "href") : globalAttrs
+  return [...names, ...(cellAttrs[fn.tag] ?? [])].sort().join(" ")
+}
+
+function enumAttr(fnName: string, name: string, defaultValue: string, values: string[]): string {
+  if (!values.includes(defaultValue)) throw new Error(`${fnName}.${name} default "${defaultValue}" is not one of ${values.join(", ")}`)
+  return `  attr :${name}, :string, default: "${defaultValue}", values: ~w(${values.join(" ")})`
+}
 
 function generateAttributes(fn: ComponentFunctionSpec): { attrsLines: string[]; isVoid: boolean } {
   const attrsLines: string[] = []
 
-  attrsLines.push(`  attr :class, :string, default: nil`)
+  attrsLines.push(`  attr :class, :any, default: nil`)
+  if (fn.tag === "input" || fn.tag === "textarea") {
+    attrsLines.push(`  attr :field, Phoenix.HTML.FormField, default: nil`)
+  }
 
+  // CVA variant keys are the complete set of styles the class helper can resolve.
   const variantEntries = fn.variants ? Object.entries(fn.variants) : []
-  if (variantEntries.length > 0) {
-    for (const [varName, varValues] of variantEntries) {
-      const defaultVal = fn.defaultVariants?.[varName] ?? Object.keys(varValues)[0] ?? "default"
-      attrsLines.push(`  attr :${varName}, :string, default: "${defaultVal}"`)
-    }
+  for (const [varName, varValues] of variantEntries) {
+    const keys = Object.keys(varValues)
+    attrsLines.push(enumAttr(fn.name, varName, fn.defaultVariants?.[varName] ?? keys[0] ?? "default", keys))
   }
 
-  if (fn.attrs) {
-    for (const a of fn.attrs) {
-      if (a.default !== undefined) {
-        attrsLines.push(`  attr :${a.name}, :${a.type}, default: ${a.default}`)
-      } else {
-        attrsLines.push(`  attr :${a.name}, :${a.type}`)
-      }
-    }
+  for (const a of fn.attrs ?? []) {
+    if (a.values && a.default?.startsWith('"')) attrsLines.push(enumAttr(fn.name, a.name, JSON.parse(a.default), a.values))
+    else if (a.default !== undefined) attrsLines.push(`  attr :${a.name}, :${a.type}, default: ${a.default}${a.doc ? `, doc: ${JSON.stringify(a.doc)}` : ""}`)
+    else attrsLines.push(`  attr :${a.name}, :${a.type}`)
   }
 
-  attrsLines.push(`  attr :rest, :global, include: ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)`)
+  const mode = linkMode(fn)
+  if (mode) attrsLines.push(...linkAttrs)
+  if (mode === "button") {
+    attrsLines.push(`  attr :href, :any, default: nil, doc: "Plain link destination; renders \`Phoenix.Component.link/1\` instead of a \`<button>\`."`)
+  }
+  attrsLines.push(`  attr :rest, :global, include: ~w(${globalInclude(fn)})`)
+  if (mode === "button") {
+    attrsLines.push(`  @doc "Renders a native \`<button>\`, or \`Phoenix.Component.link/1\` with identical styling when \`navigate\`, \`patch\` or \`href\` is given."`)
+  }
   if (fn.tag === "textarea") {
     attrsLines.push(`  attr :value, :any, default: nil`)
     attrsLines.push(`  @doc "Native textarea content: a non-nil value overrides the slot; an explicit empty string clears it. Content is escaped and leading newlines are preserved."`)
+  }
+  if (fn.tag === "input") {
+    attrsLines.push(`  @doc "Accepts a Phoenix.HTML.FormField via field to infer id, name and value. Explicit HTML attributes win; use form_field for labels, help text and used-field errors."`)
   }
   const voidMap: Record<string, true> = { input: true, img: true, hr: true, br: true, meta: true, link: true }
   const isVoid = Boolean(voidMap[fn.tag])
@@ -86,8 +117,8 @@ export function generateBasicFunction(fn: ComponentFunctionSpec): string {
 
   const dataSlot = fn.name === "button" ? "{@data_slot}" : `"${fn.slotName}"`
   const prepare = fn.name === "button"
-    ? `    assigns = assign(assigns, data_slot: Map.get(assigns.rest, :"data-slot", Map.get(assigns.rest, "data-slot", "button")), rest: Map.drop(assigns.rest, [:"data-slot", "data-slot"]))\n`
-    : ""
+    ? `    assigns = assign(assigns, data_slot: Map.get(assigns.rest, :"data-slot", Map.get(assigns.rest, "data-slot", "button")), rest: assigns.rest |> Map.drop([:"data-slot", "data-slot"]) |> trigger_rest!(Map.get(assigns.rest, "id"), "button"))\n`
+    : fn.tag === "input" ? "    assigns = ShadcnLiveview.Form.bind(assigns, :input)\n" : ""
   const template = isVoid
     ? `  def ${fn.name}(assigns) do
 ${prepare}    ~H"""
@@ -100,22 +131,32 @@ ${prepare}    ~H"""
   end`
     : fn.tag === "textarea"
     ? `  def ${fn.name}(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :textarea)
     ~H"""
     <textarea data-slot=${dataSlot}${dataVariantAttrs} class={${classExpr}} {@rest}>{if is_nil(@value), do: render_slot(@inner_block), else: Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
     """
   end`
     : `  def ${fn.name}(assigns) do
 ${prepare}    ~H"""
-    <${fn.tag}
+${elementMarkup(fn, `
       data-slot=${dataSlot}${dataVariantAttrs}
       class={${classExpr}}
       {@rest}
-    >${fn.extraInnerMarkup ?? ""}
-      {render_slot(@inner_block)}
-    </${fn.tag}>
+    `, `
+      ${fn.innerMarkup ?? "{render_slot(@inner_block)}"}
+    `)}
     """
   end`
 
 
   return [attrsLines.join("\n"), template, variantHelpers.join("\n")].filter(Boolean).join("\n\n")
+}
+
+function elementMarkup(fn: ComponentFunctionSpec, attrs: string, body: string): string {
+  const mode = linkMode(fn)
+  if (!mode) return `    <${fn.tag}${attrs}>${body}</${fn.tag}>`
+  return linkOrElement({
+    open: fn.tag, close: fn.tag, attrs, body,
+    ...(mode === "button" ? { linkAttrs: " href={@href}", condition: "@navigate || @patch || @href" } : {}),
+  })
 }

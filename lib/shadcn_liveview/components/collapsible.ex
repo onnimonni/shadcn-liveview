@@ -9,11 +9,23 @@ defmodule ShadcnLiveview.Components.Collapsible do
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :open, :boolean, default: false
   attr :disabled, :boolean, default: false
-  attr :on_open_change, :string, default: "control_open"
-  attr :class, :string, default: nil
+
+  attr :on_open_change, :string,
+    default: "control_open",
+    doc: "LiveView event name pushed on open change; the payload is described in the module docs."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -36,6 +48,19 @@ defmodule ShadcnLiveview.Components.Collapsible do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Collapsible">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
         mounted() {
           this.click = event => {
             const trigger = event.target.closest('[data-slot="collapsible-trigger"]');
@@ -45,11 +70,6 @@ defmodule ShadcnLiveview.Components.Collapsible do
           this.el.addEventListener("click", this.click);
         },
         updated() {},
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
         destroyed() { this.el.removeEventListener("click", this.click); }
       }
     </script>
@@ -57,7 +77,12 @@ defmodule ShadcnLiveview.Components.Collapsible do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(disabled)
   slot :inner_block, required: true
 
@@ -81,7 +106,12 @@ defmodule ShadcnLiveview.Components.Collapsible do
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 

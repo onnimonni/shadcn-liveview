@@ -21,6 +21,13 @@ defmodule ShadcnLiveview.Components.Chart do
   A sized browser mounts the SVG; initial SSR deliberately emits the same empty
   geometry wrapper as Recharts 3, whose layout is initialized in effects.
   Ordinary container slots render on SSR when initial dimensions are positive.
+  Recharts-parity slot content sits in a zero-size wrapper (Recharts 3 SSR shell), so
+  percentage-sized children of the default slot measure 0×0. Custom renderers (own SVG,
+  canvas or hook) belong in the :custom slot, which receives the same context and renders
+  in a box filling the responsive container (width/height 100%); hooks measure that box.
+  Optional canvas features follow Recharts semantics and default off: stack (stackId),
+  curve (natural/monotone/step), gradient fills, Cartesian grid, axis/tick-line toggles,
+  tick margin, minTickGap thinning, server-side tick/tooltip label formats and cursor.
   The chart hook emits no LiveView events. Caller-rendered native controls retain
   their Phoenix event bindings and phx-target attributes without interception.
   """
@@ -43,12 +50,28 @@ defmodule ShadcnLiveview.Components.Chart do
           height: number()
         }
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :config, :any, required: true
   attr :initial_dimension, :map, default: %{width: 320, height: 200}
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
-  slot :inner_block
+
+  slot :inner_block,
+    doc:
+      "Recharts-parity content (chart_canvas, tooltip and legend content) inside the zero-size SSR wrapper."
+
+  slot :custom,
+    doc:
+      "Custom renderer content; receives the chart context and fills the responsive container (100% width and height)."
 
   @doc "Wraps responsive content and passes explicit configuration/dimensions through the slot."
   def chart_container(assigns) do
@@ -85,12 +108,23 @@ defmodule ShadcnLiveview.Components.Chart do
         <div style="width:0;height:0;overflow:visible">
           {if @visible, do: render_slot(@inner_block, @context)}
         </div>
+        <div
+          :if={@custom != []}
+          data-slot="chart-custom"
+          style="position:relative;width:100%;height:100%"
+        >
+          {render_slot(@custom, @context)}
+        </div>
       </div>
     </div>
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :config, :any, required: true
 
   @doc "Emits scoped light/dark CSS custom properties for configured colors."
@@ -124,17 +158,84 @@ defmodule ShadcnLiveview.Components.Chart do
     "  --color-#{key}: #{color};"
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :context, :map, required: true
   attr :data, :list, default: []
-  attr :series, :list, default: []
+
+  attr :series, :list,
+    default: [],
+    doc:
+      "Keys or maps with key and optional label, color, stack, fill_opacity and gradient_opacity overrides."
+
   attr :kind, :string, default: "bar", values: ~w(bar line area)
   attr :x_key, :string, default: "name"
   attr :label, :string, default: "Chart"
   attr :axes, :boolean, default: true
   attr :tooltip, :boolean, default: true
   attr :legend, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :stack, :any,
+    default: false,
+    doc:
+      "Stacks area/bar series like Recharts stackId: true (one shared stack) or a stack ID; series maps may set their own stack (false opts out). Lines ignore it."
+
+  attr :curve, :string,
+    default: "linear",
+    values: ~w(linear natural monotone step),
+    doc: "Line/area interpolation: d3 curveLinear, curveNatural, curveMonotoneX or curveStep."
+
+  attr :fill, :string,
+    default: "solid",
+    values: ~w(solid gradient),
+    doc:
+      "Area/bar fill: series color, or a vertical linearGradient per series (stops at 5% and 95%)."
+
+  attr :fill_opacity, :any,
+    default: 0.6,
+    doc: "Area fill-opacity (Recharts fillOpacity), also applied on top of gradients."
+
+  attr :gradient_opacity, :list,
+    default: [0.8, 0.1],
+    doc: "Gradient stop opacities at 5% and 95%."
+
+  attr :grid, :string,
+    default: "none",
+    values: ~w(none horizontal vertical both),
+    doc: "CartesianGrid lines (stroke #ccc): horizontal at Y ticks, vertical at X ticks."
+
+  attr :axis_line, :boolean, default: true, doc: "Draws the X axis line (Recharts axisLine)."
+  attr :tick_line, :boolean, default: true, doc: "Draws X tick lines (Recharts tickLine)."
+
+  attr :tick_margin, :integer,
+    default: 2,
+    doc: "Gap between tick line end and label (Recharts tickMargin)."
+
+  attr :min_tick_gap, :integer,
+    default: 5,
+    doc: "Minimum label gap for interval=\"preserveEnd\" tick thinning (Recharts minTickGap)."
+
+  attr :tick_format, :any,
+    default: nil,
+    doc:
+      "X tick label format: \"date_short\" (en-US \"Apr 5\") or a 1-arity function of the x value; applied on the server."
+
+  attr :tooltip_label_format, :any,
+    default: nil,
+    doc: "Tooltip label format; same values as tick_format."
+
+  attr :cursor, :boolean,
+    default: true,
+    doc: "Draws the tooltip cursor (Recharts Tooltip cursor)."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   @doc "Renders responsive Cartesian SVG with Recharts defaults; axes toggles the X axis only. Each canvas needs a stable DOM ID."
@@ -143,22 +244,7 @@ defmodule ShadcnLiveview.Components.Chart do
       do: raise(ArgumentError, "chart data must contain row maps")
 
     config = Map.new(assigns.context.config)
-
-    series =
-      Enum.map(assigns.series, fn item ->
-        key = safe_key!(if is_map(item), do: field(item, :key), else: item)
-        item_config = config_item(config, key)
-
-        %{
-          key: key,
-          label:
-            if(is_map(item), do: field(item, :label), else: nil) ||
-              field(item_config, :label, key),
-          color:
-            if(is_map(item), do: field(item, :color), else: nil) ||
-              "var(--color-#{key}, currentColor)"
-        }
-      end)
+    series = Enum.map(assigns.series, &canvas_series(&1, config, assigns.stack))
 
     payload = %{
       data: assigns.data,
@@ -170,6 +256,12 @@ defmodule ShadcnLiveview.Components.Chart do
       tooltip: assigns.tooltip,
       legend: assigns.legend
     }
+
+    payload =
+      Enum.reduce(canvas_options(assigns), payload, fn
+        {_, value, value}, acc -> acc
+        {key, value, _default}, acc -> Map.put(acc, key, value)
+      end)
 
     assigns =
       assign(assigns,
@@ -190,6 +282,126 @@ defmodule ShadcnLiveview.Components.Chart do
       </div>
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".ChartCanvas">
+      // d3-shape 3.2 curve ports (Recharts type linear/natural/monotone/step); browser
+      // Recharts builds use its line()/area() path output rounded to 3 digits.
+      const pathContext = () => {
+        let d = "";
+        const append = (command, values) => { d += command + values.map(value => Math.round(value * 1000) / 1000).join(","); };
+        return {
+          moveTo: (x, y) => append("M", [x, y]),
+          lineTo: (x, y) => append("L", [x, y]),
+          bezierCurveTo: (x1, y1, x2, y2, x, y) => append("C", [x1, y1, x2, y2, x, y]),
+          closePath: () => { d += "Z"; },
+          toString: () => d
+        };
+      };
+      const controlPoints = x => {
+        let i, m;
+        const n = x.length - 1, a = new Array(n), b = new Array(n), r = new Array(n);
+        a[0] = 0; b[0] = 2; r[0] = x[0] + 2 * x[1];
+        for (i = 1; i < n - 1; ++i) { a[i] = 1; b[i] = 4; r[i] = 4 * x[i] + 2 * x[i + 1]; }
+        a[n - 1] = 2; b[n - 1] = 7; r[n - 1] = 8 * x[n - 1] + x[n];
+        for (i = 1; i < n; ++i) { m = a[i] / b[i - 1]; b[i] -= m; r[i] -= m * r[i - 1]; }
+        a[n - 1] = r[n - 1] / b[n - 1];
+        for (i = n - 2; i >= 0; --i) a[i] = (r[i] - a[i + 1]) / b[i];
+        b[n - 1] = (x[n] + a[n - 1]) / 2;
+        for (i = 0; i < n - 1; ++i) b[i] = 2 * x[i + 1] - a[i + 1];
+        return [a, b];
+      };
+      const sign = v => v < 0 ? -1 : 1;
+      const curves = {
+        linear: ctx => ({
+          areaStart() { this.line = 0; }, areaEnd() { this.line = NaN; }, lineStart() { this.count = 0; },
+          lineEnd() { if (this.line || (this.line !== 0 && this.count === 1)) ctx.closePath(); this.line = 1 - this.line; },
+          point(x, y) {
+            if (this.count === 0) { this.count = 1; this.line ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+            else { this.count = 2; ctx.lineTo(x, y); }
+          }
+        }),
+        natural: ctx => ({
+          areaStart() { this.line = 0; }, areaEnd() { this.line = NaN; },
+          lineStart() { this.xs = []; this.ys = []; },
+          lineEnd() {
+            const xs = this.xs, ys = this.ys, n = xs.length;
+            if (n) {
+              this.line ? ctx.lineTo(xs[0], ys[0]) : ctx.moveTo(xs[0], ys[0]);
+              if (n === 2) ctx.lineTo(xs[1], ys[1]);
+              else {
+                const px = controlPoints(xs), py = controlPoints(ys);
+                for (let i0 = 0, i1 = 1; i1 < n; ++i0, ++i1) ctx.bezierCurveTo(px[0][i0], py[0][i0], px[1][i0], py[1][i0], xs[i1], ys[i1]);
+              }
+            }
+            if (this.line || (this.line !== 0 && n === 1)) ctx.closePath();
+            this.line = 1 - this.line;
+          },
+          point(x, y) { this.xs.push(x); this.ys.push(y); }
+        }),
+        monotone: ctx => ({
+          areaStart() { this.line = 0; }, areaEnd() { this.line = NaN; },
+          lineStart() { this.x0 = this.x1 = this.y0 = this.y1 = this.t0 = NaN; this.count = 0; },
+          slope3(x2, y2) {
+            const h0 = this.x1 - this.x0, h1 = x2 - this.x1;
+            const s0 = (this.y1 - this.y0) / (h0 || (h1 < 0 && -0)), s1 = (y2 - this.y1) / (h1 || (h0 < 0 && -0));
+            const p = (s0 * h1 + s1 * h0) / (h0 + h1);
+            return (sign(s0) + sign(s1)) * Math.min(Math.abs(s0), Math.abs(s1), 0.5 * Math.abs(p)) || 0;
+          },
+          slope2(t) { const h = this.x1 - this.x0; return h ? (3 * (this.y1 - this.y0) / h - t) / 2 : t; },
+          hermite(t0, t1) {
+            const dx = (this.x1 - this.x0) / 3;
+            ctx.bezierCurveTo(this.x0 + dx, this.y0 + dx * t0, this.x1 - dx, this.y1 - dx * t1, this.x1, this.y1);
+          },
+          lineEnd() {
+            if (this.count === 2) ctx.lineTo(this.x1, this.y1);
+            else if (this.count === 3) this.hermite(this.t0, this.slope2(this.t0));
+            if (this.line || (this.line !== 0 && this.count === 1)) ctx.closePath();
+            this.line = 1 - this.line;
+          },
+          point(x, y) {
+            let t1 = NaN;
+            if (x === this.x1 && y === this.y1) return;
+            if (this.count === 0) { this.count = 1; this.line ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+            else if (this.count === 1) this.count = 2;
+            else if (this.count === 2) { this.count = 3; t1 = this.slope3(x, y); this.hermite(this.slope2(t1), t1); }
+            else { t1 = this.slope3(x, y); this.hermite(this.t0, t1); }
+            this.x0 = this.x1; this.x1 = x; this.y0 = this.y1; this.y1 = y; this.t0 = t1;
+          }
+        }),
+        step: ctx => ({
+          t: 0.5,
+          areaStart() { this.line = 0; }, areaEnd() { this.line = NaN; },
+          lineStart() { this.x = this.y = NaN; this.count = 0; },
+          lineEnd() {
+            if (0 < this.t && this.t < 1 && this.count === 2) ctx.lineTo(this.x, this.y);
+            if (this.line || (this.line !== 0 && this.count === 1)) ctx.closePath();
+            if (this.line >= 0) { this.t = 1 - this.t; this.line = 1 - this.line; }
+          },
+          point(x, y) {
+            if (this.count === 0) { this.count = 1; this.line ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+            else {
+              this.count = 2;
+              const x1 = this.x * (1 - this.t) + x * this.t;
+              ctx.lineTo(x1, this.y);
+              ctx.lineTo(x1, y);
+            }
+            this.x = x; this.y = y;
+          }
+        })
+      };
+      // d3 line()/area() over one defined segment; area bases are drawn reversed.
+      const curvePath = (name, top, base) => {
+        const ctx = pathContext(), curve = (curves[name] || curves.linear)(ctx);
+        if (base) curve.areaStart();
+        curve.lineStart();
+        for (const p of top) curve.point(p[0], p[1]);
+        curve.lineEnd();
+        if (base) {
+          curve.lineStart();
+          for (let k = base.length - 1; k >= 0; k--) curve.point(base[k][0], base[k][1]);
+          curve.lineEnd();
+          curve.areaEnd();
+        }
+        return ctx.toString();
+      };
       export default {
         mounted() {
           this.container = this.el.closest(".recharts-responsive-container");
@@ -198,6 +410,9 @@ defmodule ShadcnLiveview.Components.Chart do
           this.observer = new ResizeObserver(this.resize);
           this.observer.observe(this.container);
           this.draw();
+          // Tick thinning measures label text; remeasure once late web fonts have loaded.
+          if (document.fonts && document.fonts.status !== "loaded")
+            document.fonts.ready.then(() => { if (this.el.isConnected) this.draw(); });
         },
         updated() { this.draw(); },
         destroyed() {
@@ -242,6 +457,19 @@ defmodule ShadcnLiveview.Components.Chart do
           const data = options.data, series = options.series;
           const number = (row, key) => typeof row[key] === "number" && Number.isFinite(row[key]) ? row[key] : null;
           const label = index => data[index][options.xKey] ?? index;
+          const tickLabel = index => options.ticks ? options.ticks[index] : label(index);
+          // Recharts stackId with stackOffset "none": each series sits on the running total
+          // of earlier series in its stack (missing samples add 0). Lines are never stacked.
+          const stacked = series.map(() => null), totals = new Map();
+          if (options.kind !== "line") series.forEach((item, seriesIndex) => {
+            if (item.stack == null) return;
+            const running = totals.get(item.stack) || data.map(() => 0);
+            const lower = running.slice();
+            const upper = data.map((row, index) => { const value = number(row, item.key); return value === null ? null : lower[index] + value; });
+            upper.forEach((value, index) => { if (value !== null) running[index] = value; });
+            totals.set(item.stack, running);
+            stacked[seriesIndex] = {lower, upper};
+          });
           let legendHeight = 0;
           if (options.legend && series.length) {
             const wrapper = htmlNode("div", "recharts-legend-wrapper");
@@ -261,7 +489,9 @@ defmodule ShadcnLiveview.Components.Chart do
           const left = 5, top = 5, right = Math.max(left, width - 5);
           const bottom = Math.max(top, height - 5 - (options.axes ? 30 : 0) - legendHeight);
           const plotWidth = right - left, plotHeight = bottom - top;
-          const values = data.flatMap(row => series.map(item => number(row, item.key))).filter(value => value !== null);
+          const values = data.flatMap((row, index) => series.flatMap((item, seriesIndex) => stacked[seriesIndex]
+            ? [stacked[seriesIndex].lower[index], stacked[seriesIndex].upper[index]] : [number(row, item.key)])).filter(value => value !== null);
+          let yTicks = [0, 1, 2, 3, 4];
           let minimum = Math.min(0, ...values), maximum = Math.max(0, ...values);
           // Recharts' implicit numeric axis is [0, "auto"], five adaptive nice ticks.
           // Its default allowDataOverflow=false expands the lower bound for signed data.
@@ -280,6 +510,7 @@ defmodule ShadcnLiveview.Components.Chart do
             else lowCount += 4 - lowCount - highCount;
             minimum = -lowCount * step;
             maximum = highCount * step;
+            yTicks = Array.from({length: 5}, (_, index) => minimum + index * step);
           }
           const y = value => bottom - (value - minimum) / (maximum - minimum) * plotHeight;
           const step = data.length ? plotWidth / data.length : 0;
@@ -288,30 +519,59 @@ defmodule ShadcnLiveview.Components.Chart do
           const zero = y(0);
           const cursor = svgNode("g", {"pointer-events": "none"});
           const geometry = svgNode("g", {class: "recharts-layer"});
+          const grid = options.grid && options.grid !== "none" ? svgNode("g", {class: "recharts-cartesian-grid"}) : null;
+          const gridLines = (className, points, line) => {
+            const lines = svgNode("g", {class: className});
+            for (const point of points) lines.append(svgNode("line", {stroke: "#ccc", fill: "none", ...line(point)}));
+            grid.append(lines);
+          };
+          // CartesianGrid lines sit at axis tick coordinates plus the plot edges when missing.
+          const gridPoints = (points, start, end) => [...points, ...(points.includes(start) ? [] : [start]), ...(points.includes(end) ? [] : [end])];
+          if (grid && options.grid !== "vertical")
+            gridLines("recharts-cartesian-grid-horizontal", gridPoints(yTicks.map(y), bottom, top), point => ({x1: left, y1: point, x2: right, y2: point}));
+          if (grid) svg.append(grid);
           svg.append(cursor, geometry);
+          const fills = series.map((item, seriesIndex) => {
+            if (options.fill !== "gradient") return item.color;
+            const id = this.el.id + "-fill-" + seriesIndex;
+            const [from, to] = item.gradientOpacity || options.gradientOpacity || [0.8, 0.1];
+            const gradient = svgNode("linearGradient", {id, x1: 0, y1: 0, x2: 0, y2: 1});
+            gradient.append(svgNode("stop", {offset: "5%", "stop-color": item.color, "stop-opacity": from}),
+              svgNode("stop", {offset: "95%", "stop-color": item.color, "stop-opacity": to}));
+            let defs = svg.querySelector("defs");
+            if (!defs) { defs = svgNode("defs"); svg.prepend(defs); }
+            defs.append(gradient);
+            return "url(#" + id + ")";
+          });
           const animations = [], nextBars = new Map();
           const signature = JSON.stringify([options.data, options.series, options.kind, width, height]);
           const animate = signature !== this.signature && !matchMedia("(prefers-reduced-motion: reduce)").matches;
           this.signature = signature;
           const round = value => Number(value.toFixed(4));
+          // Bars sharing a stack ID share one category slot, like Recharts stack groups.
+          const barGroups = [...new Set(series.map((item, seriesIndex) => stacked[seriesIndex] ? "stack:" + item.stack : "series:" + seriesIndex))];
           series.forEach((item, seriesIndex) => {
             const group = svgNode("g", {class: "recharts-layer recharts-" + options.kind});
             geometry.append(group);
+            const stack = stacked[seriesIndex];
             if (options.kind === "bar") {
+              const slots = barGroups.length;
+              const slot = barGroups.indexOf(stack ? "stack:" + item.stack : "series:" + seriesIndex);
               let gap = 4;
-              if (step * 0.8 - (series.length - 1) * gap <= 0) gap = 0;
-              let barWidth = (step * 0.8 - (series.length - 1) * gap) / series.length;
+              if (step * 0.8 - (slots - 1) * gap <= 0) gap = 0;
+              let barWidth = (step * 0.8 - (slots - 1) * gap) / slots;
               if (barWidth > 1) barWidth = Math.floor(barWidth);
               const rectangles = svgNode("g", {class: "recharts-bar-rectangles"});
               group.append(rectangles);
               data.forEach((row, index) => {
                 const value = number(row, item.key);
                 if (value === null || value === 0 || barWidth <= 0) return;
-                const current = {x: left + index * step + step * 0.1 + seriesIndex * (barWidth + gap),
-                  y: y(value), width: barWidth, height: zero - y(value)};
+                const base = stack ? y(stack.lower[index]) : zero, end = stack ? y(stack.upper[index]) : y(value);
+                const current = {x: left + index * step + step * 0.1 + slot * (barWidth + gap),
+                  y: end, width: barWidth, height: base - end};
                 const key = item.key + ":" + index;
                 nextBars.set(key, current);
-                const rect = svgNode("path", {fill: item.color, radius: 0, class: "recharts-rectangle"});
+                const rect = svgNode("path", {fill: fills[seriesIndex], radius: 0, class: "recharts-rectangle"});
                 const render = shape => {
                   for (const name of ["x", "y", "width", "height"]) rect.setAttribute(name, round(shape[name]));
                   rect.setAttribute("d", "M " + round(shape.x) + "," + round(shape.y) + " h " + round(shape.width) + " v " + round(shape.height) + " h " + round(-shape.width) + " Z");
@@ -319,29 +579,34 @@ defmodule ShadcnLiveview.Components.Chart do
                 rectangles.append(rect);
                 render(current);
                 if (animate) {
-                  const previous = this.bars?.get(key) || {...current, y: zero, height: 0};
+                  const previous = this.bars?.get(key) || {...current, y: base, height: 0};
                   animations.push(t => render(Object.fromEntries(Object.keys(current).map(name => [name, previous[name] + (current[name] - previous[name]) * t]))));
                 }
               });
             } else {
-              const segments = [];
-              let segment = [];
+              const segments = [], bases = [];
+              let segment = [], base = [];
               for (let index = 0; index < data.length; index++) {
-                const value = number(data[index], item.key);
-                if (value === null) { if (segment.length) segments.push(segment); segment = []; }
-                else segment.push([x(index), y(value)]);
+                const value = stack ? stack.upper[index] : number(data[index], item.key);
+                if (value === null) { if (segment.length) { segments.push(segment); bases.push(base); } segment = []; base = []; }
+                else { segment.push([x(index), y(value)]); base.push([x(index), stack ? y(stack.lower[index]) : zero]); }
               }
-              if (segment.length) segments.push(segment);
+              if (segment.length) { segments.push(segment); bases.push(base); }
+              // Default linear unstacked paths keep their established compact form; other
+              // curves and stacked baselines use the d3 line/area generators like Recharts.
+              const shaped = stack || (options.curve && options.curve !== "linear");
               const point = p => Number(p[0].toFixed(3)) + "," + Number(p[1].toFixed(3));
-              const curve = segments.map(points => "M" + points.map(point).join("L") + (points.length === 1 ? "Z" : "")).join("");
+              const curve = shaped ? segments.map(points => curvePath(options.curve, points)).join("")
+                : segments.map(points => "M" + points.map(point).join("L") + (points.length === 1 ? "Z" : "")).join("");
               if (options.kind === "area") {
-                const area = svgNode("path", {d: segments.map(points => "M" + points.map(point).join("L") + "L" + point([points[points.length - 1][0], zero]) + "L" + point([points[0][0], zero]) + "Z").join(""),
-                  fill: item.color, "fill-opacity": 0.6, stroke: "none", class: "recharts-curve recharts-area-area"});
+                const area = svgNode("path", {d: shaped ? segments.map((points, index) => curvePath(options.curve, points, bases[index])).join("")
+                  : segments.map(points => "M" + points.map(point).join("L") + "L" + point([points[points.length - 1][0], zero]) + "L" + point([points[0][0], zero]) + "Z").join(""),
+                  fill: fills[seriesIndex], "fill-opacity": item.fillOpacity ?? options.fillOpacity ?? 0.6, stroke: "none", class: "recharts-curve recharts-area-area"});
                 group.append(area);
                 if (animate && segments.length) {
                   const clipId = this.el.id + "-area-animation-" + seriesIndex;
                   const clip = svgNode("clipPath", {id: clipId});
-                  const clipRect = svgNode("rect", {x: left, y: 0, width: 0, height: Math.floor(Math.max(zero, ...segments.flat().map(p => p[1])) + 1)});
+                  const clipRect = svgNode("rect", {x: left, y: 0, width: 0, height: Math.floor(Math.max(zero, ...segments.flat().map(p => p[1]), ...bases.flat().map(p => p[1])) + 1)});
                   clip.append(clipRect);
                   svg.append(clip);
                   group.setAttribute("clip-path", "url(#" + clipId + ")");
@@ -368,34 +633,43 @@ defmodule ShadcnLiveview.Components.Chart do
             }
           });
           this.bars = nextBars;
-          if (options.axes && data.length) {
-            const axis = svgNode("g", {class: "recharts-layer recharts-cartesian-axis recharts-xAxis xAxis"});
-            axis.append(svgNode("line", {x1: left, x2: right, y1: bottom, y2: bottom, stroke: "#666", fill: "none", class: "recharts-cartesian-axis-line"}));
-            svg.append(axis);
+          const verticalGrid = grid && (options.grid === "vertical" || options.grid === "both");
+          if ((options.axes || verticalGrid) && data.length) {
             // Default XAxis interval="preserveEnd" measures text, shifts the final tick,
-            // and rejects labels that would overlap or extend beyond the axis viewport.
+            // and rejects labels that would overlap (minTickGap) or leave the axis viewport.
             const measure = htmlNode("span", "");
             Object.assign(measure.style, {position: "absolute", whiteSpace: "pre", visibility: "hidden", fontSize: getComputedStyle(this.container).fontSize, letterSpacing: getComputedStyle(this.container).letterSpacing});
             document.body.append(measure);
             let end = width;
             const ticks = [];
             for (let index = data.length - 1; index >= 0; index--) {
-              measure.textContent = String(label(index));
+              measure.textContent = String(tickLabel(index));
               const size = measure.getBoundingClientRect().width;
               const coordinate = x(index);
               const tickCoordinate = index === data.length - 1 ? Math.min(coordinate, width - size / 2) : coordinate;
               if (tickCoordinate - size / 2 < 0 || tickCoordinate + size / 2 > end) continue;
-              end = tickCoordinate - size / 2 - 5;
+              end = tickCoordinate - size / 2 - (options.minTickGap ?? 5);
               ticks.unshift({index, coordinate, tickCoordinate});
             }
             measure.remove();
-            for (const tick of ticks) {
-              const layer = svgNode("g", {class: "recharts-layer recharts-cartesian-axis-tick"});
-              layer.append(svgNode("line", {x1: tick.coordinate, x2: tick.coordinate, y1: bottom + 6, y2: bottom, stroke: "#666", class: "recharts-cartesian-axis-tick-line"}));
-              const text = svgNode("text", {x: tick.tickCoordinate, y: bottom + 8, "text-anchor": "middle", fill: "#666", class: "recharts-text recharts-cartesian-axis-tick-value"});
-              text.append(svgNode("tspan", {x: tick.tickCoordinate, dy: "0.71em"}, label(tick.index)));
-              layer.append(text);
-              axis.append(layer);
+            if (verticalGrid)
+              gridLines("recharts-cartesian-grid-vertical", gridPoints(ticks.map(tick => tick.coordinate), left, right), point => ({x1: point, y1: top, x2: point, y2: bottom}));
+            if (options.axes) {
+              const axis = svgNode("g", {class: "recharts-layer recharts-cartesian-axis recharts-xAxis xAxis"});
+              if (options.axisLine !== false)
+                axis.append(svgNode("line", {x1: left, x2: right, y1: bottom, y2: bottom, stroke: "#666", fill: "none", class: "recharts-cartesian-axis-line"}));
+              svg.append(axis);
+              // Recharts places labels tickSize (6) + tickMargin below the axis even without tick lines.
+              const textY = bottom + 6 + (options.tickMargin ?? 2);
+              for (const tick of ticks) {
+                const layer = svgNode("g", {class: "recharts-layer recharts-cartesian-axis-tick"});
+                if (options.tickLine !== false)
+                  layer.append(svgNode("line", {x1: tick.coordinate, x2: tick.coordinate, y1: bottom + 6, y2: bottom, stroke: "#666", class: "recharts-cartesian-axis-tick-line"}));
+                const text = svgNode("text", {x: tick.tickCoordinate, y: textY, "text-anchor": "middle", fill: "#666", class: "recharts-text recharts-cartesian-axis-tick-value"});
+                text.append(svgNode("tspan", {x: tick.tickCoordinate, dy: "0.71em"}, tickLabel(tick.index)));
+                layer.append(text);
+                axis.append(layer);
+              }
             }
           }
           const activeDots = svgNode("g", {class: "recharts-layer recharts-active-dot"});
@@ -410,14 +684,16 @@ defmodule ShadcnLiveview.Components.Chart do
             tooltip.replaceChildren();
             cursor.replaceChildren();
             activeDots.replaceChildren();
-            if (options.kind === "bar") cursor.append(svgNode("rect", {x: left + index * step, y: top + 0.5, width: step, height: Math.max(0, plotHeight - 1), fill: "#ccc", stroke: "none", class: "recharts-rectangle recharts-tooltip-cursor"}));
-            else cursor.append(svgNode("path", {d: "M" + x(index) + "," + top + "L" + x(index) + "," + bottom, fill: "none", stroke: "#ccc", class: "recharts-curve recharts-tooltip-cursor"}));
+            if (options.cursor !== false) {
+              if (options.kind === "bar") cursor.append(svgNode("rect", {x: left + index * step, y: top + 0.5, width: step, height: Math.max(0, plotHeight - 1), fill: "#ccc", stroke: "none", class: "recharts-rectangle recharts-tooltip-cursor"}));
+              else cursor.append(svgNode("path", {d: "M" + x(index) + "," + top + "L" + x(index) + "," + bottom, fill: "none", stroke: "#ccc", class: "recharts-curve recharts-tooltip-cursor"}));
+            }
             const content = htmlNode("div", "grid min-w-32 items-start gap-1.5 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl");
-            content.append(htmlNode("div", "font-medium", label(index)));
+            content.append(htmlNode("div", "font-medium", options.tooltipLabels ? options.tooltipLabels[index] : label(index)));
             const entries = htmlNode("div", "grid gap-1.5");
-            for (const item of series) {
+            series.forEach((item, seriesIndex) => {
               const value = number(data[index], item.key);
-              if (value === null) continue;
+              if (value === null) return;
               const row = htmlNode("div", "flex w-full flex-wrap gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground items-center");
               const indicator = htmlNode("div", "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg) h-2.5 w-2.5");
               indicator.style.setProperty("--color-bg", item.color);
@@ -428,8 +704,9 @@ defmodule ShadcnLiveview.Components.Chart do
               valueRow.append(name, htmlNode("span", "font-mono font-medium text-foreground tabular-nums", value.toLocaleString()));
               row.append(indicator, valueRow);
               entries.append(row);
-              if (options.kind !== "bar") activeDots.append(svgNode("circle", {cx: x(index), cy: y(value), r: 4, fill: item.color, stroke: "#fff", "stroke-width": 2, class: "recharts-dot"}));
-            }
+              const dotY = y(stacked[seriesIndex] ? stacked[seriesIndex].upper[index] : value);
+              if (options.kind !== "bar") activeDots.append(svgNode("circle", {cx: x(index), cy: dotY, r: 4, fill: item.color, stroke: "#fff", "stroke-width": 2, class: "recharts-dot"}));
+            });
             if (!entries.childElementCount) { tooltip.style.visibility = "hidden"; return; }
             content.append(entries);
             tooltip.append(content);
@@ -485,12 +762,102 @@ defmodule ShadcnLiveview.Components.Chart do
     """
   end
 
+  defp canvas_series(item, config, stack) do
+    key = safe_key!(if is_map(item), do: field(item, :key), else: item)
+    item_config = config_item(config, key)
+
+    %{
+      key: key,
+      label:
+        if(is_map(item), do: field(item, :label), else: nil) || field(item_config, :label, key),
+      color:
+        if(is_map(item), do: field(item, :color), else: nil) ||
+          "var(--color-#{key}, currentColor)"
+    }
+    |> put_present(
+      :stack,
+      stack_id!(if(is_nil(field(item, :stack)), do: stack, else: field(item, :stack)))
+    )
+    |> put_present(:fillOpacity, opacity!(field(item, :fill_opacity)))
+    |> put_present(:gradientOpacity, gradient_opacity!(field(item, :gradient_opacity)))
+  end
+
+  defp canvas_options(assigns) do
+    [
+      {:curve, assigns.curve, "linear"},
+      {:fill, assigns.fill, "solid"},
+      {:fillOpacity, opacity!(assigns.fill_opacity), 0.6},
+      {:gradientOpacity, gradient_opacity!(assigns.gradient_opacity), [0.8, 0.1]},
+      {:grid, assigns.grid, "none"},
+      {:axisLine, assigns.axis_line, true},
+      {:tickLine, assigns.tick_line, true},
+      {:tickMargin, assigns.tick_margin, 2},
+      {:minTickGap, assigns.min_tick_gap, 5},
+      {:cursor, assigns.cursor, true},
+      {:ticks, format_labels(assigns.data, assigns.x_key, assigns.tick_format), nil},
+      {:tooltipLabels, format_labels(assigns.data, assigns.x_key, assigns.tooltip_label_format),
+       nil}
+    ]
+  end
+
+  defp put_present(map, _, nil), do: map
+  defp put_present(map, key, value), do: Map.put(map, key, value)
+
+  defp stack_id!(value) when value in [nil, false], do: nil
+  defp stack_id!(true), do: "stack"
+  defp stack_id!(value) when is_atom(value), do: Atom.to_string(value)
+  defp stack_id!(value) when is_binary(value), do: value
+  defp stack_id!(_), do: raise(ArgumentError, "chart stack must be a boolean or a stack ID")
+
+  defp opacity!(nil), do: nil
+  defp opacity!(value) when is_number(value), do: value
+  defp opacity!(_), do: raise(ArgumentError, "chart opacities must be numbers")
+
+  defp gradient_opacity!(nil), do: nil
+  defp gradient_opacity!([from, to]) when is_number(from) and is_number(to), do: [from, to]
+
+  defp gradient_opacity!(_),
+    do: raise(ArgumentError, "chart gradient_opacity must be two numbers")
+
+  defp format_labels(_, _, nil), do: nil
+  defp format_labels(data, key, format), do: Enum.map(data, &format_label(field(&1, key), format))
+
+  defp format_label(value, format) when is_function(format, 1), do: to_string(format.(value))
+
+  defp format_label(value, "date_short") do
+    case label_date(value) do
+      nil -> to_string(value)
+      date -> Calendar.strftime(date, "%b %-d")
+    end
+  end
+
+  defp format_label(_, format),
+    do: raise(ArgumentError, "unsupported chart label format: #{inspect(format)}")
+
+  defp label_date(%Date{} = date), do: date
+  defp label_date(%NaiveDateTime{} = value), do: NaiveDateTime.to_date(value)
+  defp label_date(%DateTime{} = value), do: DateTime.to_date(value)
+
+  defp label_date(value) when is_binary(value) do
+    case Date.from_iso8601(String.slice(value, 0, 10)) do
+      {:ok, date} -> date
+      _ -> nil
+    end
+  end
+
+  defp label_date(_), do: nil
+
   attr :context, :map, required: true
   attr :payload, :list, default: []
   attr :vertical_align, :string, default: "bottom"
   attr :hide_icon, :boolean, default: false
   attr :name_key, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :icon
   slot :label
@@ -550,7 +917,12 @@ defmodule ShadcnLiveview.Components.Chart do
   attr :label_key, :string, default: nil
   attr :color, :string, default: nil
   attr :label_class, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :label_content
   slot :value
@@ -677,7 +1049,12 @@ defmodule ShadcnLiveview.Components.Chart do
   end
 
   attr :label, :any, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :content, :list, default: []
   attr :payload, :list, default: []
 

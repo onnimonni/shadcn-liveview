@@ -1,66 +1,83 @@
+import { sendEventMethod } from "./hook-events"
+
 export const thumbClass = "relative block size-3 shrink-0 rounded-full border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-3 focus-visible:ring-3 focus-visible:outline-hidden active:ring-3 disabled:pointer-events-none disabled:opacity-50"
 export const indicatorClass = "grid place-content-center text-current transition-none [&>svg]:size-3.5"
 
 export const binaryHook = `      export default {
+${sendEventMethod("        ")}
         mounted() {
-          this.input = this.el.nextElementSibling;
           this.initial = this.el.getAttribute("phx-value-initial");
           this.click = () => {
             if (this.el.disabled) return;
             this.setState(this.el.getAttribute("data-state") === "checked" ? "unchecked" : "checked", true);
           };
           this.reset = () => { this.resetFrame = requestAnimationFrame(() => this.setState(this.initial, true)); };
+          // As in Radix, an external form reset restores only the native input's mounted value.
+          this.nativeReset = () => {
+            this.nativeFrame = requestAnimationFrame(() => { this.nativeState = this.initial; this.syncInput(); });
+          };
           this.invalid = () => this.el.focus();
+          // LiveView derives the native checked property from its checked attribute, including
+          // when it applies cloned trees of locked forms without updating this hook.
+          this.observer = new MutationObserver(() => this.syncInput());
           this.el.addEventListener("click", this.click);
-          this.input.addEventListener("invalid", this.invalid);
           this.updated();
         },
         updated() {
           const input = this.el.nextElementSibling;
           if (input !== this.input) {
-            this.input.removeEventListener("invalid", this.invalid);
+            this.input?.removeEventListener("invalid", this.invalid);
             input.addEventListener("invalid", this.invalid);
+            this.observer.disconnect();
+            this.observer.observe(input, {attributes: true, attributeFilter: ["checked"]});
             this.input = input;
           }
           this.serverState = this.el.getAttribute("phx-value-state");
           const controlled = this.el.getAttribute("phx-value-controlled") === "true";
           this.serverChildren = Array.from(this.el.childNodes);
           // Checkbox reset follows the trigger's form; Switch also follows form=.
-          const form = this.el.getAttribute("role") === "checkbox" ? this.el.form : this.input.form;
-          if (this.form !== form) {
-            if (this.form) this.form.removeEventListener("reset", this.reset);
-            this.form = form;
-            if (this.form) this.form.addEventListener("reset", this.reset);
-          }
-          const state = controlled || this.state === undefined ? this.serverState : this.state;
-          const preserveSubmittedState = this.el.getAttribute("role") === "checkbox" &&
-            !this.form && this.input.form && state === this.state && this.patchedInputState;
-          this.setState(state, false);
-          this.input.defaultChecked = this.initial === "checked";
-          if (preserveSubmittedState) {
-            this.input.checked = this.patchedInputState.checked;
-            this.input.indeterminate = this.patchedInputState.indeterminate;
-          }
-          this.patchedInputState = undefined;
+          const checkbox = this.el.getAttribute("role") === "checkbox";
+          const form = checkbox ? this.el.form : this.input.form;
+          this.listenReset("form", form, this.reset);
+          this.listenReset("nativeForm", checkbox && this.input.form !== form ? this.input.form : null, this.nativeReset);
+          this.setState(controlled || this.state === undefined ? this.serverState : this.state, false);
         },
         beforeUpdate() {
-          const state = this.state;
-          const checked = this.input.checked;
-          const indeterminate = this.input.indeterminate;
-          this.patchedInputState = {checked, indeterminate};
+          // Morph from the server-rendered trigger; updated() reapplies local state.
           this.el.replaceChildren(...this.serverChildren);
-          this.setState(this.serverState, false);
-          this.state = state;
-          this.input.checked = checked;
-          this.input.indeterminate = indeterminate;
+          this.paint(this.serverState);
+        },
+        listenReset(key, form, listener) {
+          if (this[key] === form) return;
+          if (this[key]) this[key].removeEventListener("reset", listener);
+          this[key] = form;
+          if (form) form.addEventListener("reset", listener);
         },
         setState(state, notify) {
+          if (state !== this.state) this.nativeState = undefined;
           this.state = state;
+          this.paint(state);
+          this.syncInput();
+          if (!notify) return;
+          this.input.dispatchEvent(new Event("input", {bubbles:true}));
+          this.input.dispatchEvent(new Event("change", {bubbles:true}));
+          const event = this.el.getAttribute("phx-value-change");
+          // Controlled state comes from the server, so a failed push restores it.
+          if (event) this.sendEvent(event, {id:this.el.id, value:state === "checked"}).catch(() => {
+            if (this.el.getAttribute("phx-value-controlled") === "true") this.setState(this.serverState, false);
+          });
+        },
+        // The checked attribute mirrors the property so LiveView patches and clones keep it.
+        syncInput() {
+          const state = this.nativeState ?? this.state;
           const checked = state === "checked";
-          this.el.setAttribute("data-state", state);
-          this.el.setAttribute("aria-checked", state === "indeterminate" ? "mixed" : String(checked));
           this.input.checked = checked;
           this.input.indeterminate = state === "indeterminate";
+          if (this.input.defaultChecked !== checked) this.input.defaultChecked = checked;
+        },
+        paint(state) {
+          this.el.setAttribute("data-state", state);
+          this.el.setAttribute("aria-checked", state === "indeterminate" ? "mixed" : String(state === "checked"));
           let child = this.el.firstElementChild;
           if (this.el.getAttribute("role") === "checkbox") {
             if (state === "unchecked") { if (child) child.remove(); }
@@ -78,26 +95,20 @@ export const binaryHook = `      export default {
           }
           if (child && state !== "unchecked") child.setAttribute("data-state", state);
           if (child && this.el.getAttribute("role") === "switch") child.setAttribute("data-state", state);
-          if (!notify) return;
-          this.input.dispatchEvent(new Event("input", {bubbles:true}));
-          this.input.dispatchEvent(new Event("change", {bubbles:true}));
-          const event = this.el.getAttribute("phx-value-change");
-          if (event) this.sendEvent(event, {id:this.el.id, value:checked});
-        },
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
         },
         destroyed() {
           cancelAnimationFrame(this.resetFrame);
+          cancelAnimationFrame(this.nativeFrame);
+          this.observer.disconnect();
           this.el.removeEventListener("click", this.click);
           this.input.removeEventListener("invalid", this.invalid);
-          if (this.form) this.form.removeEventListener("reset", this.reset);
+          this.listenReset("form", null, this.reset);
+          this.listenReset("nativeForm", null, this.nativeReset);
         }
       }`
 
 export const sliderHook = `      export default {
+${sendEventMethod("        ")}
         mounted() {
           this.initial = JSON.parse(this.el.getAttribute("phx-value-initial"));
           this.keydown = event => {
@@ -267,12 +278,10 @@ export const sliderHook = `      export default {
         notify() {
           this.inputs.forEach(input => { input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); });
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.sendEvent(event,{id:this.el.id,value:this.values});
-        },
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          // Controlled values come from the server, so a failed push restores them.
+          if (event) this.sendEvent(event,{id:this.el.id,value:this.values}).catch(() => {
+            if (this.el.getAttribute("phx-value-controlled") === "true") { this.values = JSON.parse(this.el.getAttribute("phx-value-values")); this.render(); }
+          });
         },
         destroyed() {
           cancelAnimationFrame(this.resetFrame);

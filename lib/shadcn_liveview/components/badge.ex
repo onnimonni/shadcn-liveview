@@ -1,10 +1,28 @@
 defmodule ShadcnLiveview.Components.Badge do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a badge or a component that looks like a badge.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/badge
+
+  Components: `badge/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.badge variant="secondary">New Feature</.badge>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default secondary destructive outline ghost link)
 
   attr :rest, :global,
     include:

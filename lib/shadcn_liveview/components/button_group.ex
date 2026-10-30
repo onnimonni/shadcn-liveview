@@ -1,10 +1,30 @@
 defmodule ShadcnLiveview.Components.ButtonGroup do
-  @moduledoc false
+  @moduledoc ~S"""
+  Groups related buttons with shared borders and orientation.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/button-group
+
+  Components: `button_group/1`, `button_group_text/1`, `button_group_separator/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.button_group>
+    <.button variant="outline">Left</.button>
+    <.button variant="outline">Middle</.button>
+    <.button variant="outline">Right</.button>
+  </.button_group>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :orientation, :string, default: "horizontal"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
 
   attr :rest, :global,
     include:
@@ -40,7 +60,10 @@ defmodule ShadcnLiveview.Components.ButtonGroup do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -65,7 +88,10 @@ defmodule ShadcnLiveview.Components.ButtonGroup do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

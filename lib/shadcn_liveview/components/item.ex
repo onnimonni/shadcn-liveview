@@ -1,9 +1,29 @@
 defmodule ShadcnLiveview.Components.Item do
-  @moduledoc false
+  @moduledoc ~S"""
+  A flexible row for displaying media, content and actions.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/item
+
+  Components: `item_group/1`, `item_separator/1`, `item/1`, `item_media/1`, `item_content/1`, `item_title/1`, `item_description/1`, `item_actions/1`, `item_header/1`, `item_footer/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.item>
+    <.item_content>
+      <.item_title>Basic Item</.item_title>
+      <.item_description>Item description text</.item_description>
+    </.item_content>
+  </.item>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -29,7 +49,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -49,9 +72,13 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "default", values: ~w(default outline muted)
+  attr :size, :string, default: "default", values: ~w(default sm xs)
 
   attr :rest, :global,
     include:
@@ -109,8 +136,12 @@ defmodule ShadcnLiveview.Components.Item do
     )
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "default", values: ~w(default icon image)
 
   attr :rest, :global,
     include:
@@ -148,7 +179,10 @@ defmodule ShadcnLiveview.Components.Item do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -173,7 +207,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -198,7 +235,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -223,7 +263,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -243,7 +286,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -263,7 +309,10 @@ defmodule ShadcnLiveview.Components.Item do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

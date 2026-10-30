@@ -153,7 +153,7 @@ defmodule ShadcnLiveview.Preview.Live do
       :if={@embed}
       id="fixture-stage"
       data-family={@family}
-      class="preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6"
+      class="preview-stage flex min-h-[var(--fixture-min-height,120px)] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6"
     >
       <Gallery.live_fixture fixture={@fixture} state={@state} form_data={@form_data} />
     </main>
@@ -227,6 +227,10 @@ defmodule ShadcnLiveview.Preview.Router do
     pipe_through :browser
     live "/live-preview/:fixture", ShadcnLiveview.Preview.Live
     live "/review-preview", ShadcnLiveview.Preview.ReviewLive
+    live "/form-review-preview", ShadcnLiveview.Preview.FormReviewLive
+    live "/data-table-preview", ShadcnLiveview.Preview.DataTableLive
+    live "/chart-preview", ShadcnLiveview.Preview.ChartLive
+    live "/blocks-preview", ShadcnLiveview.Preview.BlocksLive
   end
 end
 

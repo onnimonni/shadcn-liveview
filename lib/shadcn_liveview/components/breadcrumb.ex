@@ -1,9 +1,34 @@
 defmodule ShadcnLiveview.Components.Breadcrumb do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays the path to the current resource as a hierarchy of links.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/breadcrumb
+
+  Components: `breadcrumb/1`, `breadcrumb_list/1`, `breadcrumb_item/1`, `breadcrumb_link/1`, `breadcrumb_page/1`, `breadcrumb_separator/1`, `breadcrumb_ellipsis/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.breadcrumb>
+    <.breadcrumb_list>
+      <.breadcrumb_item>
+        <.breadcrumb_link href="/">Home</.breadcrumb_link>
+      </.breadcrumb_item>
+      <.breadcrumb_separator />
+      <.breadcrumb_item>
+        <.breadcrumb_page>Components</.breadcrumb_page>
+      </.breadcrumb_item>
+    </.breadcrumb_list>
+  </.breadcrumb>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -19,7 +44,10 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -44,7 +72,10 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -64,7 +95,24 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :navigate, :string,
+    default: nil,
+    doc:
+      "LiveView `navigate` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :patch, :string,
+    default: nil,
+    doc:
+      "LiveView `patch` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :replace, :boolean,
+    default: false,
+    doc: "Replaces the browser history entry for `navigate` and `patch` links."
 
   attr :rest, :global,
     include:
@@ -74,7 +122,19 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
 
   def breadcrumb_link(assigns) do
     ~H"""
+    <.link
+      :if={@navigate || @patch}
+      navigate={@navigate}
+      patch={@patch}
+      replace={@replace}
+      data-slot="breadcrumb-link"
+      class={classes(["transition-colors hover:text-foreground", @class])}
+      {@rest}
+    >
+      {render_slot(@inner_block)}
+    </.link>
     <a
+      :if={!(@navigate || @patch)}
       data-slot="breadcrumb-link"
       class={classes(["transition-colors hover:text-foreground", @class])}
       {@rest}
@@ -84,7 +144,10 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -107,7 +170,10 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -129,7 +195,10 @@ defmodule ShadcnLiveview.Components.Breadcrumb do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

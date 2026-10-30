@@ -21,10 +21,18 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   Supply an \`:id\` and a named \`:trigger\` slot receiving a context map.
   Spread \`context.trigger\` on exactly one native trigger${select || family === "context-menu" ? ', or pass the context map to the family trigger component' : ''}.
+  The root owns the trigger ID (default \`id <> "-trigger"\`); set \`:trigger_id\` to choose it so
+  content aria relations and focus return follow. Never add \`id\` beside the spread: HEEx renders both${select || family === "context-menu" ? ' and the family trigger component raises' : ''}.
   ${select ? 'Declare options with stable IDs, values, labels, and rendered option slots; optional group slots label option groups.' : 'The named content slot receives the same context; pass it to the content component.'}
   The LiveView owns open and selection state and renders content only when open.
   The colocated hook requests transitions, positions server-rendered content,
   and handles dismissal, focus, keyboard navigation, and ${select ? 'native form synchronization' : 'pointer interactions'}.
+  Open content stays inline for LiveView patching but is shown in the browser
+  top layer (a manual \`popover\`), so like a Radix portal it escapes ancestor
+  stacking contexts (\`relative z-0\` rows), overflow clipping and transforms.${isMenu ? `
+  As in Radix, a pointer open focuses the menu itself; a keyboard open
+  (${family === "context-menu" ? "ContextMenu key or Shift+F10" : "Enter, Space, ArrowDown or ArrowUp"}) focuses the first${family === "context-menu" ? "" : " (ArrowUp: last)"} item.` : select ? `
+  Opening focuses the selected option, else the first enabled one (Radix Select).` : ""}
   Handle \`:on_change\` (default \`shadcn:popup-change\`) with \`id\`, \`action\`,
   and \`value\` and update the corresponding root assigns.
   Set phx-target on this wrapperless root (or its optional \`:target\`) to route
@@ -46,6 +54,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :open_delay, :integer, default: ${hover ? 700 : 0}
   attr :close_delay, :integer, default: ${hover ? 300 : 100}
   attr :on_change, :string, default: "shadcn:popup-change"
+  attr :trigger_id, :string, default: nil
   attr :target, :any, default: nil
   attr :rest, :global
   ${select ? `attr :value, :string, default: nil
@@ -59,7 +68,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     attr :value, :string, required: true
     attr :label, :string, required: true
     attr :disabled, :boolean
-    attr :class, :string
+    attr :class, :any
     attr :group, :string
   end
   slot :group do
@@ -71,11 +80,11 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   @doc "Renders a ${family} root without a synthetic DOM wrapper."
   def ${root}(assigns) do
-    context = %{id: assigns.id, target: assigns.target || Map.get(assigns.rest, :"phx-target"), content_id: ${tooltip ? '"radix-" <> assigns.id <> "-content"' : 'assigns.id <> "-content"'}, trigger_id: assigns.id <> "-trigger", open: assigns.open, state: ${state}, dir: assigns.dir, side: assigns.side, align: assigns.align${select ? ', value: assigns.value, position: assigns.position, label: Enum.find_value(assigns.option, fn option -> if option.value == assigns.value, do: option.label end)' : ''}}
+    context = %{id: assigns.id, target: assigns.target || Map.get(assigns.rest, :"phx-target"), content_id: ${tooltip ? '"radix-" <> assigns.id <> "-content"' : 'assigns.id <> "-content"'}, trigger_id: trigger_id(assigns), open: assigns.open, state: ${state}, dir: assigns.dir, side: assigns.side, align: assigns.align${select ? ', value: assigns.value, position: assigns.position, label: Enum.find_value(assigns.option, fn option -> if option.value == assigns.value, do: option.label end)' : ''}}
     ${select ? `markup = if assigns.open, do: ${root}_content(assign(assigns, :context, context))` : ''}
     trigger = %{
       "id" => context.trigger_id, "data-slot" => "${family}-trigger", "data-state" => context.state,
-      "phx-hook" => "ShadcnLiveview.Components.${spec.moduleName}.Popup", "phx-popup-id" => assigns.id, "phx-popup-kind" => "${family}", "phx-popup-content-id" => context.content_id,
+      "phx-hook" => "ShadcnLiveview.Components.${spec.moduleName}.Popup", "phx-popup-id" => assigns.id, "phx-popup-kind" => "${family}", "phx-popup-content-id" => context.content_id, "phx-popup-trigger-id" => context.trigger_id,
       "phx-popup-disabled" => to_string(assigns.disabled),
       "phx-target" => context.target,
       "phx-popup-offset" => assigns.side_offset, "phx-popup-open-delay" => assigns.open_delay,
@@ -92,11 +101,14 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     </script>
     """
   end
+
+  defp trigger_id(%{trigger_id: nil, id: id}), do: id <> "-trigger"
+  defp trigger_id(%{trigger_id: trigger_id}), do: trigger_id
 `
   if (select) source += selectComponents(cls)
   else source += `
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def ${root}_content(assigns) do
@@ -127,10 +139,11 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   if (isMenu) source += menuComponents(root, family, cls)
   if (family === "context-menu") source += `
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def context_menu_trigger(assigns) do
+    assigns = assign(assigns, :rest, trigger_rest!(assigns.rest, assigns.context.trigger_id, "context_menu_trigger"))
     ~H"""
     <span class={classes(["select-none", @class])} {@context.trigger} {@rest}>{render_slot(@inner_block)}</span>
     """
@@ -153,7 +166,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
 function simple(name: string, slot: string, tag: string, cls: string, attributes = ""): string {
   return `
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(id href tabindex)
   slot :inner_block
   def ${name}(assigns) do
@@ -170,7 +183,7 @@ function menuComponents(root: string, family: string, cls: (name: string) => str
   attr :inset, :boolean, default: false
   attr :variant, :string, default: "default", values: ~w(default destructive)
   attr :value, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(id)
   slot :inner_block, required: true
   def ${root}_item(assigns) do
@@ -184,7 +197,7 @@ function menuComponents(root: string, family: string, cls: (name: string) => str
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: false
   attr :value, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(id)
   slot :inner_block, required: true
   def ${root}_${type}_item(assigns) do
@@ -197,7 +210,7 @@ function menuComponents(root: string, family: string, cls: (name: string) => str
 `
   result += `
   attr :inset, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def ${root}_label(assigns) do
@@ -216,11 +229,12 @@ function menuComponents(root: string, family: string, cls: (name: string) => str
 function selectComponents(cls: (name: string) => string): string {
   return `
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :size, :string, default: "default", values: ~w(default sm)
   attr :rest, :global
   slot :inner_block, required: true
   def select_trigger(assigns) do
+    assigns = assign(assigns, :rest, trigger_rest!(assigns.rest, assigns.context.trigger_id, "select_trigger"))
     ~H"""
     <button data-size={@size} class={classes([${cls("select_trigger")}, @class])} {@context.trigger} {@rest}>{render_slot(@inner_block)}<Icon.icon name="chevron-down" class="pointer-events-none size-4 text-muted-foreground" /></button>
     """

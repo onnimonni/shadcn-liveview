@@ -13,9 +13,13 @@ defmodule ShadcnLiveview.Components.Accordion do
   assign the result of `accordion_next_value/4` back to `value`. This renders
   previously closed slots, whose children Radix deliberately omits in SSR.
   Slots are retained as render functions, never discarded or cached HTML.
+  `use ShadcnLiveview` imports components only, so call the helper through its
+  module (or `import ShadcnLiveview.Components.Accordion, only: [accordion_next_value: 4]`):
+
+      alias ShadcnLiveview.Components.Accordion
 
       def handle_event("shadcn:accordion-change", %{"item" => item}, socket) do
-        value = accordion_next_value(socket.assigns.expanded, item, "single", true)
+        value = Accordion.accordion_next_value(socket.assigns.expanded, item, "single", true)
         {:noreply, assign(socket, :expanded, value)}
       end
 
@@ -26,17 +30,36 @@ defmodule ShadcnLiveview.Components.Accordion do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :type, :string, values: ~w(single multiple), default: "single"
   attr :value, :any, default: :uncontrolled
-  attr :default_value, :any, default: nil
+
+  attr :default_value, :any,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :collapsible, :boolean, default: false
   attr :disabled, :boolean, default: false
   attr :orientation, :string, values: ~w(vertical horizontal), default: "vertical"
   attr :dir, :string, values: ~w(ltr rtl), default: "ltr"
-  attr :on_change, :string, default: "shadcn:accordion-change"
-  attr :target, :any, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: "shadcn:accordion-change",
+    doc: "LiveView event name pushed on change; the payload is described in the module docs."
+
+  attr :target, :any,
+    default: nil,
+    doc: "Event target such as `@myself`; equivalent to `phx-target` on the root."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -71,6 +94,19 @@ defmodule ShadcnLiveview.Components.Accordion do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Accordion">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
         mounted() {
           this.pending = null;
           this.click = event => {
@@ -134,9 +170,8 @@ defmodule ShadcnLiveview.Components.Accordion do
           } else {
             payload.value = current.includes(item) && this.el.getAttribute("phx-value-collapsible") === "true" ? null : item;
           }
-          const target = this.el.getAttribute("phx-target");
-          if (target) this.pushEventTo(target, event, payload);
-          else this.pushEvent(event, payload);
+          // A failed push leaves the server-rendered selection untouched.
+          this.sendEvent(event, payload);
         },
         sync() {
           this.el.querySelectorAll('[data-slot="accordion-content"]').forEach(panel => {
@@ -165,7 +200,12 @@ defmodule ShadcnLiveview.Components.Accordion do
   attr :disabled, :boolean, default: false
   attr :trigger_id, :string, default: nil
   attr :content_id, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -203,7 +243,12 @@ defmodule ShadcnLiveview.Components.Accordion do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(name value form)
   slot :inner_block, required: true
 
@@ -257,7 +302,12 @@ defmodule ShadcnLiveview.Components.Accordion do
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: false
 

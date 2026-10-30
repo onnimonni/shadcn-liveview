@@ -5,11 +5,14 @@
 /parity/actual/
 /parity/failures/
 /parity/visual-audit/
-/priv/static/preview/visual-audit/
+/priv/static/preview/visual-audit*/
+/doc/
 *.beam
 .playwright-mcp/
 /test-results/
 /playwright-report/
+/test/excessibility/
+/examples/consumer/test/excessibility/
 login-preview/node_modules/
 login-preview/dist/
 .elixir_ls/

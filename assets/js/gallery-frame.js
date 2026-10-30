@@ -4,7 +4,8 @@ const stage = document.getElementById("fixture-stage")
 if (stage && window.parent !== window) {
   const family = window.frameElement?.dataset.family || document.body.dataset.family || stage.dataset.family
   const floor = fixtureMinHeight(family)
-  stage.style.minHeight = `${floor}px`
+  // Keep the floor outside LiveView's stage patches.
+  document.documentElement.style.setProperty("--fixture-min-height", `${floor}px`)
   const liveView = document.querySelector("[data-phx-main]")
   let previous = 0
   let queued = false

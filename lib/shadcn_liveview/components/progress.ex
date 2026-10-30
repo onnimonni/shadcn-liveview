@@ -1,5 +1,17 @@
 defmodule ShadcnLiveview.Components.Progress do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays the completion progress of a task as a bar.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/progress
+
+  Components: `progress/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.progress value={60} class="w-[60%]" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
@@ -13,7 +25,12 @@ defmodule ShadcnLiveview.Components.Progress do
   """
   attr :value, :any, default: nil
   attr :max, :any, default: 100
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def progress(assigns) do

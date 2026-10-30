@@ -1,21 +1,24 @@
+import { sendEventMethod } from "./hook-events"
+import { topLayerMethod } from "./top-layer"
+
 // Phoenix owns portal markup and open/selection state. The hook only requests
 // transitions and handles positioning, keyboard focus, and native form controls.
 export const hook = String.raw`
       export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
+${sendEventMethod("        ")}
+${topLayerMethod("        ")}
         mounted() {
           this.abort = new AbortController();
           this.kind = this.el.getAttribute("phx-popup-kind");
           this.contentId = this.el.getAttribute("phx-popup-content-id");
+          const triggerId = this.el.getAttribute("phx-popup-trigger-id");
+          if (triggerId && this.el.id !== triggerId) console.error("shadcn_liveview: the element spreading the " + this.kind + " trigger context has id=\"" + this.el.id + "\" instead of the root's trigger id \"" + triggerId + "\", so aria relations and focus return break. Pass trigger_id=\"" + this.el.id + "\" on the root and drop id from the trigger element.", this.el);
           this.listen = (node, name, fn, options = {}) => node.addEventListener(name, fn, {...options, signal: this.abort.signal});
           this.listen(this.el, "click", e => {
             if (this.kind === "tooltip") return this.close(false);
             if (["context-menu", "hover-card"].includes(this.kind)) return;
-            e.preventDefault(); this.content ? this.close(true) : this.open(true);
+            // Enter/Space activation dispatches a click with detail 0: a keyboard open.
+            e.preventDefault(); this.content ? this.close(true) : this.open(true, false, false, e.detail === 0);
           });
           this.listen(this.el, "contextmenu", e => {
             if (this.kind !== "context-menu" || this.disabled()) return;
@@ -36,10 +39,10 @@ export const hook = String.raw`
           }
           this.listen(this.el, "keydown", e => {
             if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && this.kind === "context-menu") {
-              e.preventDefault(); this.point = null; this.open(true);
+              e.preventDefault(); this.point = null; this.open(true, false, false, true);
             } else if (["ArrowDown", "ArrowUp"].includes(e.key) && ["select", "dropdown-menu"].includes(this.kind)) {
-              e.preventDefault(); this.open(true, e.key === "ArrowUp");
-            } else if (e.key === "Escape") { e.preventDefault(); this.close(true); }
+              e.preventDefault(); this.open(true, e.key === "ArrowUp", false, true);
+            } else if (e.key === "Escape" && (this.content || this.pendingOpen)) { e.preventDefault(); this.close(true); }
           });
           this.listen(document, "pointerdown", e => {
             if (this.content && !this.content.contains(e.target) && !this.el.contains(e.target)) this.close(false);
@@ -60,9 +63,9 @@ export const hook = String.raw`
           this.wrapper = this.content?.parentElement;
           if (this.content) {
             this.pendingOpen = false; this.pendingClose = false;
-            this.bindContent(); this.position();
+            this.bindContent(); this.promoteToTopLayer(this.wrapper, true); this.position();
             if (this.kind === "tooltip" && this.delayed) this.content.dataset.state = this.el.dataset.state = "delayed-open";
-            if (this.pendingFocus) this.focusContent(this.pendingLast);
+            if (this.pendingFocus) this.focusContent(this.pendingLast, this.pendingKeyboard);
             this.pendingFocus = false;
           } else if (this.pendingRestore) {
             this.pendingRestore = false; this.skipFocusOpen = true; this.el.focus(); this.skipFocusOpen = false;
@@ -75,15 +78,21 @@ export const hook = String.raw`
         },
         scheduleOpen() { clearTimeout(this.timer); this.timer = setTimeout(() => this.open(false, false, true), Number(this.el.getAttribute("phx-popup-open-delay") || 0)); },
         scheduleClose() { clearTimeout(this.timer); this.timer = setTimeout(() => this.close(false), Number(this.el.getAttribute("phx-popup-close-delay") || 100)); },
-        open(focus, last = false, delayed = false) {
+        open(focus, last = false, delayed = false, keyboard = false) {
           clearTimeout(this.timer); if (this.disabled()) return;
-          if (this.content && !this.pendingClose) { if (focus) this.focusContent(last); return; }
+          if (this.content && !this.pendingClose) { if (focus) this.focusContent(last, keyboard); return; }
           this.pendingFocus = focus; this.pendingLast = last;
+          // A keyboard request is not downgraded by the pointer-style event it may also dispatch.
+          this.pendingKeyboard = keyboard || (!!this.pendingOpen && !!this.pendingKeyboard);
           this.delayed = this.kind === "tooltip" && delayed && Number(this.el.getAttribute("phx-popup-open-delay")) > 0;
           if (!this.pendingOpen) { this.pendingOpen = true; this.pendingClose = false; this.notify("open"); }
         },
-        focusContent(last) {
-          const items = this.items(); const selected = items.find(item => item.dataset.state === "checked");
+        focusContent(last, keyboard) {
+          const items = this.items();
+          // Radix menus focus their content on pointer open and the first (ArrowUp: last) item only on
+          // keyboard open. Select focuses its selected item, else the first valid one, either way.
+          if (["dropdown-menu", "context-menu"].includes(this.kind)) return (keyboard && items[last ? items.length - 1 : 0] || this.content).focus({preventScroll: !keyboard});
+          const selected = items.find(item => item.dataset.state === "checked");
           (selected || items[last ? items.length - 1 : 0] || this.content.querySelector("input,button,a[href],textarea,[tabindex='0']") || this.content).focus();
         },
         close(restore) {
@@ -100,6 +109,12 @@ export const hook = String.raw`
           on("pointerleave", () => { if (["tooltip", "hover-card"].includes(this.kind)) this.scheduleClose(); });
           on("focusout", e => { if (!this.content?.contains(e.relatedTarget) && e.relatedTarget !== this.el) this.close(false); });
           on("pointermove", e => { const item = e.target.closest('[role="option"],[role^="menuitem"]'); if (item && item.getAttribute("aria-disabled") !== "true") item.focus(); });
+          // Leaving a highlighted option/item returns focus to the content, clearing the highlight
+          // (Radix select/menu onItemLeave).
+          on("pointerout", e => {
+            const item = e.target.closest('[role="option"],[role^="menuitem"]');
+            if (item && document.activeElement === item && !item.contains(e.relatedTarget)) this.content.focus({preventScroll: true});
+          });
           on("focusin", e => {
             this.items().forEach(item => { item.toggleAttribute("data-highlighted", item === e.target); if (item.getAttribute("role") === "option") item.setAttribute("aria-selected", String(item === e.target && item.dataset.state === "checked")); });
           });
@@ -117,7 +132,8 @@ export const hook = String.raw`
           on("keydown", e => {
             const items = this.items(); const index = items.indexOf(document.activeElement);
             if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && items.length) {
-              e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (index + (e.key === "ArrowUp" ? -1 : 1) + items.length) % items.length; items[next].focus();
+              const up = e.key === "ArrowUp";
+              e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : index < 0 ? (up ? items.length - 1 : 0) : (index + (up ? -1 : 1) + items.length) % items.length; items[next].focus();
             } else if (["Enter", " "].includes(e.key) && index >= 0) { e.preventDefault(); items[index].click(); }
             else if (e.key === "Escape") { e.preventDefault(); this.close(true); }
             else if (e.key === "Tab" && ["select", "dropdown-menu", "context-menu"].includes(this.kind)) this.close(false);
@@ -177,7 +193,11 @@ export const hook = String.raw`
           const id = this.el.getAttribute("phx-popup-id");
           const payload = {action, value, id, ...extra};
           this.el.dispatchEvent(new CustomEvent("shadcn:popup", {bubbles: true, detail: payload}));
-          const event = this.el.getAttribute("phx-popup-event"); if (event) this.sendEvent(event, payload);
+          // A failed push keeps the server-rendered popup; clear pending requests so the next interaction retries.
+          const event = this.el.getAttribute("phx-popup-event"); if (event) this.sendEvent(event, payload).catch(() => {
+            this.pendingOpen = this.pendingClose = this.pendingFocus = this.pendingRestore = false;
+            if (this.native) this.native.value = this.el.getAttribute("phx-popup-value") || "";
+          });
         }
       }
 `

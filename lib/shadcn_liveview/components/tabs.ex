@@ -32,17 +32,36 @@ defmodule ShadcnLiveview.Components.Tabs do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :any, default: :uncontrolled
-  attr :default_value, :string, default: nil
+
+  attr :default_value, :string,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :orientation, :string, values: ~w(horizontal vertical), default: "horizontal"
   attr :navigation_orientation, :string, values: ~w(horizontal vertical), default: "horizontal"
   attr :dir, :string, values: ~w(ltr rtl), default: "ltr"
   attr :activation_mode, :string, values: ~w(automatic manual), default: "automatic"
   attr :loop, :boolean, default: true
-  attr :on_change, :string, default: "shadcn:tabs-change"
-  attr :target, :any, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: "shadcn:tabs-change",
+    doc: "LiveView event name pushed on change; the payload is described in the module docs."
+
+  attr :target, :any,
+    default: nil,
+    doc: "Event target such as `@myself`; equivalent to `phx-target` on the root."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -72,6 +91,19 @@ defmodule ShadcnLiveview.Components.Tabs do
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Tabs">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
         mounted() {
           this.pending = null;
           this.click = event => {
@@ -128,9 +160,8 @@ defmodule ShadcnLiveview.Components.Tabs do
           const event = this.el.getAttribute("phx-value-on-change");
           const payload = {id: this.el.id, value: trigger.getAttribute("phx-value-value")};
           
-          const target = this.el.getAttribute("phx-target");
-          if (target) this.pushEventTo(target, event, payload);
-          else this.pushEvent(event, payload);
+          // A failed push leaves the server-rendered selection untouched.
+          this.sendEvent(event, payload).catch(() => { if (this.pending === trigger.id) this.pending = null; });
         },
         sync() {
           const items = this.triggers().filter(trigger => !trigger.disabled);
@@ -152,7 +183,12 @@ defmodule ShadcnLiveview.Components.Tabs do
 
   attr :context, :map, required: true
   attr :variant, :string, values: ~w(default line), default: "default"
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -184,7 +220,12 @@ defmodule ShadcnLiveview.Components.Tabs do
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(name form)
   slot :inner_block, required: true
 
@@ -223,7 +264,12 @@ defmodule ShadcnLiveview.Components.Tabs do
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: false
 

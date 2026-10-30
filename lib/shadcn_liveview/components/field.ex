@@ -1,9 +1,32 @@
 defmodule ShadcnLiveview.Components.Field do
-  @moduledoc false
+  @moduledoc ~S"""
+  Composes labels, controls, descriptions and errors into accessible form fields.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/field
+
+  Components: `field_set/1`, `field_legend/1`, `field_group/1`, `field/1`, `field_content/1`, `field_label/1`, `field_title/1`, `field_description/1`, `field_separator/1`, `field_error/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.field_set class="w-full max-w-md">
+    <.field_group>
+      <.field>
+        <.field_label for="field-email">Email address</.field_label>
+        <.input id="field-email" type="email" placeholder="m@example.com" aria-describedby="field-help" />
+        <.field_description id="field-help">We will never share your email.</.field_description>
+      </.field>
+    </.field_group>
+  </.field_set>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -28,8 +51,12 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "legend", values: ~w(legend label)
 
   attr :rest, :global,
     include:
@@ -55,7 +82,10 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -80,8 +110,17 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :orientation, :string, default: "vertical"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :orientation, :string, default: "vertical", values: ~w(vertical horizontal responsive)
+
+  attr :invalid, :boolean,
+    default: false,
+    doc:
+      "Renders `data-invalid=\"true\"` (the `data-[invalid=true]` styles); `data-invalid` passed through attrs still works."
 
   attr :rest, :global,
     include:
@@ -95,6 +134,7 @@ defmodule ShadcnLiveview.Components.Field do
       data-slot="field"
       role="group"
       data-orientation={@orientation}
+      data-invalid={if @invalid, do: "true"}
       class={classes([field_classes(@orientation), @class])}
       {@rest}
     >
@@ -120,7 +160,10 @@ defmodule ShadcnLiveview.Components.Field do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -140,7 +183,10 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -165,7 +211,10 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -190,7 +239,10 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -215,7 +267,10 @@ defmodule ShadcnLiveview.Components.Field do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -227,17 +282,26 @@ defmodule ShadcnLiveview.Components.Field do
     ~H"""
     <div
       data-slot="field-separator"
+      data-content={to_string(@inner_block != [])}
       class={
         classes(["relative -my-2 h-5 text-sm group-data-[variant=outline]/field-group:-mb-2", @class])
       }
       {@rest}
     >
-      {render_slot(@inner_block)}
+      <ShadcnLiveview.Components.Separator.separator class="absolute inset-0 top-1/2" />
+      <span
+        :if={@inner_block != []}
+        class="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
+        data-slot="field-separator-content"
+      >{render_slot(@inner_block)}</span>
     </div>
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

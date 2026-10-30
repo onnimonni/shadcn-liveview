@@ -2,6 +2,7 @@ import type { ComponentSpec } from "../generate"
 import { cn } from "cn"
 import { buttonVariants } from "../../vendor/shadcn/ui/button"
 import { carouselHook, resizableHook, sidebarHook } from "./layout-hooks"
+import { linkAttrs, linkOrElement } from "../generator/links"
 
 const header = (spec: ComponentSpec, docs: string) => `defmodule ShadcnLiveview.Components.${spec.moduleName} do
   @moduledoc """
@@ -12,7 +13,7 @@ const header = (spec: ComponentSpec, docs: string) => `defmodule ShadcnLiveview.
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 `
-const globals = `  attr :class, :string, default: nil
+const globals = `  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(id title role tabindex type disabled name value href target rel dir style placeholder autocomplete required readonly form min max step aria-label aria-controls aria-expanded)
   slot :inner_block
   @doc "Renders a layout primitive with explicit slot context and caller-owned state."`
@@ -74,7 +75,7 @@ ${globals}
   attr :carousel, :map, required: true
 ${globals}
   def carousel_item(assigns) do
-    basis = if Enum.any?(String.split(assigns.class || ""), &String.starts_with?(&1, "basis-")), do: nil, else: "basis-full"
+    basis = if Enum.any?(String.split(classes(assigns.class)), &String.starts_with?(&1, "basis-")), do: nil, else: "basis-full"
     assigns = assign(assigns, :basis, basis)
     ~H"""
     <div role="group" aria-roledescription="slide" data-slot="carousel-item"
@@ -213,7 +214,8 @@ function sidebar(spec: ComponentSpec): string {
   initializes false; mobile behavior is installed only after mounting. The same
   children become the mobile dialog without hidden duplicate content or IDs.
   Nested primitives accept caller classes and global attributes. Use \`tag="a"\`
-  on menu/group buttons for link composition instead of a React asChild wrapper.`) + `
+  on menu/group buttons for link composition instead of a React asChild wrapper;
+  \`navigate\` or \`patch\` on menu and sub buttons renders \`Phoenix.Component.link/1\`.`) + `
   attr :id, :string, required: true
   attr :open, :boolean, default: true
   attr :mobile_open, :boolean, default: false
@@ -295,13 +297,15 @@ ${name === "sidebar_group_label" || name === "sidebar_group_action" ? `    <.dyn
   attr :variant, :string, default: "default", values: ~w(default outline)
   attr :size, :string, default: "default", values: ~w(default sm lg)
   attr :is_active, :boolean, default: false
+${linkAttrs.join("\n")}
 ${globals}
   def sidebar_menu_button(assigns) do
+    assigns = slot_override(assigns, "sidebar-menu-button")
     ~H"""
-    <.dynamic_tag tag_name={@tag} data-slot="sidebar-menu-button" data-sidebar="menu-button" data-size={@size} data-active={to_string(@is_active)}
-      class={classes([${base("sidebar_menu_button")}, if(@variant == "outline", do: "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]", else: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"), menu_size(@size), @class])} {@rest}>
+${linkOrElement({ open: ".dynamic_tag tag_name={@tag}", close: ".dynamic_tag", attrs: ` data-slot={@data_slot} data-sidebar="menu-button" data-size={@size} data-active={to_string(@is_active)}
+      class={classes([${base("sidebar_menu_button")}, if(@variant == "outline", do: "bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]", else: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"), menu_size(@size), @class])} {@rest}`, body: `
       {render_slot(@inner_block)}
-    </.dynamic_tag>
+    ` })}
     """
   end
 
@@ -309,8 +313,9 @@ ${globals}
   attr :show_on_hover, :boolean, default: false
 ${globals}
   def sidebar_menu_action(assigns) do
+    assigns = slot_override(assigns, "sidebar-menu-action")
     ~H"""
-    <.dynamic_tag tag_name={@tag} data-slot="sidebar-menu-action" data-sidebar="menu-action"
+    <.dynamic_tag tag_name={@tag} data-slot={@data_slot} data-sidebar="menu-action"
       class={classes([${base("sidebar_menu_action")}, @show_on_hover && "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-active/menu-button:text-sidebar-accent-foreground aria-expanded:opacity-100 md:opacity-0", @class])} {@rest}>
       {render_slot(@inner_block)}
     </.dynamic_tag>
@@ -320,11 +325,13 @@ ${globals}
   attr :tag, :string, default: "a"
   attr :size, :string, default: "md", values: ~w(sm md)
   attr :is_active, :boolean, default: false
+${linkAttrs.join("\n")}
 ${globals}
   def sidebar_menu_sub_button(assigns) do
+    assigns = slot_override(assigns, "sidebar-menu-sub-button")
     ~H"""
-    <.dynamic_tag tag_name={@tag} data-slot="sidebar-menu-sub-button" data-sidebar="menu-sub-button" data-size={@size} data-active={to_string(@is_active)}
-      class={classes([${base("sidebar_menu_sub_button")}, @class])} {@rest}>{render_slot(@inner_block)}</.dynamic_tag>
+${linkOrElement({ open: ".dynamic_tag tag_name={@tag}", close: ".dynamic_tag", attrs: ` data-slot={@data_slot} data-sidebar="menu-sub-button" data-size={@size} data-active={to_string(@is_active)}
+      class={classes([${base("sidebar_menu_sub_button")}, @class])} {@rest}`, body: "{render_slot(@inner_block)}" })}
     """
   end
 
@@ -357,6 +364,14 @@ ${globals}
   defp menu_size("sm"), do: "h-7 text-xs"
   defp menu_size("lg"), do: "h-12 text-sm group-data-[collapsible=icon]:p-0!"
   defp menu_size(_), do: "h-8 text-sm"
+
+  # Like Radix asChild, a spread trigger context (e.g. a dropdown's popup.trigger) renders its
+  # own data-slot instead of duplicating the attribute.
+  defp slot_override(assigns, default) do
+    rest = assigns.rest
+    slot = Map.get(rest, :"data-slot", Map.get(rest, "data-slot", default))
+    assign(assigns, data_slot: slot, rest: Map.drop(rest, [:"data-slot", "data-slot"]))
+  end
 end
 `
 }

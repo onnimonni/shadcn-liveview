@@ -5,16 +5,29 @@ defmodule ShadcnLiveview.Components.RadioGroup do
   The root yields its context through :let; pass it to each radio_group_item.
   IDs belong to the caller. value enables server control and on_value_change
   names a LiveView event receiving %{id, value}. Without value, default_value
-  initializes local selection. Arrow keys select, Space checks, and form reset
-  restores the initial value. SSR focus stops are activated by the colocated hook.
+  initializes local selection. field={@form[:plan]} infers id, name and a
+  controlled value (nothing selected when nil) and composes with form_field.
+  Selections update immediately and dispatch native input and change events in
+  both modes, so phx-change sees them; server values win on the next patch.
+  Arrow keys select, Space checks, and form reset restores the initial value.
+  SSR focus stops are activated by the colocated hook.
   Hook events honor phx-target on the root or nearest containing element.
   """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
+
+  attr :id, :string, default: nil
   attr :value, :string, default: nil
-  attr :default_value, :string, default: nil
+
+  attr :default_value, :string,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :name, :string, default: nil
   attr :form, :string, default: nil
   attr :required, :boolean, default: false
@@ -22,13 +35,24 @@ defmodule ShadcnLiveview.Components.RadioGroup do
   attr :orientation, :string, default: nil, values: [nil, "horizontal", "vertical"]
   attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :loop, :boolean, default: true
-  attr :on_value_change, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_value_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on value change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
   @doc "Yields the radio selection and native form context to its item slot."
   def radio_group(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :radio_group)
+    if is_nil(assigns.id), do: raise(ArgumentError, "radio_group requires an id or form field")
     value = if is_nil(assigns.value), do: assigns.default_value, else: assigns.value
 
     assigns =
@@ -39,7 +63,8 @@ defmodule ShadcnLiveview.Components.RadioGroup do
           form: assigns.form,
           required: assigns.required,
           disabled: assigns.disabled,
-          orientation: assigns.orientation
+          orientation: assigns.orientation,
+          invalid: assigns.rest[:"aria-invalid"]
         },
         values: if(is_nil(value), do: [], else: [value])
       )
@@ -73,8 +98,16 @@ defmodule ShadcnLiveview.Components.RadioGroup do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.radio = this.el.dataset.slot === "radio-group";
@@ -118,9 +151,13 @@ defmodule ShadcnLiveview.Components.RadioGroup do
           this.el.addEventListener("keydown", this.key);
           this.el.addEventListener("focusin", this.focus);
           this.form = this.radio ? (document.getElementById(this.el.getAttribute("phx-form")) || this.el.closest("form")) : null;
+          // Reset after the native form reset so native inputs match the restored selection.
           this.reset = () => {
-            if (this.controlled) this.change([...this.initial], null);
-            else { this.values = [...this.initial]; this.paint(); }
+            cancelAnimationFrame(this.resetFrame);
+            this.resetFrame = requestAnimationFrame(() => {
+              if (this.controlled) this.change([...this.initial], null);
+              else { this.values = [...this.initial]; this.paint(); }
+            });
           };
           this.form?.addEventListener("reset", this.reset);
           this.paint();
@@ -130,12 +167,16 @@ defmodule ShadcnLiveview.Components.RadioGroup do
         tabstop(item) { if (this.el.getAttribute("phx-roving") === "false") return; this.items().forEach(i => i.tabIndex = i === item && !i.disabled ? 0 : -1); },
         change(next, item) {
           if (JSON.stringify(next) === JSON.stringify(this.values)) return;
-          if (!this.controlled) { this.values = next; this.paint(); }
+          // Radio selections are optimistic like checkbox and switch; updated() applies server values.
+          if (!this.controlled || this.radio) { this.values = next; this.paint(); }
           const value = this.radio || this.el.getAttribute("phx-selection-type") === "single" ? (next[0] || "") : next;
           const event = this.el.getAttribute("phx-change-event");
-          if (event) this.sendEvent(event, {id: this.el.id, value});
+          // Controlled values come from the server, so a failed push restores them.
+          if (event) this.sendEvent(event, {id: this.el.id, value}).catch(() => {
+            if (this.controlled) { this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); }
+          });
           this.el.dispatchEvent(new CustomEvent("selection-change", {bubbles: true, detail: {value}}));
-          if (this.radio && !this.controlled) {
+          if (this.radio && item) {
             const input = item.nextElementSibling;
             input?.dispatchEvent(new Event("input", {bubbles: true}));
             input?.dispatchEvent(new Event("change", {bubbles: true}));
@@ -172,17 +213,26 @@ defmodule ShadcnLiveview.Components.RadioGroup do
           }
         },
         updated() { this.controlled = this.el.getAttribute("phx-controlled") === "true"; if (this.controlled) this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); },
-        destroyed() { this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
+        destroyed() { cancelAnimationFrame(this.resetFrame); this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
       }
     </script>
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(aria-invalid)
 
   @doc "Renders a radio button and its real, successful native radio input."
@@ -190,7 +240,8 @@ defmodule ShadcnLiveview.Components.RadioGroup do
     assigns =
       assign(assigns,
         checked: assigns.context.value == assigns.value,
-        disabled: assigns.disabled or assigns.context.disabled
+        disabled: assigns.disabled or assigns.context.disabled,
+        rest: Map.put_new(assigns.rest, :"aria-invalid", assigns.context[:invalid])
       )
 
     ~H"""

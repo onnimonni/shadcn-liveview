@@ -1,9 +1,24 @@
 defmodule ShadcnLiveview.Components.Skeleton do
-  @moduledoc false
+  @moduledoc ~S"""
+  Placeholder shown while content is loading.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/skeleton
+
+  Components: `skeleton/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.skeleton class="h-4 w-[250px]" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

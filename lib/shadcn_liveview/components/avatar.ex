@@ -1,10 +1,33 @@
 defmodule ShadcnLiveview.Components.Avatar do
-  @moduledoc false
+  @moduledoc ~S"""
+  An image element with a fallback for representing a user.
+
+  As with Radix, `avatar_fallback` shows until `avatar_image` has loaded (and again after a load
+  error or a new `src`), and the image is shown only once loaded. A bundled script mirrors the
+  load into the image's `data-status` (`loading`/`loaded`/`error`) and the library CSS applies it,
+  so render both; no id or hook is needed.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/avatar
+
+  Components: `avatar/1`, `avatar_image/1`, `avatar_fallback/1`, `avatar_badge/1`, `avatar_group/1`, `avatar_group_count/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.avatar>
+    <.avatar_fallback>CN</.avatar_fallback>
+  </.avatar>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :size, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :size, :string, default: "default", values: ~w(default sm lg)
 
   attr :rest, :global,
     include:
@@ -26,11 +49,48 @@ defmodule ShadcnLiveview.Components.Avatar do
       {@rest}
     >
       {render_slot(@inner_block)}
+      <script :type={Phoenix.LiveView.ColocatedJS}>
+        const key = Symbol.for("shadcn-liveview.avatar-status");
+        if (!window[key]) {
+          window[key] = true;
+          const selector = 'img[data-slot="avatar-image"]';
+          const known = new WeakMap();
+          const mark = (img, status) => {
+            known.set(img, {src: img.src, status});
+            if (img.getAttribute("data-status") !== status) img.setAttribute("data-status", status);
+          };
+          const sync = img => {
+            const state = known.get(img);
+            if (state && state.src === img.src) {
+              if (img.getAttribute("data-status") !== state.status) img.setAttribute("data-status", state.status);
+            } else if (!img.getAttribute("src")) mark(img, "error");
+            else if (img.complete) mark(img, img.naturalWidth > 0 ? "loaded" : "error");
+            else mark(img, "loading");
+          };
+          const scan = root => {
+            if (root.matches?.(selector)) sync(root);
+            root.querySelectorAll?.(selector).forEach(sync);
+          };
+          for (const [type, status] of [["load", "loaded"], ["error", "error"]]) {
+            document.addEventListener(type, event => { if (event.target.matches?.(selector)) mark(event.target, status); }, true);
+          }
+          new MutationObserver(records => {
+            for (const record of records) {
+              if (record.type === "attributes") { if (record.target.matches(selector)) sync(record.target); }
+              else record.addedNodes.forEach(node => { if (node.nodeType === 1) scan(node); });
+            }
+          }).observe(document.documentElement, {subtree: true, childList: true, attributes: true, attributeFilter: ["src", "data-status", "data-slot"]});
+          scan(document);
+        }
+      </script>
     </span>
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -46,7 +106,10 @@ defmodule ShadcnLiveview.Components.Avatar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -71,7 +134,10 @@ defmodule ShadcnLiveview.Components.Avatar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -96,7 +162,10 @@ defmodule ShadcnLiveview.Components.Avatar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -121,7 +190,10 @@ defmodule ShadcnLiveview.Components.Avatar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

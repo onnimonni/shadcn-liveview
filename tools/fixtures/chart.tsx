@@ -1,6 +1,6 @@
 import React from "react"
 import type { ComponentFixture } from "../fixtures"
-import { Area, AreaChart, Bar, BarChart, Line, LineChart, XAxis } from "recharts"
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis } from "recharts"
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "../../vendor/shadcn/ui/chart"
 
 const config = {
@@ -25,6 +25,44 @@ const alternateData = [
   { month: "May", desktop: 45, mobile: 300 },
   { month: "June", desktop: 240, mobile: -30 },
 ]
+
+// dashboard-01 chart-area-interactive, last 30 days. Dates format as calendar days (UTC)
+// so the reference does not depend on the browser time zone.
+const visitorData = [
+  ["2024-06-01", 178, 200], ["2024-06-02", 470, 410], ["2024-06-03", 103, 160], ["2024-06-04", 439, 380],
+  ["2024-06-05", 88, 140], ["2024-06-06", 294, 250], ["2024-06-07", 323, 370], ["2024-06-08", 385, 320],
+  ["2024-06-09", 438, 480], ["2024-06-10", 155, 200], ["2024-06-11", 92, 150], ["2024-06-12", 492, 420],
+  ["2024-06-13", 81, 130], ["2024-06-14", 426, 380], ["2024-06-15", 307, 350], ["2024-06-16", 371, 310],
+  ["2024-06-17", 475, 520], ["2024-06-18", 107, 170], ["2024-06-19", 341, 290], ["2024-06-20", 408, 450],
+  ["2024-06-21", 169, 210], ["2024-06-22", 317, 270], ["2024-06-23", 480, 530], ["2024-06-24", 132, 180],
+  ["2024-06-25", 141, 190], ["2024-06-26", 434, 380], ["2024-06-27", 448, 490], ["2024-06-28", 149, 200],
+  ["2024-06-29", 103, 160], ["2024-06-30", 446, 400],
+].map(([date, desktop, mobile]) => ({ date: date as string, desktop: desktop as number, mobile: mobile as number }))
+const visitorDataHeex = `[${visitorData.map(row => `%{date: "${row.date}", desktop: ${row.desktop}, mobile: ${row.mobile}}`).join(", ")}]`
+const visitorConfig = { visitors: { label: "Visitors" }, desktop: { label: "Desktop", color: "var(--primary)" }, mobile: { label: "Mobile", color: "var(--primary)" } }
+const visitorConfigHeex = `[visitors: %{label: "Visitors"}, desktop: %{label: "Desktop", color: "var(--primary)"}, mobile: %{label: "Mobile", color: "var(--primary)"}]`
+const shortDate = (value: string) => new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+
+function VisitorChart({ live }: { live: boolean }) {
+  const chart = <AreaChart id={live ? "visitors-chart" : undefined} data={visitorData}>
+    <defs>
+      <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="5%" stopColor="var(--color-desktop)" stopOpacity={1.0} />
+        <stop offset="95%" stopColor="var(--color-desktop)" stopOpacity={0.1} />
+      </linearGradient>
+      <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="5%" stopColor="var(--color-mobile)" stopOpacity={0.8} />
+        <stop offset="95%" stopColor="var(--color-mobile)" stopOpacity={0.1} />
+      </linearGradient>
+    </defs>
+    <CartesianGrid vertical={false} />
+    <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={32} tickFormatter={shortDate} />
+    <ChartTooltip cursor={false} content={<ChartTooltipContent labelFormatter={shortDate} indicator="dot" />} />
+    <Area dataKey="mobile" type="natural" fill="url(#fillMobile)" stroke="var(--color-mobile)" stackId="a" />
+    <Area dataKey="desktop" type="natural" fill="url(#fillDesktop)" stroke="var(--color-desktop)" stackId="a" />
+  </AreaChart>
+  return <ChartContainer id="visitors" config={visitorConfig} className="aspect-auto h-[250px] w-full">{live ? chart : <div id="visitors-chart">{chart}</div>}</ChartContainer>
+}
 
 function LiveBarChart() {
   const [alternate, setAlternate] = React.useState(false)
@@ -132,5 +170,11 @@ export const fixtures: ComponentFixture[] = [
     renderReact: () => <section><ChartContainer id="first" config={{ sales: { label: "First sales", color: "#9333ea" } }} className="h-[200px] w-full"><div id="first-canvas"><BarChart data={[{ name: "A", sales: 12 }]}><Bar dataKey="sales" /></BarChart></div></ChartContainer><ChartContainer id="second" config={{ sales: { label: "Second sales", theme: { light: "#dc2626", dark: "#f87171" } } }} className="h-[200px] w-full"><div id="second-canvas"><LineChart data={[{ name: "B", sales: 18 }]}><Line dataKey="sales" /></LineChart></div></ChartContainer></section>,
     renderLiveReact: () => <section><ChartContainer id="first" config={{ sales: { label: "First sales", color: "#9333ea" } }} className="h-[200px] w-full"><BarChart id="first-canvas" data={[{ name: "A", sales: 12 }]}><XAxis dataKey="name" /><Bar dataKey="sales" fill="var(--color-sales)" /><ChartTooltip content={<ChartTooltipContent />} /></BarChart></ChartContainer><ChartContainer id="second" config={{ sales: { label: "Second sales", theme: { light: "#dc2626", dark: "#f87171" } } }} className="h-[200px] w-full"><LineChart id="second-canvas" data={[{ name: "B", sales: 18 }]}><XAxis dataKey="name" /><Line dataKey="sales" stroke="var(--color-sales)" /><ChartTooltip content={<ChartTooltipContent />} /></LineChart></ChartContainer></section>,
     heex: `<section><.chart_container :let={chart} id="first" config={%{sales: %{label: "First sales", color: "#9333ea"}}} class="h-[200px] w-full"><.chart_canvas id="first-canvas" context={chart} data={[%{name: "A", sales: 12}]} series={[:sales]} /></.chart_container><.chart_container :let={chart} id="second" config={%{sales: %{label: "Second sales", theme: %{light: "#dc2626", dark: "#f87171"}}}} class="h-[200px] w-full"><.chart_canvas id="second-canvas" context={chart} kind="line" data={[%{name: "B", sales: 18}]} series={[:sales]} /></.chart_container></section>`,
+  },
+  {
+    name: "chart-area-interactive", family: "chart", title: "Stacked natural gradient area chart (dashboard-01)", category: "data-display",
+    renderReact: () => <VisitorChart live={false} />,
+    renderLiveReact: () => <VisitorChart live />,
+    heex: `<.chart_container :let={chart} id="visitors" config={${visitorConfigHeex}} class="aspect-auto h-[250px] w-full"><.chart_canvas id="visitors-chart" context={chart} kind="area" data={${visitorDataHeex}} x_key="date" series={[%{key: "mobile", gradient_opacity: [0.8, 0.1]}, %{key: "desktop", gradient_opacity: [1.0, 0.1]}]} stack curve="natural" fill="gradient" grid="horizontal" axis_line={false} tick_line={false} tick_margin={8} min_tick_gap={32} tick_format="date_short" tooltip_label_format="date_short" cursor={false} label="Total visitors" /></.chart_container>`,
   },
 ]

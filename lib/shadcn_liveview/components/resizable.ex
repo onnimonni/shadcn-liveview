@@ -22,11 +22,19 @@ defmodule ShadcnLiveview.Components.Resizable do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
   attr :disabled, :boolean, default: false
   attr :layout, :map, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -62,8 +70,16 @@ defmodule ShadcnLiveview.Components.Resizable do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.abort = new AbortController();
@@ -236,7 +252,11 @@ defmodule ShadcnLiveview.Components.Resizable do
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :group, :map, required: true
   attr :default_size, :any, default: nil
   attr :min_size, :any, default: nil
@@ -244,7 +264,11 @@ defmodule ShadcnLiveview.Components.Resizable do
   attr :collapsed_size, :any, default: 0
   attr :collapsible, :boolean, default: false
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -276,12 +300,20 @@ defmodule ShadcnLiveview.Components.Resizable do
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :group, :map, required: true
   attr :with_handle, :boolean, default: false
   attr :disabled, :boolean, default: false
   attr :disable_double_click, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

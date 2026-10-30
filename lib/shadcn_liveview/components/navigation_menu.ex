@@ -13,18 +13,34 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, default: ""
   attr :viewport, :boolean, default: true
   attr :orientation, :string, values: ~w(horizontal vertical), default: "horizontal"
   attr :dir, :string, values: ~w(ltr rtl), default: "ltr"
-  attr :on_value_change, :string, default: "control_change"
-  attr :class, :string, default: nil
+
+  attr :on_value_change, :string,
+    default: "control_change",
+    doc:
+      "LiveView event name pushed on value change; the payload is described in the module docs."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
   slot :indicator do
-    attr :class, :string
+    attr :class, :any,
+      doc:
+        "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
     attr :force_mount, :boolean
   end
 
@@ -32,12 +48,17 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
     context = Map.take(assigns, [:id, :value, :viewport, :orientation, :dir])
     assigns = assign(assigns, :context, context)
 
-    assigns =
-      assign(
-        assigns,
-        :indicator_config,
-        Enum.map(assigns.indicator, &Map.take(&1, [:class, :force_mount]))
-      )
+    indicator_config =
+      Enum.map(assigns.indicator, fn indicator ->
+        indicator
+        |> Map.take([:class, :force_mount])
+        |> Map.replace_lazy(:class, fn
+          class when is_binary(class) -> class
+          class -> classes(class)
+        end)
+      end)
+
+    assigns = assign(assigns, :indicator_config, indicator_config)
 
     ~H"""
     <nav
@@ -63,6 +84,19 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
     </nav>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".NavigationMenu">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
         mounted() {
           this.click = event => {
             const trigger = event.target.closest('[data-slot="navigation-menu-trigger"]');
@@ -123,12 +157,8 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
         },
         select(value) {
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.sendEvent(event,{id:this.el.id,value});
-        },
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          // The server owns the open item; a failed push drops the pending content focus.
+          if (event) this.sendEvent(event,{id:this.el.id,value}).catch(() => { if (this.pendingFocus === value) this.pendingFocus = false; });
         },
         focusContent() {
           const content = document.getElementById("radix-" + this.el.id + "-content-" + this.pendingFocus);
@@ -202,7 +232,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -224,7 +259,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   attr :context, :map, required: true
   attr :value, :string, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -248,7 +288,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -283,7 +328,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -327,13 +377,51 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   attr :active, :boolean, default: false
   attr :href, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :navigate, :string,
+    default: nil,
+    doc:
+      "LiveView `navigate` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :patch, :string,
+    default: nil,
+    doc:
+      "LiveView `patch` destination; renders `Phoenix.Component.link/1` with the same attributes."
+
+  attr :replace, :boolean,
+    default: false,
+    doc: "Replaces the browser history entry for `navigate` and `patch` links."
+
   attr :rest, :global, include: ~w(target rel download)
   slot :inner_block, required: true
 
   def navigation_menu_link(assigns) do
     ~H"""
+    <.link
+      :if={@navigate || @patch}
+      navigate={@navigate}
+      patch={@patch}
+      replace={@replace}
+      data-active={if @active, do: ""}
+      aria-current={if @active, do: "page"}
+      data-slot="navigation-menu-link"
+      class={
+        classes([
+          "flex items-center gap-2 rounded-lg p-2 text-sm transition-all outline-none hover:bg-muted focus:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-1 in-data-[slot=navigation-menu-content]:rounded-md data-active:bg-muted/50 data-active:hover:bg-muted data-active:focus:bg-muted [&_svg:not([class*='size-'])]:size-4",
+          @class
+        ])
+      }
+      href={@href}
+      data-radix-collection-item=""
+      {@rest}
+    >{render_slot(@inner_block)}</.link>
     <a
+      :if={!(@navigate || @patch)}
       data-active={if @active, do: ""}
       aria-current={if @active, do: "page"}
       data-slot="navigation-menu-link"
@@ -352,7 +440,12 @@ defmodule ShadcnLiveview.Components.NavigationMenu do
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block
 

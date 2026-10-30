@@ -5,16 +5,28 @@ defmodule ShadcnLiveview.Components.Combobox do
   alias ShadcnLiveview.Components.Icon
 
   @doc "Root is renderless; input/content named slots receive explicit state context."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, default: ""
   attr :input_value, :string, default: nil
   attr :name, :string, default: nil
   attr :form, :string, default: nil
   attr :disabled, :boolean, default: false
   attr :open, :boolean, default: false
-  attr :on_open_change, :string, default: "shadcn:combobox-open"
+
+  attr :on_open_change, :string,
+    default: "shadcn:combobox-open",
+    doc: "LiveView event name pushed on open change; the payload is described in the module docs."
+
   attr :required, :boolean, default: false
-  attr :on_change, :string, default: "shadcn:combobox-change"
+
+  attr :on_change, :string,
+    default: "shadcn:combobox-change",
+    doc: "LiveView event name pushed on change; the payload is described in the module docs."
+
   attr :rest, :global
   slot :input, required: true
   slot :content, required: true
@@ -53,11 +65,20 @@ defmodule ShadcnLiveview.Components.Combobox do
   end
 
   attr :context, :map, required: true
-  attr :id, :string, required: true
+
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :disabled, :boolean, default: false
   attr :show_trigger, :boolean, default: true
   attr :show_clear, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -136,9 +157,27 @@ defmodule ShadcnLiveview.Components.Combobox do
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Combobox">
         export default {
       sendEvent(event, payload, onReply) {
-      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-      if (target) return this.pushEventTo(target, event, payload, onReply);
-      return this.pushEvent(event, payload, onReply);
+      const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+      const push = target
+        ? this.pushEventTo(target, event, payload).then(results => {
+            const failed = results.find(result => result.status === "rejected");
+            if (failed) throw failed.reason;
+            return results[0]?.value.reply;
+          })
+        : this.pushEvent(event, payload);
+      push.catch(() => {});
+      if (onReply) push.then(onReply, () => {});
+      return push;
+      },
+      promoteToTopLayer(el, bare) {
+      if (!el || typeof el.showPopover !== "function") return;
+      if (!el.hasAttribute("popover")) {
+        this.js().ignoreAttributes(el, ["popover", "style"]);
+        el.setAttribute("popover", "manual");
+        Object.assign(el.style, {inset: "auto", margin: "0"});
+        if (bare) Object.assign(el.style, {border: "0", padding: "0", overflow: "visible", background: "transparent", color: "inherit"});
+      }
+      if (!el.matches(":popover-open")) el.showPopover();
       },
       mounted() {
       this.group = this.el.closest("[data-slot=input-group]"); this.listeners = []; this.popup = null; this.active = null; this.popupListeners = []; this.query = "";
@@ -204,7 +243,8 @@ defmodule ShadcnLiveview.Components.Combobox do
       if (this.requestedOpen === open || (this.requestedOpen === undefined && (this.el.getAttribute("phx-value-open") === "true") === open)) return;
       this.requestedOpen = open;
       const event = this.el.getAttribute("phx-value-open-event");
-      if (event) this.sendEvent(event, {id: this.el.getAttribute("phx-value-root"), open});
+      // The server owns open state; a failed push lets the next interaction retry.
+      if (event) this.sendEvent(event, {id: this.el.getAttribute("phx-value-root"), open}).catch(() => { if (this.requestedOpen === open) this.requestedOpen = undefined; });
       },
       unbindPopup() {
       if (this.popup) this.popupListeners.forEach(([type, listener]) => this.popup.removeEventListener(type, listener));
@@ -226,6 +266,7 @@ defmodule ShadcnLiveview.Components.Combobox do
       },
       position() {
       if (!this.popup) return;
+      this.promoteToTopLayer(this.popup, false);
       const rect = this.group.getBoundingClientRect(); const available = window.innerHeight - rect.bottom - 12;
       this.popup.style.position = "fixed"; this.popup.style.zIndex = "50";
       this.popup.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - rect.width - 4)) + "px";
@@ -268,7 +309,11 @@ defmodule ShadcnLiveview.Components.Combobox do
       const hidden = this.formInput(); if (hidden) { hidden.value = value; hidden.dispatchEvent(new Event("input", {bubbles: true})); hidden.dispatchEvent(new Event("change", {bubbles: true})); }
       const detail = {id: this.el.getAttribute("phx-value-root"), value};
       this.el.dispatchEvent(new CustomEvent("shadcn:combobox-change", {bubbles: true, detail}));
-      const event = this.el.getAttribute("phx-value-event"); if (event) this.sendEvent(event, detail);
+      // The server owns the committed value, so a failed push restores the rendered input values.
+      const event = this.el.getAttribute("phx-value-event"); if (event) this.sendEvent(event, detail).catch(() => {
+        if (this.el.value !== label) return;
+        this.el.value = this.el.defaultValue; if (hidden) hidden.value = this.el.getAttribute("phx-value-selected") || "";
+      });
       this.requestOpen(false); this.el.focus();
       },
       updated() {
@@ -305,7 +350,12 @@ defmodule ShadcnLiveview.Components.Combobox do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -330,7 +380,12 @@ defmodule ShadcnLiveview.Components.Combobox do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -356,7 +411,12 @@ defmodule ShadcnLiveview.Components.Combobox do
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -387,7 +447,11 @@ defmodule ShadcnLiveview.Components.Combobox do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -399,7 +463,11 @@ defmodule ShadcnLiveview.Components.Combobox do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -415,7 +483,11 @@ defmodule ShadcnLiveview.Components.Combobox do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -436,7 +508,11 @@ defmodule ShadcnLiveview.Components.Combobox do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def combobox_separator(assigns) do

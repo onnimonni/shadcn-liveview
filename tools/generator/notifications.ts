@@ -3,7 +3,7 @@ import type { ComponentFunctionSpec } from "../generate"
 export default function notifications(fn: ComponentFunctionSpec): string {
   return `  @doc "Mount with a stable id. push_event(socket, \\\"shadcn:toast\\\", %{toaster: id, message: text, description: text, duration: milliseconds}) displays escaped notifications. Zero duration persists until dismissed; omitted duration is 4000ms."
   attr :id, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
 
   def ${fn.name}(assigns) do

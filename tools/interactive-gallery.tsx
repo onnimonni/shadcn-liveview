@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { fixtures } from "./fixtures"
 import { fixtureMinHeight } from "../assets/js/gallery-layout"
 
-const stageClass = "preview-stage flex min-h-[120px] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6"
+const stageClass = "preview-stage flex min-h-[var(--fixture-min-height,120px)] w-full items-center justify-center rounded-lg border border-dashed bg-background/50 p-6"
 
 function gallery(mode: "react" | "liveview") {
   const title = mode === "react" ? "React" : "LiveView"

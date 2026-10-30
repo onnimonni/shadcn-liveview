@@ -4,7 +4,9 @@ defmodule ShadcnLiveview.Components.Calendar do
 
   Navigation sends the on_month_change event with id and ISO month; selection sends
   on_select with id and ISO date. In a LiveView handle_event, pass the calendar's
-  current assigns to change_month/2 or select_date/2 and assign the returned map.
+  current assigns to `ShadcnLiveview.Components.Calendar.change_month/2` or
+  `select_date/2` (module helpers: `use ShadcnLiveview` imports components only,
+  so call them qualified) and assign the returned map.
   This controlled API keeps independent calendars and server-side disabled rules
   isolated. The optional day slot receives the Date, replacing the day number.
   Range selection follows DayPicker's default optional, zero-minimum range model:
@@ -48,7 +50,11 @@ defmodule ShadcnLiveview.Components.Calendar do
   @months ~w(January February March April May June July August September October November December)
   @weekdays ~w(Sunday Monday Tuesday Wednesday Thursday Friday Saturday)
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :month, :any, required: true
   attr :today, :any, default: nil
   attr :mode, :string, default: nil, values: [nil, "single", "multiple", "range"]
@@ -64,10 +70,25 @@ defmodule ShadcnLiveview.Components.Calendar do
   attr :fixed_weeks, :boolean, default: false
   attr :number_of_months, :integer, default: 1
   attr :hide_navigation, :boolean, default: false
-  attr :on_month_change, :string, default: "calendar-month"
-  attr :on_select, :string, default: "calendar-select"
-  attr :target, :any, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_month_change, :string,
+    default: "calendar-month",
+    doc:
+      "LiveView event name pushed on month change; the payload is described in the module docs."
+
+  attr :on_select, :string,
+    default: "calendar-select",
+    doc: "LiveView event name pushed on select; the payload is described in the module docs."
+
+  attr :target, :any,
+    default: nil,
+    doc: "Event target such as `@myself`; equivalent to `phx-target` on the root."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :class_names, :map, default: %{}
   attr :rest, :global
   slot :day
@@ -231,8 +252,16 @@ defmodule ShadcnLiveview.Components.Calendar do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
         },
         mounted() {
           this.onFocus = event => {
@@ -297,7 +326,7 @@ defmodule ShadcnLiveview.Components.Calendar do
           this.pendingFocus = iso;
           date.setUTCDate(1);
           if (iso > first) date.setUTCMonth(date.getUTCMonth() - count + 1);
-          this.sendEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)});
+          this.sendEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)}).catch(() => { if (this.pendingFocus === iso) this.pendingFocus = null; });
         },
         beforeUpdate() { this.restoreFocus = this.el.contains(document.activeElement) ? document.activeElement.closest("td[data-day]")?.dataset.day : null; },
         updated() {

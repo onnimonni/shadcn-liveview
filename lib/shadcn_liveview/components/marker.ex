@@ -1,10 +1,26 @@
 defmodule ShadcnLiveview.Components.Marker do
-  @moduledoc false
+  @moduledoc ~S"""
+  Inline status or section marker with an icon and content.
+
+  Upstream: https://ui.shadcn.com/r/styles/radix-nova/marker.json
+
+  Components: `marker/1`, `marker_icon/1`, `marker_content/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.marker class="size-2 bg-emerald-500 rounded-full" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "default", values: ~w(default separator border)
 
   attr :rest, :global,
     include:
@@ -42,7 +58,10 @@ defmodule ShadcnLiveview.Components.Marker do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -62,7 +81,10 @@ defmodule ShadcnLiveview.Components.Marker do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

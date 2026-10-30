@@ -1,10 +1,26 @@
 defmodule ShadcnLiveview.Components.Separator do
-  @moduledoc false
+  @moduledoc ~S"""
+  Visually or semantically separates content.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/separator
+
+  Components: `separator/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.separator class="my-4" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :orientation, :string, default: "horizontal"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
 
   attr :rest, :global,
     include:

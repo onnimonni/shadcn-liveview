@@ -1,9 +1,27 @@
 defmodule ShadcnLiveview.Components.AspectRatio do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays content within a desired width/height ratio.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/aspect-ratio
+
+  Components: `aspect_ratio/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.aspect_ratio ratio={16 / 9} class="bg-muted flex items-center justify-center">
+    <span>16:9 Aspect Ratio</span>
+  </.aspect_ratio>
+  ```
+  """
   use Phoenix.Component
 
   attr :ratio, :float, default: 1.7777777777777777
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

@@ -1,9 +1,29 @@
 defmodule ShadcnLiveview.Components.Textarea do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a native textarea, optionally bound to a `Phoenix.HTML.FormField`.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/textarea
+
+  Components: `textarea/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.textarea placeholder="Type your message here." />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
 
   attr :rest, :global,
     include:
@@ -15,6 +35,8 @@ defmodule ShadcnLiveview.Components.Textarea do
   slot :inner_block, required: false
 
   def textarea(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :textarea)
+
     ~H"""
     <textarea
       data-slot="textarea"

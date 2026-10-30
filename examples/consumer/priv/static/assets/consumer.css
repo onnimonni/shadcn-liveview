@@ -1,0 +1,29 @@
+/* Consumer layout only; component styling comes from the library's published CSS. */
+body { margin: 0; min-width: 0; font-family: system-ui, sans-serif; }
+.settings-shell { width: min(100% - 2rem, 64rem); margin: 2rem auto; }
+.settings-header { margin-bottom: 1.5rem; }
+.settings-header h1 { font-size: 1.8rem; font-weight: 650; margin: .8rem 0; }
+.settings-header p, .settings-note { color: var(--muted-foreground); line-height: 1.6; }
+.settings-nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+.settings-nav a { text-decoration: underline; text-underline-offset: .2em; }
+.settings-nav a[aria-current="page"] { font-weight: 700; }
+.settings-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.settings-panel { min-width: 0; border: 1px solid var(--border); border-radius: .8rem; padding: 1.5rem; }
+.settings-panel h2 { font-weight: 650; font-size: 1.15rem; margin: 0 0 1rem; }
+.settings-fields { display: grid; gap: 1.25rem; }
+.settings-fields input:not([type="checkbox"]), .settings-fields textarea, .settings-fields select { width: 100%; }
+.settings-actions { display: flex; gap: .75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+.settings-actions button { white-space: normal; height: auto; min-height: 2.25rem; }
+.settings-status { min-height: 1.5rem; margin-top: 1rem; line-height: 1.5; }
+.settings-result { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .75rem 1rem; }
+.settings-result dt { font-weight: 600; }
+.settings-result dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.settings-dialog-summary { overflow-wrap: anywhere; }
+.settings-note { font-size: .875rem; margin-top: 1rem; }
+.phx-error .settings-online { display: none; }
+.settings-offline { display: none; }
+.phx-error .settings-offline { display: inline; }
+@media (max-width: 720px) {
+  .settings-grid { grid-template-columns: minmax(0, 1fr); }
+  .settings-panel { padding: 1rem; }
+}

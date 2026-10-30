@@ -1,0 +1,563 @@
+defmodule <%= @web_module %>.CoreComponents do
+  @moduledoc """
+  Provides core UI components, styled with shadcn_liveview.
+
+  The functions keep the API of Phoenix's generated CoreComponents, so
+  `mix phx.gen.html`, `phx.gen.live` and `phx.gen.auth` templates work
+  unchanged, and render shadcn/ui markup from `ShadcnLiveview` instead of
+  daisyUI classes:
+
+    * `button/1` accepts Phoenix's `variant="primary"` plus every shadcn
+      variant and size; `navigate`, `patch` and `href` render a link.
+    * `input/1` renders a labelled field with shadcn input, select,
+      textarea or checkbox styling and used-input errors.
+    * `table/1` renders the shadcn table with `rows`, `:col` and `:action`.
+    * `icon/1` renders `hero-*` Heroicons and the Lucide names supported by
+      `ShadcnLiveview.Components.Icon`.
+
+  Every other shadcn_liveview component (`dialog`, `card`, `badge`,
+  `form_field`, ...) is imported by `use ShadcnLiveview` in `<%= @web_module %>`.
+  Call the library versions of the four names above by module, for example
+  `<ShadcnLiveview.Components.Button.button>`.
+  See `deps/shadcn_liveview/usage-rules.md`.
+  """
+  use Phoenix.Component
+<%= if @gettext do %>  use Gettext, backend: <%= @gettext %>
+<% end %>
+  alias Phoenix.LiveView.JS
+  alias ShadcnLiveview.Components.{Alert, Button, Field, Icon, NativeSelect, Table, Textarea}
+
+  @doc """
+  Renders flash notices.
+
+  ## Examples
+
+      <.flash kind={:info} flash={@flash} />
+      <.flash
+        id="welcome-back"
+        kind={:info}
+        phx-mounted={show("#welcome-back") |> JS.remove_attribute("hidden")}
+        hidden
+      >
+        Welcome Back!
+      </.flash>
+  """
+  attr :id, :string, doc: "the optional id of flash container"
+  attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
+  attr :title, :string, default: nil
+  attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
+  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
+
+  slot :inner_block, doc: "the optional inner block that renders the flash message"
+
+  def flash(assigns) do
+    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
+
+    ~H"""
+    <div
+      :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
+      id={@id}
+      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      class="fixed top-4 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] sm:w-96"
+      {@rest}
+    >
+      <Alert.alert
+        variant={if @kind == :error, do: "destructive", else: "default"}
+        class="cursor-pointer pr-10 shadow-lg"
+      >
+        <Icon.icon name={if @kind == :error, do: "circle-alert", else: "info"} />
+        <Alert.alert_title :if={@title}>{@title}</Alert.alert_title>
+        <Alert.alert_description>{msg}</Alert.alert_description>
+        <button
+          type="button"
+          class="absolute top-2 right-2 rounded-md p-0.5 opacity-60 hover:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          aria-label={<%= @t.("close") %>}
+        >
+          <Icon.icon name="x" class="size-4" />
+        </button>
+      </Alert.alert>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders a shadcn button, or a link styled as a button when `navigate`,
+  `patch` or `href` is given.
+
+  `variant="primary"` is the shadcn `default` variant; without a variant the
+  button uses `outline`. All shadcn variants and sizes are accepted.
+
+  ## Examples
+
+      <.button>Send!</.button>
+      <.button phx-click="go" variant="primary">Send!</.button>
+      <.button variant="destructive" size="sm">Delete</.button>
+      <.button navigate={~p"/"}>Home</.button>
+  """
+  attr :rest, :global,
+    include: ~w(href navigate patch replace method download name value disabled type form)
+
+  attr :class, :any, default: nil
+
+  attr :variant, :string,
+    default: nil,
+    values: [nil | ~w(primary default outline secondary ghost destructive link)]
+
+  attr :size, :string, default: "default", values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+  slot :inner_block, required: true
+
+  def button(assigns) do
+    assigns = assign(assigns, :variant, button_variant(assigns.variant))
+
+    ~H"""
+    <Button.button variant={@variant} size={@size} class={@class} {@rest}>
+      {render_slot(@inner_block)}
+    </Button.button>
+    """
+  end
+
+  defp button_variant(nil), do: "outline"
+  defp button_variant("primary"), do: "default"
+  defp button_variant(variant), do: variant
+
+  @doc """
+  Renders an input with label and error messages.
+
+  A `Phoenix.HTML.FormField` may be passed as argument,
+  which is used to retrieve the input name, id, and values.
+  Otherwise all attributes may be passed explicitly.
+
+  `class` is appended to the shadcn control classes (it does not replace
+  them); `error_class` is appended while the field has errors.
+
+  ## Types
+
+  This function accepts all HTML input types, considering that:
+
+    * You may also set `type="select"` to render a `<select>` tag
+
+    * `type="checkbox"` is used exclusively to render boolean values
+
+    * For live file uploads, see `Phoenix.Component.live_file_input/1`
+
+  See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
+  for more information. Unsupported types, such as radio, are best
+  written directly in your templates, or with shadcn_liveview's
+  `radio_group`, `switch` and `form_field`.
+
+  ## Examples
+
+  ```heex
+  <.input field={@form[:email]} type="email" label="Email" />
+  <.input name="my-input" errors={["oh no!"]} />
+  <.input field={@form[:role]} type="select" options={["Admin": "admin", "User": "user"]} />
+  ```
+  """
+  attr :id, :any, default: nil
+  attr :name, :any
+  attr :label, :string, default: nil
+  attr :value, :any
+
+  attr :type, :string,
+    default: "text",
+    values: ~w(checkbox color date datetime-local email file month number password
+               search select tel text textarea time url week hidden)
+
+  attr :field, Phoenix.HTML.FormField,
+    doc: "a form field struct retrieved from the form, for example: @form[:email]"
+
+  attr :errors, :list, default: []
+  attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
+  attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
+  attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
+  attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
+  attr :class, :any, default: nil, doc: "extra classes for the control"
+  attr :error_class, :any, default: nil, doc: "extra classes for the control when it has errors"
+
+  attr :rest, :global,
+    include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
+                multiple pattern placeholder readonly required rows size step)
+
+  def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+
+    assigns
+    |> assign(field: nil, id: assigns.id || field.id)
+    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+    |> assign_new(:name, fn -> if assigns.multiple, do: field.name <> "[]", else: field.name end)
+    |> assign_new(:value, fn -> field.value end)
+    |> input()
+  end
+
+  # Like Phoenix's form ids: `user[email]` gets `user_email`, so the label stays associated.
+  def input(%{id: nil, name: name, type: type} = assigns)
+      when is_binary(name) and name != "" and type != "hidden" do
+    id = name |> String.replace(~r/[^A-Za-z0-9_-]+/, "_") |> String.trim("_")
+    input(assign(assigns, :id, if(id == "", do: name, else: id)))
+  end
+
+  def input(%{type: "hidden"} = assigns) do
+    ~H"""
+    <input type="hidden" id={@id} name={@name} value={@value} {@rest} />
+    """
+  end
+
+  def input(%{type: "checkbox"} = assigns) do
+    assigns =
+      assign_new(assigns, :checked, fn ->
+        Phoenix.HTML.Form.normalize_value("checkbox", assigns[:value])
+      end)
+
+    ~H"""
+    <Field.field orientation="horizontal" data-invalid={@errors != [] && "true"} class="mb-2">
+      <input
+        type="hidden"
+        name={@name}
+        value="false"
+        disabled={@rest[:disabled]}
+        form={@rest[:form]}
+      />
+      <span class="relative flex size-4 shrink-0">
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && "#{@id}-error"}
+          class={[
+            "peer size-4 shrink-0 cursor-pointer appearance-none rounded-[4px] border border-input bg-transparent transition-colors outline-none checked:border-primary checked:bg-primary focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:checked:bg-primary",
+            @class,
+            @errors != [] && @error_class
+          ]}
+          {@rest}
+        />
+        <Icon.icon
+          name="check"
+          class="pointer-events-none absolute inset-0 m-auto hidden size-3.5 text-primary-foreground peer-checked:block"
+        />
+      </span>
+      <Field.field_content :if={@label || @errors != []}>
+        <.input_label :if={@label} for={@id} required={@rest[:required]}>{@label}</.input_label>
+        <.field_errors id={@id} errors={@errors} />
+      </Field.field_content>
+    </Field.field>
+    """
+  end
+
+  def input(%{type: "select"} = assigns) do
+    ~H"""
+    <Field.field data-invalid={@errors != [] && "true"} class="mb-2">
+      <.input_label :if={@label} for={@id} required={@rest[:required]}>{@label}</.input_label>
+      <select
+        :if={@multiple}
+        id={@id}
+        name={@name}
+        multiple
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && "#{@id}-error"}
+        class={[
+          "min-h-16 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30",
+          @class,
+          @errors != [] && @error_class
+        ]}
+        {@rest}
+      >
+        <option :if={@prompt} value="">{@prompt}</option>
+        {Phoenix.HTML.Form.options_for_select(@options, @value)}
+      </select>
+      <NativeSelect.native_select
+        :if={!@multiple}
+        id={@id}
+        name={@name}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && "#{@id}-error"}
+        class={["w-full", @class, @errors != [] && @error_class]}
+        {@rest}
+      >
+        <option :if={@prompt} value="">{@prompt}</option>
+        {Phoenix.HTML.Form.options_for_select(@options, @value)}
+      </NativeSelect.native_select>
+      <.field_errors id={@id} errors={@errors} />
+    </Field.field>
+    """
+  end
+
+  def input(%{type: "textarea"} = assigns) do
+    ~H"""
+    <Field.field data-invalid={@errors != [] && "true"} class="mb-2">
+      <.input_label :if={@label} for={@id} required={@rest[:required]}>{@label}</.input_label>
+      <Textarea.textarea
+        id={@id}
+        name={@name}
+        value={@value}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@errors != [] && "#{@id}-error"}
+        class={[@class, @errors != [] && @error_class]}
+        {@rest}
+      />
+      <.field_errors id={@id} errors={@errors} />
+    </Field.field>
+    """
+  end
+
+  # All other inputs text, datetime-local, url, password, etc. are handled here...
+  # The native <input> keeps Phoenix's attribute order (type, name, id, value), which
+  # phx.gen.auth tests assert, with the classes of ShadcnLiveview.Components.Input.
+  # The wrapping <div> receives LiveView's root tag attribute instead of the input.
+  def input(assigns) do
+    ~H"""
+    <Field.field data-invalid={@errors != [] && "true"} class="mb-2">
+      <.input_label :if={@label} for={@id} required={@rest[:required]}>{@label}</.input_label>
+      <div>
+        <input
+          type={@type}
+          name={@name}
+          id={@id}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          data-slot="input"
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@errors != [] && "#{@id}-error"}
+          class={[
+            "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+            @class,
+            @errors != [] && @error_class
+          ]}
+          {@rest}
+        />
+      </div>
+      <.field_errors id={@id} errors={@errors} />
+    </Field.field>
+    """
+  end
+
+  # Labels inputs like the library's form_field, including its required marker.
+  attr :for, :any, required: true
+  attr :required, :any, default: false
+  slot :inner_block, required: true
+
+  defp input_label(assigns) do
+    ~H"""
+    <Field.field_label for={@for}>
+      <span>{render_slot(@inner_block)}<span :if={@required} aria-hidden="true"> *</span></span>
+    </Field.field_label>
+    """
+  end
+
+  # Helper used by inputs to generate form errors inside their Field
+  attr :id, :any, required: true
+  attr :errors, :list, required: true
+
+  defp field_errors(assigns) do
+    ~H"""
+    <Field.field_error :if={@errors != []} id={"#{@id}-error"}>
+      <p :for={msg <- @errors}>{msg}</p>
+    </Field.field_error>
+    """
+  end
+
+  @doc """
+  Renders a header with title.
+  """
+  slot :inner_block, required: true
+  slot :subtitle
+  slot :actions
+
+  def header(assigns) do
+    ~H"""
+    <header class={[@actions != [] && "flex flex-wrap items-center justify-between gap-4", "pb-4"]}>
+      <div class="min-w-0">
+        <h1 class="text-lg leading-8 font-semibold tracking-tight">
+          {render_slot(@inner_block)}
+        </h1>
+        <p :if={@subtitle != []} class="text-sm text-muted-foreground">
+          {render_slot(@subtitle)}
+        </p>
+      </div>
+      <div class="flex flex-none items-center gap-2">{render_slot(@actions)}</div>
+    </header>
+    """
+  end
+
+  @doc """
+  Renders a table with generic styling.
+
+  ## Examples
+
+      <.table id="users" rows={@users}>
+        <:col :let={user} label="id">{user.id}</:col>
+        <:col :let={user} label="username">{user.username}</:col>
+      </.table>
+  """
+  attr :id, :string, required: true
+  attr :rows, :list, required: true
+  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
+  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
+
+  attr :row_item, :any,
+    default: &Function.identity/1,
+    doc: "the function for mapping each row before calling the :col and :action slots"
+
+  slot :col, required: true do
+    attr :label, :string
+  end
+
+  slot :action, doc: "the slot for showing user actions in the last table column"
+
+  def table(assigns) do
+    assigns =
+      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
+        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
+      end
+
+    ~H"""
+    <Table.table>
+      <Table.table_header>
+        <Table.table_row>
+          <Table.table_head :for={col <- @col}>{col[:label]}</Table.table_head>
+          <Table.table_head :if={@action != []}>
+            <span class="sr-only">{<%= @t.("Actions") %>}</span>
+          </Table.table_head>
+        </Table.table_row>
+      </Table.table_header>
+      <Table.table_body id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
+        <Table.table_row :for={row <- @rows} id={@row_id && @row_id.(row)}>
+          <Table.table_cell
+            :for={col <- @col}
+            phx-click={@row_click && @row_click.(row)}
+            class={@row_click && "hover:cursor-pointer"}
+          >
+            {render_slot(col, @row_item.(row))}
+          </Table.table_cell>
+          <Table.table_cell :if={@action != []} class="w-0 font-medium">
+            <div class="flex justify-end gap-4 [&_a]:underline-offset-4 [&_a:hover]:underline">
+              <%%= for action <- @action do %>
+                {render_slot(action, @row_item.(row))}
+              <%% end %>
+            </div>
+          </Table.table_cell>
+        </Table.table_row>
+      </Table.table_body>
+    </Table.table>
+    """
+  end
+
+  @doc """
+  Renders a data list.
+
+  ## Examples
+
+      <.list>
+        <:item title="Title">{@post.title}</:item>
+        <:item title="Views">{@post.views}</:item>
+      </.list>
+  """
+  slot :item, required: true do
+    attr :title, :string, required: true
+  end
+
+  def list(assigns) do
+    ~H"""
+    <ul class="divide-y rounded-lg border">
+      <li :for={item <- @item} class="flex flex-col gap-1 px-4 py-3 text-sm sm:flex-row sm:gap-4">
+        <div class="font-medium text-muted-foreground sm:w-1/3">{item.title}</div>
+        <div class="min-w-0 break-words sm:flex-1">{render_slot(item)}</div>
+      </li>
+    </ul>
+    """
+  end
+
+  @doc """
+  Renders a [Heroicon](https://heroicons.com) or a Lucide icon.
+
+  `hero-*` names render like Phoenix's default `icon/1` (outline by default,
+  `-solid` and `-mini` suffixes), through the Tailwind plugin in
+  `assets/vendor/heroicons.js`. Other names render the inline Lucide SVGs
+  listed in `ShadcnLiveview.Components.Icon`.
+
+  ## Examples
+
+      <.icon name="hero-x-mark" />
+      <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
+      <.icon name="plus" />
+  """
+  attr :name, :string, required: true
+  attr :class, :any, default: nil
+  attr :rest, :global
+
+  def icon(assigns) do
+    ~H"""
+    <Icon.icon name={@name} class={@class} {@rest} />
+    """
+  end
+
+  ## JS Commands
+
+  def show(js \\ %JS{}, selector) do
+    JS.show(js,
+      to: selector,
+      time: 300,
+      transition:
+        {"transition-all ease-out duration-300",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+         "opacity-100 translate-y-0 sm:scale-100"}
+    )
+  end
+
+  def hide(js \\ %JS{}, selector) do
+    JS.hide(js,
+      to: selector,
+      time: 200,
+      transition:
+        {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
+         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
+    )
+  end
+<%= if @gettext do %>
+  @doc """
+  Translates an error message using gettext.
+  """
+  def translate_error({msg, opts}) do
+    # When using gettext, we typically pass the strings we want
+    # to translate as a static argument:
+    #
+    #     # Translate the number of files with plural rules
+    #     dngettext("errors", "1 file", "%{count} files", count)
+    #
+    # However the error messages in our forms and APIs are generated
+    # dynamically, so we need to translate them by calling Gettext
+    # with our gettext backend as first argument. Translations are
+    # available in the errors.po file (as we use the "errors" domain).
+    if count = opts[:count] do
+      Gettext.dngettext(<%= @gettext %>, "errors", msg, msg, count, opts)
+    else
+      Gettext.dgettext(<%= @gettext %>, "errors", msg, opts)
+    end
+  end
+<% else %>
+  @doc """
+  Translates an error message.
+  """
+  def translate_error({msg, opts}) do
+    # You can make use of gettext to translate error messages by
+    # uncommenting and adjusting the following code:
+
+    # if count = opts[:count] do
+    #   Gettext.dngettext(<%= @web_module %>.Gettext, "errors", msg, msg, count, opts)
+    # else
+    #   Gettext.dgettext(<%= @web_module %>.Gettext, "errors", msg, opts)
+    # end
+
+    Enum.reduce(opts, msg, fn {key, value}, acc ->
+      String.replace(acc, "%{#{key}}", fn _ -> to_string(value) end)
+    end)
+  end
+<% end %>
+  @doc """
+  Translates the errors for a field from a keyword list of errors.
+  """
+  def translate_errors(errors, field) when is_list(errors) do
+    for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+end

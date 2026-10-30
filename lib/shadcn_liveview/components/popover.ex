@@ -4,10 +4,15 @@ defmodule ShadcnLiveview.Components.Popover do
 
   Supply an `:id` and a named `:trigger` slot receiving a context map.
   Spread `context.trigger` on exactly one native trigger.
+  The root owns the trigger ID (default `id <> "-trigger"`); set `:trigger_id` to choose it so
+  content aria relations and focus return follow. Never add `id` beside the spread: HEEx renders both.
   The named content slot receives the same context; pass it to the content component.
   The LiveView owns open and selection state and renders content only when open.
   The colocated hook requests transitions, positions server-rendered content,
   and handles dismissal, focus, keyboard navigation, and pointer interactions.
+  Open content stays inline for LiveView patching but is shown in the browser
+  top layer (a manual `popover`), so like a Radix portal it escapes ancestor
+  stacking contexts (`relative z-0` rows), overflow clipping and transforms.
   Handle `:on_change` (default `shadcn:popup-change`) with `id`, `action`,
   and `value` and update the corresponding root assigns.
   Set phx-target on this wrapperless root (or its optional `:target`) to route
@@ -18,7 +23,11 @@ defmodule ShadcnLiveview.Components.Popover do
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :open, :boolean, default: false
   attr :disabled, :boolean, default: false
   attr :dir, :string, default: "ltr", values: ~w(ltr rtl)
@@ -27,8 +36,17 @@ defmodule ShadcnLiveview.Components.Popover do
   attr :side_offset, :integer, default: 4
   attr :open_delay, :integer, default: 0
   attr :close_delay, :integer, default: 100
-  attr :on_change, :string, default: "shadcn:popup-change"
-  attr :target, :any, default: nil
+
+  attr :on_change, :string,
+    default: "shadcn:popup-change",
+    doc: "LiveView event name pushed on change; the payload is described in the module docs."
+
+  attr :trigger_id, :string, default: nil
+
+  attr :target, :any,
+    default: nil,
+    doc: "Event target such as `@myself`; equivalent to `phx-target` on the root."
+
   attr :rest, :global
 
   slot :trigger, required: true
@@ -40,7 +58,7 @@ defmodule ShadcnLiveview.Components.Popover do
       id: assigns.id,
       target: assigns.target || Map.get(assigns.rest, :"phx-target"),
       content_id: assigns.id <> "-content",
-      trigger_id: assigns.id <> "-trigger",
+      trigger_id: trigger_id(assigns),
       open: assigns.open,
       state: if(assigns.open, do: "open", else: "closed"),
       dir: assigns.dir,
@@ -56,6 +74,7 @@ defmodule ShadcnLiveview.Components.Popover do
       "phx-popup-id" => assigns.id,
       "phx-popup-kind" => "popover",
       "phx-popup-content-id" => context.content_id,
+      "phx-popup-trigger-id" => context.trigger_id,
       "phx-popup-disabled" => to_string(assigns.disabled),
       "phx-target" => context.target,
       "phx-popup-offset" => assigns.side_offset,
@@ -86,18 +105,39 @@ defmodule ShadcnLiveview.Components.Popover do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
+        promoteToTopLayer(el, bare) {
+          if (!el || typeof el.showPopover !== "function") return;
+          if (!el.hasAttribute("popover")) {
+            this.js().ignoreAttributes(el, ["popover", "style"]);
+            el.setAttribute("popover", "manual");
+            Object.assign(el.style, {inset: "auto", margin: "0"});
+            if (bare) Object.assign(el.style, {border: "0", padding: "0", overflow: "visible", background: "transparent", color: "inherit"});
+          }
+          if (!el.matches(":popover-open")) el.showPopover();
         },
         mounted() {
           this.abort = new AbortController();
           this.kind = this.el.getAttribute("phx-popup-kind");
           this.contentId = this.el.getAttribute("phx-popup-content-id");
+          const triggerId = this.el.getAttribute("phx-popup-trigger-id");
+          if (triggerId && this.el.id !== triggerId) console.error("shadcn_liveview: the element spreading the " + this.kind + " trigger context has id=\"" + this.el.id + "\" instead of the root's trigger id \"" + triggerId + "\", so aria relations and focus return break. Pass trigger_id=\"" + this.el.id + "\" on the root and drop id from the trigger element.", this.el);
           this.listen = (node, name, fn, options = {}) => node.addEventListener(name, fn, {...options, signal: this.abort.signal});
           this.listen(this.el, "click", e => {
             if (this.kind === "tooltip") return this.close(false);
             if (["context-menu", "hover-card"].includes(this.kind)) return;
-            e.preventDefault(); this.content ? this.close(true) : this.open(true);
+            // Enter/Space activation dispatches a click with detail 0: a keyboard open.
+            e.preventDefault(); this.content ? this.close(true) : this.open(true, false, false, e.detail === 0);
           });
           this.listen(this.el, "contextmenu", e => {
             if (this.kind !== "context-menu" || this.disabled()) return;
@@ -118,10 +158,10 @@ defmodule ShadcnLiveview.Components.Popover do
           }
           this.listen(this.el, "keydown", e => {
             if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && this.kind === "context-menu") {
-              e.preventDefault(); this.point = null; this.open(true);
+              e.preventDefault(); this.point = null; this.open(true, false, false, true);
             } else if (["ArrowDown", "ArrowUp"].includes(e.key) && ["select", "dropdown-menu"].includes(this.kind)) {
-              e.preventDefault(); this.open(true, e.key === "ArrowUp");
-            } else if (e.key === "Escape") { e.preventDefault(); this.close(true); }
+              e.preventDefault(); this.open(true, e.key === "ArrowUp", false, true);
+            } else if (e.key === "Escape" && (this.content || this.pendingOpen)) { e.preventDefault(); this.close(true); }
           });
           this.listen(document, "pointerdown", e => {
             if (this.content && !this.content.contains(e.target) && !this.el.contains(e.target)) this.close(false);
@@ -142,9 +182,9 @@ defmodule ShadcnLiveview.Components.Popover do
           this.wrapper = this.content?.parentElement;
           if (this.content) {
             this.pendingOpen = false; this.pendingClose = false;
-            this.bindContent(); this.position();
+            this.bindContent(); this.promoteToTopLayer(this.wrapper, true); this.position();
             if (this.kind === "tooltip" && this.delayed) this.content.dataset.state = this.el.dataset.state = "delayed-open";
-            if (this.pendingFocus) this.focusContent(this.pendingLast);
+            if (this.pendingFocus) this.focusContent(this.pendingLast, this.pendingKeyboard);
             this.pendingFocus = false;
           } else if (this.pendingRestore) {
             this.pendingRestore = false; this.skipFocusOpen = true; this.el.focus(); this.skipFocusOpen = false;
@@ -157,15 +197,21 @@ defmodule ShadcnLiveview.Components.Popover do
         },
         scheduleOpen() { clearTimeout(this.timer); this.timer = setTimeout(() => this.open(false, false, true), Number(this.el.getAttribute("phx-popup-open-delay") || 0)); },
         scheduleClose() { clearTimeout(this.timer); this.timer = setTimeout(() => this.close(false), Number(this.el.getAttribute("phx-popup-close-delay") || 100)); },
-        open(focus, last = false, delayed = false) {
+        open(focus, last = false, delayed = false, keyboard = false) {
           clearTimeout(this.timer); if (this.disabled()) return;
-          if (this.content && !this.pendingClose) { if (focus) this.focusContent(last); return; }
+          if (this.content && !this.pendingClose) { if (focus) this.focusContent(last, keyboard); return; }
           this.pendingFocus = focus; this.pendingLast = last;
+          // A keyboard request is not downgraded by the pointer-style event it may also dispatch.
+          this.pendingKeyboard = keyboard || (!!this.pendingOpen && !!this.pendingKeyboard);
           this.delayed = this.kind === "tooltip" && delayed && Number(this.el.getAttribute("phx-popup-open-delay")) > 0;
           if (!this.pendingOpen) { this.pendingOpen = true; this.pendingClose = false; this.notify("open"); }
         },
-        focusContent(last) {
-          const items = this.items(); const selected = items.find(item => item.dataset.state === "checked");
+        focusContent(last, keyboard) {
+          const items = this.items();
+          // Radix menus focus their content on pointer open and the first (ArrowUp: last) item only on
+          // keyboard open. Select focuses its selected item, else the first valid one, either way.
+          if (["dropdown-menu", "context-menu"].includes(this.kind)) return (keyboard && items[last ? items.length - 1 : 0] || this.content).focus({preventScroll: !keyboard});
+          const selected = items.find(item => item.dataset.state === "checked");
           (selected || items[last ? items.length - 1 : 0] || this.content.querySelector("input,button,a[href],textarea,[tabindex='0']") || this.content).focus();
         },
         close(restore) {
@@ -182,6 +228,12 @@ defmodule ShadcnLiveview.Components.Popover do
           on("pointerleave", () => { if (["tooltip", "hover-card"].includes(this.kind)) this.scheduleClose(); });
           on("focusout", e => { if (!this.content?.contains(e.relatedTarget) && e.relatedTarget !== this.el) this.close(false); });
           on("pointermove", e => { const item = e.target.closest('[role="option"],[role^="menuitem"]'); if (item && item.getAttribute("aria-disabled") !== "true") item.focus(); });
+          // Leaving a highlighted option/item returns focus to the content, clearing the highlight
+          // (Radix select/menu onItemLeave).
+          on("pointerout", e => {
+            const item = e.target.closest('[role="option"],[role^="menuitem"]');
+            if (item && document.activeElement === item && !item.contains(e.relatedTarget)) this.content.focus({preventScroll: true});
+          });
           on("focusin", e => {
             this.items().forEach(item => { item.toggleAttribute("data-highlighted", item === e.target); if (item.getAttribute("role") === "option") item.setAttribute("aria-selected", String(item === e.target && item.dataset.state === "checked")); });
           });
@@ -199,7 +251,8 @@ defmodule ShadcnLiveview.Components.Popover do
           on("keydown", e => {
             const items = this.items(); const index = items.indexOf(document.activeElement);
             if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key) && items.length) {
-              e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (index + (e.key === "ArrowUp" ? -1 : 1) + items.length) % items.length; items[next].focus();
+              const up = e.key === "ArrowUp";
+              e.preventDefault(); const next = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : index < 0 ? (up ? items.length - 1 : 0) : (index + (up ? -1 : 1) + items.length) % items.length; items[next].focus();
             } else if (["Enter", " "].includes(e.key) && index >= 0) { e.preventDefault(); items[index].click(); }
             else if (e.key === "Escape") { e.preventDefault(); this.close(true); }
             else if (e.key === "Tab" && ["select", "dropdown-menu", "context-menu"].includes(this.kind)) this.close(false);
@@ -259,15 +312,27 @@ defmodule ShadcnLiveview.Components.Popover do
           const id = this.el.getAttribute("phx-popup-id");
           const payload = {action, value, id, ...extra};
           this.el.dispatchEvent(new CustomEvent("shadcn:popup", {bubbles: true, detail: payload}));
-          const event = this.el.getAttribute("phx-popup-event"); if (event) this.sendEvent(event, payload);
+          // A failed push keeps the server-rendered popup; clear pending requests so the next interaction retries.
+          const event = this.el.getAttribute("phx-popup-event"); if (event) this.sendEvent(event, payload).catch(() => {
+            this.pendingOpen = this.pendingClose = this.pendingFocus = this.pendingRestore = false;
+            if (this.native) this.native.value = this.el.getAttribute("phx-popup-value") || "";
+          });
         }
       }
     </script>
     """
   end
 
+  defp trigger_id(%{trigger_id: nil, id: id}), do: id <> "-trigger"
+  defp trigger_id(%{trigger_id: trigger_id}), do: trigger_id
+
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -310,7 +375,11 @@ defmodule ShadcnLiveview.Components.Popover do
     "--radix-popover-content-transform-origin:var(--radix-popper-transform-origin);--radix-popover-content-available-width:var(--radix-popper-available-width);--radix-popover-content-available-height:var(--radix-popper-available-height);--radix-popover-trigger-width:var(--radix-popper-anchor-width);--radix-popover-trigger-height:var(--radix-popper-anchor-height);animation:none"
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(id href tabindex)
   slot :inner_block
 
@@ -322,7 +391,11 @@ defmodule ShadcnLiveview.Components.Popover do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(id href tabindex)
   slot :inner_block
 
@@ -334,7 +407,11 @@ defmodule ShadcnLiveview.Components.Popover do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(id href tabindex)
   slot :inner_block
 
@@ -346,7 +423,11 @@ defmodule ShadcnLiveview.Components.Popover do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(id href tabindex)
   slot :inner_block
 

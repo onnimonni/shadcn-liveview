@@ -25,7 +25,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :loop, :boolean, default: false
   attr :should_filter, :boolean, default: true
   attr :on_select, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command(assigns) do
@@ -43,7 +43,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   attr :context, :map, required: true
   attr :value, :string, default: ""
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(name form placeholder disabled required readonly autocomplete autocorrect spellcheck type)
   def command_input(assigns) do
     ~H"""
@@ -60,7 +60,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   attr :context, :map, required: true
   attr :label, :string, default: "Suggestions"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command_list(assigns) do
@@ -69,7 +69,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command_empty(assigns) do
@@ -80,7 +80,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   attr :id, :string, required: true
   attr :heading, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command_group(assigns) do
@@ -97,7 +97,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :value, :string, required: true
   attr :keywords, :list, default: []
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command_item(assigns) do
@@ -109,7 +109,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   def command_separator(assigns) do
     ~H"""
@@ -117,7 +117,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def command_shortcut(assigns) do
@@ -141,7 +141,7 @@ end
   attr :paste_transform, :string, default: nil, values: [nil, "strip-separators"]
   attr :on_change, :string, default: nil
   attr :on_complete, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :container_class, :string, default: nil
   attr :no_script_css, :string, default: @no_script_css
   attr :rest, :global, include: ~w(type name form required readonly autocomplete autofocus minlength title aria-label aria-describedby aria-invalid)
@@ -162,7 +162,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def input_otp_group(assigns) do
@@ -173,7 +173,7 @@ end
 
   attr :context, :map, required: true
   attr :index, :integer, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   def input_otp_slot(assigns) do
     ~H"""
@@ -181,7 +181,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   def input_otp_separator(assigns) do
     ~H"""
@@ -220,7 +220,7 @@ end
   attr :disabled, :boolean, default: false
   attr :show_trigger, :boolean, default: true
   attr :show_clear, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(type placeholder readonly required name form inputmode autocomplete aria-label aria-describedby aria-invalid)
   slot :inner_block
   def combobox_input(assigns) do
@@ -248,7 +248,7 @@ end
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_content(assigns) do
@@ -258,7 +258,7 @@ end
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_list(assigns) do
@@ -270,7 +270,7 @@ end
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_item(assigns) do
@@ -282,7 +282,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_group(assigns) do
@@ -291,7 +291,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_label(assigns) do
@@ -300,7 +300,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   def combobox_empty(assigns) do
@@ -309,7 +309,7 @@ end
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   def combobox_separator(assigns) do
     ~H"""

@@ -385,3 +385,55 @@ defmodule ShadcnLiveview.Preview.ReviewChild do
     """
   end
 end
+
+defmodule ShadcnLiveview.Preview.FormReviewLive do
+  @moduledoc false
+  use Phoenix.LiveView, layout: false
+  use ShadcnLiveview
+
+  @defaults %{"bio" => "", "push" => "true", "comments" => "false", "plan" => "basic"}
+
+  @impl true
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, form: to_form(@defaults, as: :settings), changes: 0, saved: nil)}
+
+  @impl true
+  def handle_event("validate", %{"settings" => params}, socket),
+    do:
+      {:noreply,
+       socket |> assign(:form, to_form(params, as: :settings)) |> update(:changes, &(&1 + 1))}
+
+  def handle_event("save", %{"settings" => params}, socket),
+    do:
+      {:noreply,
+       assign(socket, form: to_form(params, as: :settings), saved: Jason.encode!(params))}
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <main class="space-y-8 p-8">
+      <h1>Field-bound form regressions</h1>
+      <.form for={@form} id="settings-form" phx-change="validate" phx-submit="save" class="space-y-4">
+        <.form_field :let={attrs} field={@form[:push]} label="Push" orientation="horizontal">
+          <.switch {attrs} />
+        </.form_field>
+        <.form_field :let={attrs} field={@form[:comments]} label="Comments" orientation="horizontal">
+          <.checkbox {attrs} />
+        </.form_field>
+        <.form_field :let={attrs} field={@form[:bio]} label="Bio">
+          <.input {attrs} />
+        </.form_field>
+        <.form_field :let={attrs} field={@form[:plan]} label="Plan">
+          <.radio_group :let={context} {attrs}>
+            <.radio_group_item context={context} id="plan-basic" value="basic" aria-label="Basic" />
+            <.radio_group_item context={context} id="plan-pro" value="pro" aria-label="Pro" />
+          </.radio_group>
+        </.form_field>
+        <button id="settings-save" type="submit">Save</button>
+      </.form>
+      <output id="settings-changes">{@changes}</output>
+      <output id="settings-saved">{@saved}</output>
+    </main>
+    """
+  end
+end

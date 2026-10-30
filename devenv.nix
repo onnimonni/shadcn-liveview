@@ -27,12 +27,17 @@
     PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = "${pkgs.chromium}/bin/chromium";
   };
 
-  # Project dependencies supply Phoenix, Credo, esbuild and Tailwind.
+  # Project dependencies supply Phoenix, Credo, esbuild, Tailwind and accessibility tools.
   # Keep installation explicit rather than fetching dependencies on shell entry.
   scripts.setup-project.exec = ''
     set -euo pipefail
     mix local.hex --force
     mix deps.get
+    (
+      cd examples/consumer
+      export MIX_BUILD_ROOT="$PWD/_build"
+      mix deps.get
+    )
     bun install --frozen-lockfile
   '';
 
@@ -47,10 +52,13 @@
     bun run test
   '';
   scripts.setup-browser.exec = ''
-    ${if pkgs.stdenv.isDarwin then "bunx playwright install chromium" else "chromium --version"}
+    bunx playwright install chromium
   '';
   scripts.test-browser-components.exec = ''
     bun run test:browser
+  '';
+  scripts.test-accessibility.exec = ''
+    bash tools/test-accessibility.sh
   '';
   scripts.update-shadcn.exec = ''
     bun run vendor

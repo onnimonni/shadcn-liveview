@@ -4,7 +4,7 @@ import { cn } from "cn"
 import { messageScrollerHook, questionnaireHook } from "./conversation-hooks"
 
 const quoted = (value: string) => `~S|${value}|`
-const attrs = `  attr :class, :string, default: nil
+const attrs = `  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(aria-label aria-describedby aria-keyshortcuts role tabindex form name placeholder autocomplete min max step minlength maxlength pattern readonly type value disabled required)`
 const slot = `  slot :inner_block`
 const buttonSizes = ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg"] as const
@@ -117,8 +117,8 @@ ${slot}
   attr :direction, :string, values: ~w(start end), default: "end"
   attr :behavior, :string, values: ~w(auto instant smooth), default: "smooth"
   attr :active, :boolean, default: false
-  attr :variant, :string, default: "secondary"
-  attr :size, :string, default: "icon-sm"
+  attr :variant, :string, default: "secondary", values: ~w(${buttonVariantsList.join(" ")})
+  attr :size, :string, default: "icon-sm", values: ~w(${buttonSizes.join(" ")})
   attr :tabindex, :integer, default: nil
 ${attrs}
 ${slot}
@@ -141,8 +141,8 @@ function questionnaire(cls: (name: string) => string, simple: (name: string, tag
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :tabindex, :integer, default: nil
-  attr :variant, :string, default: "${["previous", "skip"].includes(action) ? "outline" : "default"}"
-  attr :size, :string, default: "default"
+  attr :variant, :string, default: "${["previous", "skip"].includes(action) ? "outline" : "default"}", values: ~w(${buttonVariantsList.join(" ")})
+  attr :size, :string, default: "default", values: ~w(${buttonSizes.join(" ")})
 ${slot}
   def questionnaire_${action}(assigns) do
     context = assigns.context

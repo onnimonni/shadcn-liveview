@@ -25,9 +25,9 @@ export const fixtures: ComponentFixture[] = [
   })),
   {
     name: "checkbox-multiple-external-form", family: "checkbox", title: "Checkbox Multiple External Form", category: "forms",
-    renderReact: () => <div><form id="checkbox-external" /><Checkbox id="permission-read" defaultChecked name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><Checkbox id="permission-write" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>,
-    heex: `<div><form id="checkbox-external"></form><.checkbox id="permission-read" default_checked={true} name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><.checkbox id="permission-write" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>`,
-    liveHeex: `<div><form id="checkbox-external"></form><.checkbox id="permission-read" checked={Map.get(@state, "permission-read", true)} on_change="control_change" name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><.checkbox id="permission-write" checked={Map.get(@state, "permission-write", false)} on_change="control_change" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>`
+    renderReact: () => <div><form id="checkbox-external"><button type="reset">Reset permissions</button></form><Checkbox id="permission-read" defaultChecked name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><Checkbox id="permission-write" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>,
+    heex: `<div><form id="checkbox-external"><button type="reset">Reset permissions</button></form><.checkbox id="permission-read" default_checked={true} name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><.checkbox id="permission-write" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>`,
+    liveHeex: `<div><form id="checkbox-external"><button type="reset">Reset permissions</button></form><.checkbox id="permission-read" checked={Map.get(@state, "permission-read", true)} on_change="control_change" name="permissions[]" value="read" form="checkbox-external" aria-label="Read" /><.checkbox id="permission-write" checked={Map.get(@state, "permission-write", false)} on_change="control_change" name="permissions[]" value="write" form="checkbox-external" aria-label="Write" /></div>`
   },
   {
     name: "switch", title: "Switch", category: "forms",
@@ -46,9 +46,9 @@ export const fixtures: ComponentFixture[] = [
   }))),
   {
     name: "switch-multiple-external-form", family: "switch", title: "Switch Multiple External Form", category: "forms",
-    renderReact: () => <div><form id="switch-settings" /><Switch id="switch-mail" defaultChecked name="mail" form="switch-settings" aria-label="Mail" /><Switch id="switch-sms" size="sm" name="sms" form="switch-settings" aria-label="SMS" /></div>,
-    heex: `<div><form id="switch-settings"></form><.switch id="switch-mail" default_checked={true} name="mail" form="switch-settings" aria-label="Mail" /><.switch id="switch-sms" size="sm" name="sms" form="switch-settings" aria-label="SMS" /></div>`,
-    liveHeex: `<div><form id="switch-settings"></form><.switch id="switch-mail" checked={Map.get(@state, "switch-mail", true)} on_change="control_change" name="mail" form="switch-settings" aria-label="Mail" /><.switch id="switch-sms" size="sm" checked={Map.get(@state, "switch-sms", false)} on_change="control_change" name="sms" form="switch-settings" aria-label="SMS" /></div>`
+    renderReact: () => <div><form id="switch-settings"><button type="reset">Reset settings</button></form><Switch id="switch-mail" defaultChecked name="mail" form="switch-settings" aria-label="Mail" /><Switch id="switch-sms" size="sm" name="sms" form="switch-settings" aria-label="SMS" /></div>,
+    heex: `<div><form id="switch-settings"><button type="reset">Reset settings</button></form><.switch id="switch-mail" default_checked={true} name="mail" form="switch-settings" aria-label="Mail" /><.switch id="switch-sms" size="sm" name="sms" form="switch-settings" aria-label="SMS" /></div>`,
+    liveHeex: `<div><form id="switch-settings"><button type="reset">Reset settings</button></form><.switch id="switch-mail" checked={Map.get(@state, "switch-mail", true)} on_change="control_change" name="mail" form="switch-settings" aria-label="Mail" /><.switch id="switch-sms" size="sm" checked={Map.get(@state, "switch-sms", false)} on_change="control_change" name="sms" form="switch-settings" aria-label="SMS" /></div>`
   },
   {
     name: "slider", title: "Slider", category: "forms",

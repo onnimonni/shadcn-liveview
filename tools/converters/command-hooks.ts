@@ -1,9 +1,8 @@
+import { sendEventMethod } from "./hook-events"
+import { topLayerMethod } from "./top-layer"
+
 export const commandHook = String.raw`export default {
-  sendEvent(event, payload, onReply) {
-    const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-    if (target) return this.pushEventTo(target, event, payload, onReply);
-    return this.pushEvent(event, payload, onReply);
-  },
+${sendEventMethod("  ")}
   mounted() {
     this.listeners = [];
     this.itemOrder = [];
@@ -129,21 +128,21 @@ export const commandHook = String.raw`export default {
   activate(item) {
     this.select(item);
     const value = item.getAttribute("phx-value-value") || item.textContent.trim();
+    const previous = this.el.getAttribute("phx-value-selected");
     this.el.setAttribute("phx-value-selected", value);
     this.el.dispatchEvent(new CustomEvent("shadcn:command-change", {bubbles: true, detail: {id: this.el.id, value}}));
     const event = this.el.getAttribute("phx-value-event");
-    if (event) this.sendEvent(event, {id: this.el.id, value});
+    // The server owns the selected value, so a failed push restores it.
+    if (event) this.sendEvent(event, {id: this.el.id, value}).catch(() => {
+      if (this.el.getAttribute("phx-value-selected") === value) { this.el.setAttribute("phx-value-selected", previous); this.filter(); }
+    });
   },
   updated() { this.filter(); },
   destroyed() { this.listeners.forEach(([node, type, handler]) => node.removeEventListener(type, handler)); }
 }`
 
 export const otpHook = String.raw`export default {
-  sendEvent(event, payload, onReply) {
-    const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-    if (target) return this.pushEventTo(target, event, payload, onReply);
-    return this.pushEvent(event, payload, onReply);
-  },
+${sendEventMethod("  ")}
   mounted() {
     this.container = this.el.closest("[data-input-otp-container]"); this.listeners = []; this.lastValue = this.el.value;
     this.serverValue = this.el.getAttribute("phx-value-value") || ""; this.pendingValues = [];
@@ -209,7 +208,10 @@ export const otpHook = String.raw`export default {
     if (event) {
       this.pendingValues.push(value);
       // Complete only after the change reply releases LiveView's input lock.
-      this.sendEvent(event, detail, () => { if (complete) this.sendEvent(complete, detail); });
+      // Typed text stays local like a native input; a failed push only drops its acknowledgement.
+      this.sendEvent(event, detail, () => { if (complete) this.sendEvent(complete, detail); }).catch(() => {
+        const index = this.pendingValues.indexOf(value); if (index >= 0) this.pendingValues.splice(index, 1);
+      });
     }
     if (completed) {
       this.el.dispatchEvent(new CustomEvent("shadcn:otp-complete", {bubbles: true, detail}));
@@ -247,11 +249,8 @@ export const otpHook = String.raw`export default {
 }`
 
 export const comboboxHook = String.raw`export default {
-  sendEvent(event, payload, onReply) {
-    const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-    if (target) return this.pushEventTo(target, event, payload, onReply);
-    return this.pushEvent(event, payload, onReply);
-  },
+${sendEventMethod("  ")}
+${topLayerMethod("  ")}
   mounted() {
     this.group = this.el.closest("[data-slot=input-group]"); this.listeners = []; this.popup = null; this.active = null; this.popupListeners = []; this.query = "";
     this.listen = (node, type, handler) => { node.addEventListener(type, handler); this.listeners.push([node, type, handler]); };
@@ -316,7 +315,8 @@ export const comboboxHook = String.raw`export default {
     if (this.requestedOpen === open || (this.requestedOpen === undefined && (this.el.getAttribute("phx-value-open") === "true") === open)) return;
     this.requestedOpen = open;
     const event = this.el.getAttribute("phx-value-open-event");
-    if (event) this.sendEvent(event, {id: this.el.getAttribute("phx-value-root"), open});
+    // The server owns open state; a failed push lets the next interaction retry.
+    if (event) this.sendEvent(event, {id: this.el.getAttribute("phx-value-root"), open}).catch(() => { if (this.requestedOpen === open) this.requestedOpen = undefined; });
   },
   unbindPopup() {
     if (this.popup) this.popupListeners.forEach(([type, listener]) => this.popup.removeEventListener(type, listener));
@@ -338,6 +338,7 @@ export const comboboxHook = String.raw`export default {
   },
   position() {
     if (!this.popup) return;
+    this.promoteToTopLayer(this.popup, false);
     const rect = this.group.getBoundingClientRect(); const available = window.innerHeight - rect.bottom - 12;
     this.popup.style.position = "fixed"; this.popup.style.zIndex = "50";
     this.popup.style.left = Math.max(4, Math.min(rect.left, window.innerWidth - rect.width - 4)) + "px";
@@ -380,7 +381,11 @@ export const comboboxHook = String.raw`export default {
     const hidden = this.formInput(); if (hidden) { hidden.value = value; hidden.dispatchEvent(new Event("input", {bubbles: true})); hidden.dispatchEvent(new Event("change", {bubbles: true})); }
     const detail = {id: this.el.getAttribute("phx-value-root"), value};
     this.el.dispatchEvent(new CustomEvent("shadcn:combobox-change", {bubbles: true, detail}));
-    const event = this.el.getAttribute("phx-value-event"); if (event) this.sendEvent(event, detail);
+    // The server owns the committed value, so a failed push restores the rendered input values.
+    const event = this.el.getAttribute("phx-value-event"); if (event) this.sendEvent(event, detail).catch(() => {
+      if (this.el.value !== label) return;
+      this.el.value = this.el.defaultValue; if (hidden) hidden.value = this.el.getAttribute("phx-value-selected") || "";
+    });
     this.requestOpen(false); this.el.focus();
   },
   updated() {

@@ -16,9 +16,17 @@ defmodule ShadcnLiveview.Components.Slider do
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :list, default: nil
-  attr :default_value, :list, default: nil
+
+  attr :default_value, :list,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :min, :any, default: 0
   attr :max, :any, default: 100
   attr :step, :any, default: 1
@@ -29,8 +37,17 @@ defmodule ShadcnLiveview.Components.Slider do
   attr :disabled, :boolean, default: false
   attr :name, :string, default: nil
   attr :form, :string, default: nil
-  attr :on_change, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def slider(assigns) do
@@ -104,6 +121,19 @@ defmodule ShadcnLiveview.Components.Slider do
     </span>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Slider">
       export default {
+        sendEvent(event, payload, onReply) {
+          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
         mounted() {
           this.initial = JSON.parse(this.el.getAttribute("phx-value-initial"));
           this.keydown = event => {
@@ -273,12 +303,10 @@ defmodule ShadcnLiveview.Components.Slider do
         notify() {
           this.inputs.forEach(input => { input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); });
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.sendEvent(event,{id:this.el.id,value:this.values});
-        },
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          // Controlled values come from the server, so a failed push restores them.
+          if (event) this.sendEvent(event,{id:this.el.id,value:this.values}).catch(() => {
+            if (this.el.getAttribute("phx-value-controlled") === "true") { this.values = JSON.parse(this.el.getAttribute("phx-value-values")); this.render(); }
+          });
         },
         destroyed() {
           cancelAnimationFrame(this.resetFrame);

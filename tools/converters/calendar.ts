@@ -2,6 +2,7 @@ import fs from "node:fs"
 import { cn } from "cn"
 import { buttonVariants } from "../../vendor/shadcn/ui/button"
 import type { ComponentSpec } from "../generate"
+import { sendEventMethod } from "./hook-events"
 
 // Keep style tokens at their source of truth; the date/selection model below is Elixir.
 const source = fs.readFileSync(new URL("../../vendor/shadcn/ui/calendar.tsx", import.meta.url), "utf8")
@@ -25,7 +26,9 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
 
   Navigation sends the on_month_change event with id and ISO month; selection sends
   on_select with id and ISO date. In a LiveView handle_event, pass the calendar's
-  current assigns to change_month/2 or select_date/2 and assign the returned map.
+  current assigns to \`ShadcnLiveview.Components.Calendar.change_month/2\` or
+  \`select_date/2\` (module helpers: \`use ShadcnLiveview\` imports components only,
+  so call them qualified) and assign the returned map.
   This controlled API keeps independent calendars and server-side disabled rules
   isolated. The optional day slot receives the Date, replacing the day number.
   Range selection follows DayPicker's default optional, zero-minimum range model:
@@ -67,7 +70,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
   attr :on_month_change, :string, default: "calendar-month"
   attr :on_select, :string, default: "calendar-select"
   attr :target, :any, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :class_names, :map, default: %{}
   attr :rest, :global
   slot :day
@@ -111,11 +114,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Calendar">
       export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
+${sendEventMethod("        ")}
         mounted() {
           this.onFocus = event => {
             const day = event.target.closest("td[data-day] button");
@@ -179,7 +178,7 @@ export function generateComponent(spec: ComponentSpec): string | undefined {
           this.pendingFocus = iso;
           date.setUTCDate(1);
           if (iso > first) date.setUTCMonth(date.getUTCMonth() - count + 1);
-          this.sendEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)});
+          this.sendEvent(event, {id: this.el.id, month: date.toISOString().slice(0, 10)}).catch(() => { if (this.pendingFocus === iso) this.pendingFocus = null; });
         },
         beforeUpdate() { this.restoreFocus = this.el.contains(document.activeElement) ? document.activeElement.closest("td[data-day]")?.dataset.day : null; },
         updated() {

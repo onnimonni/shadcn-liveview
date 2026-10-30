@@ -1,5 +1,6 @@
 import type { ComponentSpec } from "../generate"
 import { binaryHook, sliderHook, thumbClass, indicatorClass } from "./controls-hooks"
+import { sendEventMethod } from "./hook-events"
 import { navigation } from "./controls-navigation"
 
 const nativeStyle = "position:absolute;pointer-events:none;opacity:0;margin:0;transform:translateX(-100%)"
@@ -25,23 +26,28 @@ function binary(spec: ComponentSpec): string {
   use Phoenix.Component
   import ShadcnLiveview.Helpers, only: [classes: 1]
 
-  attr :id, :string, required: true
+  attr :field, Phoenix.HTML.FormField, default: nil
+  attr :id, :string, default: nil
   attr :checked, :any, default: nil
   attr :default_checked, :any, default: nil
   attr :name, :string, default: nil
-  attr :value, :string, default: "on"
+  attr :value, :string, default: nil
   attr :form, :string, default: nil
   attr :disabled, :boolean, default: false
   attr :required, :boolean, default: false
   attr :on_change, :string, default: nil
-${checkbox ? "" : '  attr :size, :string, values: ~w(default sm), default: "default"\n'}  attr :class, :string, default: nil
+${checkbox ? "" : '  attr :size, :string, values: ~w(default sm), default: "default"\n'}  attr :class, :any, default: nil
   attr :rest, :global
 
   def ${name}(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :checkbox)
+    if is_nil(assigns.id), do: raise(ArgumentError, "${name} requires an id or form field")
+    assigns = assign(assigns, :value, assigns.value || if(assigns.field, do: "true", else: "on"))
     checked = if is_nil(assigns.checked), do: assigns.default_checked, else: assigns.checked
     assigns = assign(assigns, state: state(checked), initial: state(checked))
 
     ~H"""
+    <input :if={@field && @name} type="hidden" name={@name} value="false" disabled={@disabled} form={@form} />
     <button id={@id} type="button" role="${name}" aria-checked={if @state == "indeterminate", do: "mixed", else: to_string(@state == "checked")}
       aria-required={if @required, do: "true"} data-state={@state} data-disabled={if @disabled, do: ""}
       disabled={@disabled} value={@value} data-slot="${name}" ${checkbox ? "" : 'data-size={@size}'}
@@ -100,7 +106,7 @@ function slider(spec: ComponentSpec): string {
   attr :name, :string, default: nil
   attr :form, :string, default: nil
   attr :on_change, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
 
   def slider(assigns) do
@@ -209,7 +215,7 @@ function collapsible(spec: ComponentSpec): string {
   attr :open, :boolean, default: false
   attr :disabled, :boolean, default: false
   attr :on_open_change, :string, default: "control_open"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -225,6 +231,7 @@ function collapsible(spec: ComponentSpec): string {
     </div>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Collapsible">
       export default {
+${sendEventMethod("        ")}
         mounted() {
           this.click = event => {
             const trigger = event.target.closest('[data-slot="collapsible-trigger"]');
@@ -234,11 +241,6 @@ function collapsible(spec: ComponentSpec): string {
           this.el.addEventListener("click", this.click);
         },
         updated() {},
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
         destroyed() { this.el.removeEventListener("click", this.click); }
       }
     </script>
@@ -246,7 +248,7 @@ function collapsible(spec: ComponentSpec): string {
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(disabled)
   slot :inner_block, required: true
 
@@ -263,7 +265,7 @@ function collapsible(spec: ComponentSpec): string {
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 

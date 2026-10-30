@@ -2,7 +2,7 @@ import type { ComponentFunctionSpec } from "../generate"
 import notifications from "./notifications"
 
 function spinner(): string {
-    return `  attr :class, :string, default: nil
+    return `  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(href src alt type id name disabled placeholder value default_value default_size direction open ratio max min step dir align heading is_active config index max_length for)
   slot :inner_block, required: false
 
@@ -50,7 +50,8 @@ function nativeSelect(): string {
   Subsequent user selection and form submission are handled by the native element;
   LiveView callers can supply phx-change and update value on subsequent renders.
   """
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
+  attr :field, Phoenix.HTML.FormField, default: nil
   attr :size, :string, default: "default", values: ~w(default sm)
   attr :value, :any, default: nil
   attr :default_value, :any, default: nil
@@ -58,6 +59,7 @@ function nativeSelect(): string {
   slot :inner_block, required: false
 
   def native_select(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :select)
     selection = if is_nil(assigns.value), do: assigns.default_value, else: assigns.value
     assigns = assign(assigns, :selection, Enum.map(List.wrap(selection), &to_string/1))
     ~H"""
@@ -90,7 +92,7 @@ function nativeSelectOption(fn: ComponentFunctionSpec): string {
   Native ${tag}; forwards ${option ? "value, selected, disabled and label" : "label and disabled"}.
   ${option ? "Set selected from the native_select slot selection list when using value/default_value." : "Nested options can use the enclosing native_select slot selection list."}
   """
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(${option ? "value selected disabled label" : "label disabled"})
   slot :inner_block, required: false
 
@@ -116,7 +118,7 @@ function progress(): string {
   """
   attr :value, :any, default: nil
   attr :max, :any, default: 100
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
 
   def progress(assigns) do

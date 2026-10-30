@@ -1,12 +1,31 @@
 defmodule ShadcnLiveview.Components.Attachment do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a file attachment with media, title, description and actions.
+
+  Upstream: https://ui.shadcn.com/r/styles/radix-nova/attachment.json
+
+  Components: `attachment/1`, `attachment_media/1`, `attachment_content/1`, `attachment_title/1`, `attachment_description/1`, `attachment_actions/1`, `attachment_action/1`, `attachment_trigger/1`, `attachment_group/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.attachment>
+    <.attachment_title>document.pdf</.attachment_title>
+    <.attachment_description>2.4 MB</.attachment_description>
+  </.attachment>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :size, :string, default: "default"
-  attr :orientation, :string, default: "horizontal"
-  attr :state, :string, default: "done"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :size, :string, default: "default", values: ~w(default sm xs)
+  attr :orientation, :string, default: "horizontal", values: ~w(horizontal vertical)
+  attr :state, :string, default: "done", values: ~w(idle uploading processing error done)
 
   attr :rest, :global,
     include:
@@ -59,8 +78,12 @@ defmodule ShadcnLiveview.Components.Attachment do
     )
   end
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "icon"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "icon", values: ~w(icon image)
 
   attr :rest, :global,
     include:
@@ -96,7 +119,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -121,7 +147,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -146,7 +175,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -171,7 +203,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -196,7 +231,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -216,7 +254,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -236,7 +277,10 @@ defmodule ShadcnLiveview.Components.Attachment do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

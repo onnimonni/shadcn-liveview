@@ -168,6 +168,95 @@ defmodule ShadcnLiveview.NativePrimitivesTest do
     assert Helpers.classes(["ps-1", "px-3"]) == "ps-1 px-3"
   end
 
+  test "display overrides replace component display per variant, like tailwind-merge" do
+    alias ShadcnLiveview.Helpers
+
+    # Expected values are cn@0.4.0 (the React reference) output.
+    assert Helpers.classes(["inline-flex items-center", "hidden sm:inline-flex"]) ==
+             "items-center hidden sm:inline-flex"
+
+    assert Helpers.classes(["flex", "block"]) == "block"
+    assert Helpers.classes(["hidden", "md:table-cell"]) == "hidden md:table-cell"
+    assert Helpers.classes(["flex flex-col", "grid"]) == "flex-col grid"
+  end
+
+  test "colour overrides replace component colours per variant, like tailwind-merge" do
+    alias ShadcnLiveview.Helpers
+
+    assert Helpers.classes([
+             "bg-primary text-primary-foreground hover:bg-primary/80",
+             "bg-red-500"
+           ]) ==
+             "text-primary-foreground hover:bg-primary/80 bg-red-500"
+
+    assert Helpers.classes(["bg-primary hover:bg-primary/80", "hover:bg-red-600"]) ==
+             "bg-primary hover:bg-red-600"
+
+    assert Helpers.classes(["dark:bg-input/30", "dark:bg-red-900"]) == "dark:bg-red-900"
+
+    assert Helpers.classes(["hover:focus:bg-muted", "focus:hover:bg-red-500"]) ==
+             "focus:hover:bg-red-500"
+
+    assert Helpers.classes(["bg-primary", "bg-clip-text bg-cover"]) ==
+             "bg-primary bg-clip-text bg-cover"
+
+    assert Helpers.classes(["bg-primary", "bg-red-500!"]) == "bg-primary bg-red-500!"
+
+    assert Helpers.classes(["text-sm text-foreground", "text-red-500"]) == "text-sm text-red-500"
+
+    assert Helpers.classes(["text-sm text-foreground", "text-[13px]"]) ==
+             "text-foreground text-[13px]"
+
+    assert Helpers.classes(["border border-input", "border-red-500"]) == "border border-red-500"
+    assert Helpers.classes(["border border-input", "border-2"]) == "border-input border-2"
+
+    assert Helpers.classes(["border-x-input", "border-l-red-500"]) ==
+             "border-x-input border-l-red-500"
+
+    assert Helpers.classes(["border-l-red-500", "border-x-input"]) == "border-x-input"
+
+    assert Helpers.classes([
+             "focus-visible:ring-[3px] focus-visible:ring-ring/50",
+             "focus-visible:ring-red-500"
+           ]) ==
+             "focus-visible:ring-[3px] focus-visible:ring-red-500"
+  end
+
+  test "font sizes replace earlier line heights per variant, like tailwind-merge" do
+    alias ShadcnLiveview.Helpers
+
+    # Expected values are the repo `cn` (the React reference) output.
+    assert Helpers.classes(["leading-snug font-medium", "text-2xl"]) == "font-medium text-2xl"
+
+    assert Helpers.classes(["leading-snug", "@[250px]/card:text-3xl"]) ==
+             "leading-snug @[250px]/card:text-3xl"
+
+    assert Helpers.classes(["text-2xl", "leading-8"]) == "text-2xl leading-8"
+    assert Helpers.classes(["leading-snug leading-8"]) == "leading-8"
+    assert Helpers.classes(["leading-none", "text-sm/6"]) == "text-sm/6"
+    assert Helpers.classes(["hover:leading-tight", "text-lg"]) == "hover:leading-tight text-lg"
+    assert Helpers.classes(["leading-[1.2]", "text-[13px]"]) == "text-[13px]"
+    assert Helpers.classes(["leading-tight", "text-red-500"]) == "leading-tight text-red-500"
+    assert Helpers.classes(["leading-tight text-sm", "leading-loose"]) == "text-sm leading-loose"
+  end
+
+  test "field invalid renders the data-invalid=true its styles select, keeping passthrough" do
+    assigns = %{}
+
+    document =
+      parse(~H"""
+      <.field id="invalid" invalid>Email</.field>
+      <.field id="valid">Email</.field>
+      <.field id="passthrough" data-invalid="true">Email</.field>
+      """)
+
+    assert Floki.attribute(document, "#invalid", "data-invalid") == ["true"]
+    assert Floki.attribute(document, "#valid", "data-invalid") == []
+    assert Floki.attribute(document, "#passthrough", "data-invalid") == ["true"]
+    [class] = Floki.attribute(document, "#invalid", "class")
+    assert class =~ "data-[invalid=true]:text-destructive"
+  end
+
   defp parse(rendered) do
     rendered
     |> Safe.to_iodata()

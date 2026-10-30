@@ -4,6 +4,7 @@ import { collectCvaSpecs } from "./cva"
 import { applyComponentMetadata } from "./component-metadata"
 import { resolveHtmlTag } from "./html-tags"
 import { inspectComponentSurface } from "./jsx"
+import { collectPropEnums } from "./props"
 import { toPascalCase, toSnakeCase } from "./names"
 
 function collectDeclarations(sf: ts.SourceFile): { node: ts.Node; name: string }[] {
@@ -40,6 +41,16 @@ export function parseComponent(fileName: string, code: string): ComponentSpec {
       fnSnakeName, resolveHtmlTag(name, surface.tag), surface.hasDataSize,
       surface.hasDataVariant, matchedCva, surface.staticAttrs,
     )
+    // Upstream inline literal unions close data-size/variant/align style attrs.
+    const propEnums = collectPropEnums(node)
+    for (const attr of metadata.attrs ?? []) {
+      const known = propEnums[attr.name]
+      if (!known || attr.type !== "string" || !attr.default?.startsWith('"')) continue
+      attr.values ??= known.values
+      if (!attr.values.includes(JSON.parse(attr.default)) && known.default !== undefined) {
+        attr.default = JSON.stringify(known.default)
+      }
+    }
     functions.push({
       name: fnSnakeName,
       tag: metadata.tag,
@@ -48,6 +59,7 @@ export function parseComponent(fileName: string, code: string): ComponentSpec {
       variants: matchedCva?.variants,
       defaultVariants: matchedCva?.defaultVariants,
       attrs: metadata.attrs,
+      innerMarkup: metadata.innerMarkup,
       hasDataVariant: surface.hasDataVariant,
       hasDataSize: surface.hasDataSize,
       staticAttrs: surface.staticAttrs,

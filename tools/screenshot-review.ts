@@ -4,7 +4,8 @@ import path from "node:path"
 import { fixtures } from "./fixtures"
 import { fixtureMinHeight } from "../assets/js/gallery-layout.js"
 import { awaitFixture, inspectFixture, readinessTimeout, type FixtureMeasurements, type GeometryStability } from "./screenshot-review-browser"
-import { comparePixels, pixelFinding, type Finding, type PixelMetrics } from "./screenshot-review-metrics"
+import { comparePixels, pairedGeometryFinding, pixelFinding, type Finding, type PixelMetrics } from "./screenshot-review-metrics"
+import { rankSuspects, rankingHeuristics, type RankedSuspect } from "./screenshot-review-ranking"
 
 interface Options { fixtures: string[]; widths: number[]; url: string; out: string; strict: boolean }
 interface Capture {
@@ -22,6 +23,7 @@ interface FixtureReview {
   family: string
   category: string
   width: number
+  state: "initial"
   height: number | null
   captures: Capture[]
   pixelComparison: PixelMetrics | null
@@ -47,6 +49,7 @@ interface ReviewReport {
   summary: { findings: number; bySeverity: Record<string, number>; byCategory: Record<string, number>; pairsWithFindings: number }
   fatalError: string | null
   results: FixtureReview[]
+  rankedSuspects?: RankedSuspect[]
 }
 interface BrowserPixelComparison { metrics: PixelMetrics; diffDataURL: string }
 interface PendingCapture { page: Page; frame?: Frame; capture: Capture; findings: Finding[] }
@@ -83,17 +86,20 @@ const heuristics = [
   "Geometry checks are independent for BOTH implementations: frame/stage overflow greater than 1 CSS pixel and ancestor overflow clipping are reported even if both screenshots match. Scrollable clipping is informational. Portals, intentional scroll areas, large demos and fixed overlays can produce legitimate findings; no per-fixture exemptions exist.",
   "Hidden, transparent, screen-reader-only and non-rendering nodes are excluded. Otherwise visible zero-size controls, missing DOM-derived accessible names and absent visible label context are review heuristics, not a full accessibility audit. Icon-only controls and intentionally bare demo controls can be valid; ARIA names alone do not provide a visible label.",
   "Differences may be intentional: React/client IDs, anti-aliasing, separate implementations, error/disabled/empty demo states and chart rendering algorithms. A matching image is not proof of usability, and image/DOM findings are not aesthetic certainty. Review paired images and measurements before deciding a fix.",
+  ...rankingHeuristics,
   "Default exit is 0 after producing a report, including demo findings and fixture capture failures. --strict exits 1 for warning/error findings (not info-only). CLI/setup/report-writing failures exit 2. Failed or unattempted coverage is explicit.",
 ]
 
 export function renderReport(report: ReviewReport, images: Map<string, string>) {
   const escape = (value: unknown) => String(value).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!)
+  const ranked = report.rankedSuspects ?? rankSuspects(report.results)
+  const imageHTML = (label: string, file: string | null | undefined, fixture: string, width: number) => `<figure><figcaption>${escape(label)}${file ? ` · <a href="${escape(file)}">PNG</a>` : " · unavailable"}</figcaption>${file && images.has(file) ? `<a href="${images.get(file)}" download="${escape(path.basename(file))}"><img loading="lazy" src="${images.get(file)}" alt="${escape(label)} ${escape(fixture)} at ${width}px"></a>` : `<p>No successful image capture. See failure details.</p>`}</figure>`
+  const suspects = ranked.map(suspect => `<article class="suspect"><h3><span class="score">#${suspect.rank} · score ${suspect.score}</span> <a href="#result-${suspect.resultIndex}">${escape(suspect.fixture)} · ${suspect.width}px</a></h3><p>${escape(suspect.title)} · ${escape(suspect.state)} state · ${escape(suspect.implementations.join(" + ") || "paired")}</p><ul>${suspect.reasons.map(reason => `<li><strong>${escape(reason.signal)} (${reason.score}) · ${escape(reason.context)}</strong> — ${escape(reason.categories.join(", "))}${reason.collapsedFindings ? ` · ${reason.collapsedFindings} repeated/correlated findings collapsed` : ""}<ul>${reason.evidence.map(evidence => `<li>${escape(evidence.implementation || "paired")} ${escape(evidence.element || "")}: ${escape(evidence.message)}</li>`).join("")}</ul></li>`).join("")}</ul><p><strong>Reference context:</strong> shared: ${escape(suspect.comparison.sharedCategories.join(", ") || "none")}; React only: ${escape(suspect.comparison.reactOnlyCategories.join(", ") || "none")}; LiveView only: ${escape(suspect.comparison.liveviewOnlyCategories.join(", ") || "none")}. Pixels: ${suspect.comparison.pixelChangedRatio === null ? "unavailable" : `${(suspect.comparison.pixelChangedRatio * 100).toFixed(2)}% changed`}. Shared findings retain full priority.</p><p>${suspect.links.map(link => `<a href="${escape(link.fixtureURL)}" target="_blank" rel="noreferrer">Use ${escape(link.implementation)} fixture</a> · ${escape(link.status)}${link.imageURL ? ` · <a href="${escape(link.imageURL)}">${escape(link.implementation)} PNG</a>` : ""}`).join(" · ")} · <a href="#result-${suspect.resultIndex}">All raw evidence</a></p><div class="images paired">${imageHTML("React", suspect.links.find(link => link.implementation === "react")?.imageURL, suspect.fixture, suspect.width)}${imageHTML("LiveView", suspect.links.find(link => link.implementation === "liveview")?.imageURL, suspect.fixture, suspect.width)}</div></article>`).join("\n")
   const cards = report.results.map((result, index) => {
-    const imageHTML = (label: string, file: string | null | undefined) => `<figure><figcaption>${escape(label)}${file ? ` · ${escape(file)}` : " · unavailable"}</figcaption>${file && images.has(file) ? `<a href="${images.get(file)}" download="${escape(path.basename(file))}"><img loading="lazy" src="${images.get(file)}" alt="${escape(label)} ${escape(result.fixture)} at ${result.width}px"></a>` : `<p>No successful image capture. See failure details.</p>`}</figure>`
     const findings = result.findings.map(finding => `<li class="${finding.severity}"><strong>${escape(finding.severity)} · ${escape(finding.category)}</strong> ${escape(finding.implementation || "paired")} ${escape(finding.element || "")} — ${escape(finding.message)}${finding.details ? `<details><summary>Measurements/details</summary><pre>${escape(JSON.stringify(finding.details, null, 2))}</pre></details>` : ""}</li>`).join("")
-    return `<section id="result-${index}"><h2><a href="#result-${index}">${escape(result.fixture)} · ${result.width}px</a></h2><p>${escape(result.title)} · ${escape(result.family)} · ${escape(result.category)} · ${result.findings.length} findings</p><p>${result.captures.map(capture => `<a href="${escape(capture.url)}" target="_blank" rel="noreferrer">Open ${escape(capture.implementation)} fixture</a>`).join(" · ")}</p><div class="images">${imageHTML("React", result.captures.find(capture => capture.implementation === "react")?.image)}${imageHTML("LiveView", result.captures.find(capture => capture.implementation === "liveview")?.image)}${imageHTML("Pixel difference (magenta)", result.diffImage)}</div><ul>${findings || "<li>No findings under these heuristics.</li>"}</ul><details><summary>Capture state, geometry and controls</summary><pre>${escape(JSON.stringify(result.captures, null, 2))}</pre></details></section>`
+    return `<section id="result-${index}"><h2><a href="#result-${index}">${escape(result.fixture)} · ${result.width}px</a></h2><p>${escape(result.title)} · ${escape(result.family)} · ${escape(result.category)} · ${escape(result.state)} state · ${result.findings.length} findings</p><p>${result.captures.map(capture => `<a href="${escape(capture.url)}" target="_blank" rel="noreferrer">Open ${escape(capture.implementation)} fixture</a>`).join(" · ")}</p><div class="images">${imageHTML("React", result.captures.find(capture => capture.implementation === "react")?.image, result.fixture, result.width)}${imageHTML("LiveView", result.captures.find(capture => capture.implementation === "liveview")?.image, result.fixture, result.width)}${imageHTML("Pixel difference (magenta)", result.diffImage, result.fixture, result.width)}</div><ul>${findings || "<li>No findings under these heuristics.</li>"}</ul><details><summary>Capture state, geometry and controls</summary><pre>${escape(JSON.stringify(result.captures, null, 2))}</pre></details></section>`
   }).join("\n")
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Component screenshot anomaly review</title><style>body{margin:0;padding:24px;background:#f8fafc;color:#0f172a;font:14px/1.5 system-ui,sans-serif}a{color:#1d4ed8}h1,h2{line-height:1.2}section{margin:24px 0;padding:20px;background:white;border:1px solid #cbd5e1;border-radius:8px;scroll-margin-top:12px}.images{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}figure{margin:0;min-width:0}figcaption{font-weight:600;overflow-wrap:anywhere}img{display:block;max-width:100%;height:auto;border:1px solid #cbd5e1}pre{padding:12px;background:#f1f5f9;overflow:auto;max-height:600px}li{margin:8px 0}.warning>strong{color:#92400e}.error>strong{color:#b91c1c}nav{max-height:300px;overflow:auto;columns:3}details{margin:8px 0}summary{cursor:pointer}@media(max-width:800px){.images{grid-template-columns:1fr}nav{columns:1}}</style></head><body><h1>Component screenshot anomaly review</h1><p>Generated ${escape(report.generatedAt)} · ${escape(report.options.url)}</p><p><strong>Heuristics, not aesthetic certainty.</strong> This file embeds all PNGs and works offline without a server or external model API.</p>${report.fatalError ? `<p class="error"><strong>Run setup failure: ${escape(report.fatalError)}</strong></p>` : ""}<h2>Coverage and summary</h2><pre>${escape(JSON.stringify({ coverage: report.coverage, summary: report.summary }, null, 2))}</pre><details open><summary>How to interpret findings and false positives</summary><ul>${report.heuristics.map(item => `<li>${escape(item)}</li>`).join("")}</ul></details><nav aria-label="Fixture results">${report.results.map((result, index) => `<div><a href="#result-${index}">${escape(result.fixture)} · ${result.width}px (${result.findings.length})</a></div>`).join("")}</nav>${cards}</body></html>`
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Component screenshot anomaly review</title><style>body{margin:0;padding:24px;background:#f8fafc;color:#0f172a;font:14px/1.5 system-ui,sans-serif}a{color:#1d4ed8}h1,h2{line-height:1.2}section{margin:24px 0;padding:20px;background:white;border:1px solid #cbd5e1;border-radius:8px;scroll-margin-top:12px}.images{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.images.paired{grid-template-columns:repeat(2,minmax(0,1fr))}figure{margin:0;min-width:0}figcaption{font-weight:600;overflow-wrap:anywhere}img{display:block;max-width:100%;height:auto;border:1px solid #cbd5e1}pre{padding:12px;background:#f1f5f9;overflow:auto;max-height:600px}li{margin:8px 0}.warning>strong{color:#92400e}.error>strong{color:#b91c1c}.suspect{padding:16px 0;border-top:1px solid #cbd5e1}.score{display:inline-block;padding:4px 8px;background:#0f172a;color:white;border-radius:4px}nav{max-height:300px;overflow:auto;columns:3}details{margin:8px 0}summary{cursor:pointer}@media(max-width:800px){.images,.images.paired{grid-template-columns:1fr}nav{columns:1}}</style></head><body><h1>Component screenshot anomaly review</h1><p>Generated ${escape(report.generatedAt)} · ${escape(report.options.url)}</p><p><strong>Heuristics, not aesthetic certainty.</strong> This file embeds all PNGs and works offline without a server or external model API. Fixture links open the running application for manual interaction; automated captures cover initial demo states only.</p>${report.fatalError ? `<p class="error"><strong>Run setup failure: ${escape(report.fatalError)}</strong></p>` : ""}<h2>Coverage and summary</h2><pre>${escape(JSON.stringify({ selection: { fixtures: report.options.fixtures, widths: report.options.widths, state: "initial" }, coverage: report.coverage, summary: report.summary, rankedCases: ranked.length }, null, 2))}</pre><details open><summary>How to interpret findings and false positives</summary><ul>${report.heuristics.map(item => `<li>${escape(item)}</li>`).join("")}</ul></details><section id="ranked-suspects"><h2>Ranked likely-broken cases</h2><p>${ranked.length} cases with signals, ordered by strongest independent evidence, not DOM element count. Scores are review priorities, not probabilities. Inspect both implementations; shared problems are still problems.</p>${suspects || "<p>No suspects under these heuristics. This does not establish interaction correctness; check coverage above.</p>"}</section><h2>Detailed raw results</h2><nav aria-label="Fixture results">${report.results.map((result, index) => `<div><a href="#result-${index}">${escape(result.fixture)} · ${result.width}px (${result.findings.length})</a></div>`).join("")}</nav>${cards}</body></html>`
 }
 
 async function openCapture(context: BrowserContext, options: Options, fixture: string, family: string, width: number, implementation: "react" | "liveview"): Promise<PendingCapture> {
@@ -146,7 +152,7 @@ async function openCapture(context: BrowserContext, options: Options, fixture: s
 
 async function capturePair(browser: Browser, options: Options, fixture: typeof fixtures[number], width: number, images: Map<string, string>, decoder: Page): Promise<FixtureReview> {
   const family = fixture.family || fixture.name
-  const result: FixtureReview = { fixture: fixture.name, title: fixture.title, family, category: fixture.category, width, height: null, captures: [], pixelComparison: null, diffImage: null, findings: [] }
+  const result: FixtureReview = { fixture: fixture.name, title: fixture.title, family, category: fixture.category, width, state: "initial", height: null, captures: [], pixelComparison: null, diffImage: null, findings: [] }
   let context: BrowserContext | undefined
   try {
     context = await browser.newContext({ viewport: { width, height: 800 }, deviceScaleFactor: 1, colorScheme: "light", reducedMotion: "reduce", locale: "en-US", timezoneId: "UTC" })
@@ -204,6 +210,10 @@ async function capturePair(browser: Browser, options: Options, fixture: typeof f
     }
     result.findings.push(...pending.flatMap(item => item.findings))
     const [react, liveview] = result.captures
+    if (react.measurements && liveview.measurements) {
+      const geometry = pairedGeometryFinding(react.measurements, liveview.measurements)
+      if (geometry) result.findings.push(geometry)
+    }
     if (react.image && liveview.image) {
       const comparison: BrowserPixelComparison = await decoder.evaluate(async ({ a, b, compareSource }) => {
         const decode = async (src: string) => {
@@ -253,7 +263,7 @@ export async function runReview(options: Options) {
     schemaVersion: 1, generatedAt: new Date().toISOString(), options, heuristics,
     coverage: { availableFixtures: fixtures.length, selectedFixtures: selected.length, widths: options.widths, plannedPairs, completedPairs: 0, plannedCaptures: plannedPairs * 2, successfulCaptures: 0, failedCaptures: 0, unattemptedPairs: plannedPairs },
     summary: { findings: 0, bySeverity: { info: 0, warning: 0, error: 0 }, byCategory: {}, pairsWithFindings: 0 },
-    fatalError: null, results: [],
+    fatalError: null, results: [], rankedSuspects: [],
   }
   await fs.mkdir(path.join(options.out, "images"), { recursive: true })
   const images = new Map<string, string>()
@@ -286,6 +296,7 @@ export async function runReview(options: Options) {
       report.summary.byCategory[finding.category] = (report.summary.byCategory[finding.category] || 0) + 1
     }
   }
+  report.rankedSuspects = rankSuspects(report.results)
   await fs.writeFile(path.join(options.out, "report.json"), JSON.stringify(report, null, 2) + "\n")
   await fs.writeFile(path.join(options.out, "index.html"), renderReport(report, images))
   console.log(JSON.stringify({ coverage: report.coverage, summary: report.summary, fatalError: report.fatalError, report: path.resolve(options.out, "index.html"), json: path.resolve(options.out, "report.json") }, null, 2))

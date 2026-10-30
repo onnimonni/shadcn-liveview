@@ -1,9 +1,24 @@
 defmodule ShadcnLiveview.Components.Spinner do
-  @moduledoc false
+  @moduledoc ~S"""
+  Animated loading indicator.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/spinner
+
+  Components: `spinner/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.spinner class="size-6 text-primary" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

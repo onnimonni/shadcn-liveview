@@ -26,7 +26,7 @@ import { Button } from "../vendor/shadcn/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../vendor/shadcn/ui/card"
 import { DirectionProvider } from "../vendor/shadcn/ui/direction"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "../vendor/shadcn/ui/empty"
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSet } from "../vendor/shadcn/ui/field"
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator, FieldSet } from "../vendor/shadcn/ui/field"
 import { InputGroup, InputGroupAddon, InputGroupInput } from "../vendor/shadcn/ui/input-group"
 import { Input } from "../vendor/shadcn/ui/input"
 import { Item, ItemContent, ItemDescription, ItemTitle } from "../vendor/shadcn/ui/item"
@@ -288,6 +288,22 @@ export const fixtures: ComponentFixture[] = [
     </.field>
   </.field_group>
 </.field_set>`
+  },
+  {
+    name: "field-separator",
+    family: "field",
+    title: "Field separator",
+    category: "forms",
+    renderReact: () => (
+      <FieldGroup className="w-full max-w-md">
+        <FieldSeparator />
+        <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">Or continue with</FieldSeparator>
+      </FieldGroup>
+    ),
+    heex: `<.field_group class="w-full max-w-md">
+  <.field_separator />
+  <.field_separator class="*:data-[slot=field-separator-content]:bg-card">Or continue with</.field_separator>
+</.field_group>`
   },
   {
     name: "input-group",

@@ -1,6 +1,9 @@
 import type { ComponentSpec } from "../generate"
+import { linkAttrs, linkOrElement } from "../generator/links"
+import { sendEventMethod } from "./hook-events"
 
 const navigationHook = `      export default {
+${sendEventMethod("        ")}
         mounted() {
           this.click = event => {
             const trigger = event.target.closest('[data-slot="navigation-menu-trigger"]');
@@ -61,12 +64,8 @@ const navigationHook = `      export default {
         },
         select(value) {
           const event = this.el.getAttribute("phx-value-change");
-          if (event) this.sendEvent(event,{id:this.el.id,value});
-        },
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          // The server owns the open item; a failed push drops the pending content focus.
+          if (event) this.sendEvent(event,{id:this.el.id,value}).catch(() => { if (this.pendingFocus === value) this.pendingFocus = false; });
         },
         focusContent() {
           const content = document.getElementById("radix-" + this.el.id + "-content-" + this.pendingFocus);
@@ -161,18 +160,23 @@ export function navigation(spec: ComponentSpec): string {
   attr :orientation, :string, values: ~w(horizontal vertical), default: "horizontal"
   attr :dir, :string, values: ~w(ltr rtl), default: "ltr"
   attr :on_value_change, :string, default: "control_change"
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
   slot :indicator do
-    attr :class, :string
+    attr :class, :any
     attr :force_mount, :boolean
   end
 
   def navigation_menu(assigns) do
     context = Map.take(assigns, [:id, :value, :viewport, :orientation, :dir])
     assigns = assign(assigns, :context, context)
-    assigns = assign(assigns, :indicator_config, Enum.map(assigns.indicator, &Map.take(&1, [:class, :force_mount])))
+    indicator_config = Enum.map(assigns.indicator, fn indicator ->
+      indicator
+      |> Map.take([:class, :force_mount])
+      |> Map.replace_lazy(:class, fn class when is_binary(class) -> class; class -> classes(class) end)
+    end)
+    assigns = assign(assigns, :indicator_config, indicator_config)
 
     ~H"""
     <nav id={@id} aria-label="Main" data-orientation={@orientation} dir={@dir}
@@ -188,7 +192,7 @@ ${navigationHook}
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -205,7 +209,7 @@ ${navigationHook}
 
   attr :context, :map, required: true
   attr :value, :string, required: true
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -221,7 +225,7 @@ ${navigationHook}
 
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -242,7 +246,7 @@ ${navigationHook}
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -263,21 +267,22 @@ ${navigationHook}
 
   attr :active, :boolean, default: false
   attr :href, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
+${linkAttrs.join("\n")}
   attr :rest, :global, include: ~w(target rel download)
   slot :inner_block, required: true
 
   def navigation_menu_link(assigns) do
     ~H"""
-    <a data-active={if @active, do: ""} aria-current={if @active, do: "page"}
+${linkOrElement({ open: "a", close: "a", attrs: ` data-active={if @active, do: ""} aria-current={if @active, do: "page"}
       data-slot="navigation-menu-link" class={classes([${style("navigation_menu_link")}, @class])}
-      href={@href} data-radix-collection-item="" {@rest}>{render_slot(@inner_block)}</a>
+      href={@href} data-radix-collection-item="" {@rest}`, body: "{render_slot(@inner_block)}" })}
     """
   end
 
   attr :context, :map, required: true
   attr :force_mount, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global
   slot :inner_block
 

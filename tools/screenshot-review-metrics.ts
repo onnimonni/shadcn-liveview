@@ -2,7 +2,7 @@ export type Severity = "info" | "warning" | "error"
 export interface Rect { x: number; y: number; width: number; height: number }
 export interface OverflowAmounts { left: number; right: number; top: number; bottom: number }
 export interface Finding {
-  category: "visual-difference" | "overflow-frame" | "overflow-stage" | "ancestor-clipping" | "zero-size-control" | "missing-accessible-name" | "missing-visible-label" | "capture-failure" | "browser-error"
+  category: "visual-difference" | "paired-geometry-drift" | "overflow-frame" | "overflow-stage" | "ancestor-clipping" | "zero-size-control" | "missing-accessible-name" | "missing-visible-label" | "capture-failure" | "browser-error" | "panel-overlap" | "control-overlap" | "control-occlusion" | "navigation-misalignment" | "crowded-controls"
   severity: Severity
   message: string
   implementation?: "react" | "liveview"
@@ -19,6 +19,79 @@ export function overflowAmounts(rect: Rect, boundary: Rect, tolerance = 1) {
     bottom: rect.y + rect.height - boundary.y - boundary.height,
   }
   return Object.fromEntries(Object.entries(raw).map(([side, value]) => [side, value > tolerance ? value : 0])) as OverflowAmounts
+}
+
+export interface RectOverlap {
+  firstRect: Rect
+  secondRect: Rect
+  intersection: Rect
+  intersectionArea: number
+  firstFraction: number
+  secondFraction: number
+  firstContainsSecond: boolean
+  secondContainsFirst: boolean
+  severity: Severity
+}
+
+// Shared by unit tests and the DOM detector. Fractions use the full rectangles,
+// not their union, so a small panel covered by a large one remains significant.
+export function rectOverlap(firstRect: Rect, secondRect: Rect): RectOverlap | null {
+  if (firstRect.width <= 0 || firstRect.height <= 0 || secondRect.width <= 0 || secondRect.height <= 0) return null
+  const x = Math.max(firstRect.x, secondRect.x), y = Math.max(firstRect.y, secondRect.y)
+  const width = Math.min(firstRect.x + firstRect.width, secondRect.x + secondRect.width) - x
+  const height = Math.min(firstRect.y + firstRect.height, secondRect.y + secondRect.height) - y
+  // Shared borders and subpixel collisions are not evidence of broken layout.
+  if (width <= 1 || height <= 1) return null
+  const intersectionArea = width * height
+  const firstFraction = intersectionArea / (firstRect.width * firstRect.height)
+  const secondFraction = intersectionArea / (secondRect.width * secondRect.height)
+  const fraction = Math.max(firstFraction, secondFraction)
+  return {
+    firstRect, secondRect, intersection: { x, y, width, height }, intersectionArea, firstFraction, secondFraction,
+    firstContainsSecond: firstRect.x <= secondRect.x && firstRect.y <= secondRect.y && firstRect.x + firstRect.width >= secondRect.x + secondRect.width && firstRect.y + firstRect.height >= secondRect.y + secondRect.height,
+    secondContainsFirst: secondRect.x <= firstRect.x && secondRect.y <= firstRect.y && secondRect.x + secondRect.width >= firstRect.x + firstRect.width && secondRect.y + secondRect.height >= firstRect.y + firstRect.height,
+    severity: width <= 2 || height <= 2 || fraction < 0.05 ? "info" : fraction >= 0.5 ? "error" : "warning",
+  }
+}
+
+interface GeometrySnapshot {
+  stage: Rect
+  elements: { element: string; rect: Rect; control: boolean; accessibleName: string }[]
+}
+
+// Sparse demos can move completely while changing very few viewport pixels.
+// Match only unique role/name pairs; duplicate labels are ambiguous evidence.
+export function pairedGeometryFinding(react: GeometrySnapshot, liveview: GeometrySnapshot): Finding | null {
+  const differs = (a: Rect, b: Rect, tolerance: number) =>
+    (["x", "y", "width", "height"] as const).some(key => Math.abs(a[key] - b[key]) > tolerance)
+  const controls = (snapshot: GeometrySnapshot) => {
+    const matches = new Map<string, GeometrySnapshot["elements"]>()
+    for (const item of snapshot.elements) {
+      if (!item.control || !item.accessibleName.trim()) continue
+      const role = item.element.match(/\[role="([^"]+)"\]/)?.[1] || item.element.match(/^[a-z]+/)?.[0]
+      if (!role) continue
+      const key = role + ":" + item.accessibleName.trim().replace(/\s+/g, " ")
+      const items = matches.get(key) || []
+      items.push(item)
+      matches.set(key, items)
+    }
+    return matches
+  }
+  const left = controls(react), right = controls(liveview)
+  const moved: { identity: string; react: GeometrySnapshot["elements"][number]; liveview: GeometrySnapshot["elements"][number] }[] = []
+  for (const [identity, items] of left) {
+    const other = right.get(identity)
+    if (items.length === 1 && other?.length === 1 && differs(items[0].rect, other[0].rect, 4)) {
+      moved.push({ identity, react: items[0], liveview: other[0] })
+    }
+  }
+  const stageChanged = differs(react.stage, liveview.stage, 1)
+  if (!stageChanged && !moved.length) return null
+  return {
+    category: "paired-geometry-drift", severity: "warning",
+    message: "Paired stage or uniquely named control geometry differs; sparse pixels cannot establish alignment",
+    details: { stageChanged, stage: { react: react.stage, liveview: liveview.stage }, controls: moved },
+  }
 }
 
 export interface PixelMetrics {

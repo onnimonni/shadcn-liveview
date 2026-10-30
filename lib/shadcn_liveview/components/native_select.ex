@@ -1,5 +1,20 @@
 defmodule ShadcnLiveview.Components.NativeSelect do
-  @moduledoc false
+  @moduledoc ~S"""
+  A styled native `<select>` with options and option groups.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/native-select
+
+  Components: `native_select/1`, `native_select_option/1`, `native_select_opt_group/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.native_select>
+    <.native_select_option value="1">Option 1</.native_select_option>
+    <.native_select_option value="2">Option 2</.native_select_option>
+  </.native_select>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
@@ -22,14 +37,28 @@ defmodule ShadcnLiveview.Components.NativeSelect do
   Subsequent user selection and form submission are handled by the native element;
   LiveView callers can supply phx-change and update value on subsequent renders.
   """
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
+
   attr :size, :string, default: "default", values: ~w(default sm)
   attr :value, :any, default: nil
-  attr :default_value, :any, default: nil
+
+  attr :default_value, :any,
+    default: nil,
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :rest, :global, include: ~w(name disabled multiple required form autofocus autocomplete)
   slot :inner_block, required: false
 
   def native_select(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :select)
     selection = if is_nil(assigns.value), do: assigns.default_value, else: assigns.value
     assigns = assign(assigns, :selection, Enum.map(List.wrap(selection), &to_string/1))
 
@@ -59,7 +88,11 @@ defmodule ShadcnLiveview.Components.NativeSelect do
   Native option; forwards value, selected, disabled and label.
   Set selected from the native_select slot selection list when using value/default_value.
   """
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(value selected disabled label)
   slot :inner_block, required: false
 
@@ -79,7 +112,11 @@ defmodule ShadcnLiveview.Components.NativeSelect do
   Native optgroup; forwards label and disabled.
   Nested options can use the enclosing native_select slot selection list.
   """
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global, include: ~w(label disabled)
   slot :inner_block, required: false
 

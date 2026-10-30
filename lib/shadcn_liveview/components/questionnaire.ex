@@ -8,15 +8,28 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   alias ShadcnLiveview.Components.Icon
 
   @doc "Renders a native form and yields a context for steps, progress and navigation."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :items, :list, default: []
   attr :item, :string, default: nil
   attr :statuses, :map, default: %{}
   attr :invalid, :list, default: []
   attr :shortcuts, :string, values: [nil, "letters", "numbers"], default: nil
-  attr :on_item_change, :string, default: nil
+
+  attr :on_item_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on item change; the payload is described in the module docs. `nil` pushes no event."
+
   attr :no_validate, :boolean, default: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -71,8 +84,16 @@ defmodule ShadcnLiveview.Components.Questionnaire do
         export default {
       sendEvent(event, payload, onReply) {
       const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-      if (target) return this.pushEventTo(target, event, payload, onReply);
-      return this.pushEvent(event, payload, onReply);
+      const push = target
+        ? this.pushEventTo(target, event, payload).then(results => {
+            const failed = results.find(result => result.status === "rejected");
+            if (failed) throw failed.reason;
+            return results[0]?.value.reply;
+          })
+        : this.pushEvent(event, payload);
+      push.catch(() => {});
+      if (onReply) push.then(onReply, () => {});
+      return push;
       },
       mounted() {
       this.states = new Map(); this.controlDefaults = new Map(); this.initialItem = this.el.getAttribute("phx-value-item"); this.current = this.initialItem; this.serverItem = this.initialItem;
@@ -293,7 +314,11 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -351,7 +376,11 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :multiple, :boolean, default: false
   attr :invalid, :boolean, default: false
   attr :status, :string, default: nil, values: [nil, "unanswered", "answered", "skipped"]
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -420,7 +449,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     |> Enum.join(" ")
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -445,8 +477,15 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :id, :string, required: true
-  attr :class, :string, default: nil
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -468,7 +507,11 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -495,9 +538,17 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :id, :string, default: nil
   attr :index, :integer, default: 0
   attr :checked, :boolean, default: false
-  attr :default_checked, :boolean, default: false
+
+  attr :default_checked, :boolean,
+    default: false,
+    doc: "Uncontrolled initial `checked`; ignored once `checked` is supplied."
+
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -600,7 +651,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
 
   defp choice_shortcut(_mode, _index, _disabled), do: nil
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -623,7 +677,11 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :value, :any, default: nil
   attr :type, :string, default: "text"
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -669,8 +727,16 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   end
 
   attr :context, :map, required: true
-  attr :id, :string, required: true
-  attr :class, :string, default: nil
+
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -700,7 +766,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -725,7 +794,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -734,8 +806,15 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :tabindex, :integer, default: nil
-  attr :variant, :string, default: "outline"
-  attr :size, :string, default: "default"
+
+  attr :variant, :string,
+    default: "outline",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "default",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
   slot :inner_block
 
   def questionnaire_previous(assigns) do
@@ -780,7 +859,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -789,8 +871,15 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :tabindex, :integer, default: nil
-  attr :variant, :string, default: "outline"
-  attr :size, :string, default: "default"
+
+  attr :variant, :string,
+    default: "outline",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "default",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
   slot :inner_block
 
   def questionnaire_skip(assigns) do
@@ -835,7 +924,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -844,8 +936,15 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :tabindex, :integer, default: nil
-  attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
+
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "default",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
   slot :inner_block
 
   def questionnaire_next(assigns) do
@@ -890,7 +989,10 @@ defmodule ShadcnLiveview.Components.Questionnaire do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -899,8 +1001,15 @@ defmodule ShadcnLiveview.Components.Questionnaire do
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :tabindex, :integer, default: nil
-  attr :variant, :string, default: "default"
-  attr :size, :string, default: "default"
+
+  attr :variant, :string,
+    default: "default",
+    values: ~w(default outline secondary ghost destructive link)
+
+  attr :size, :string,
+    default: "default",
+    values: ~w(default xs sm lg icon icon-xs icon-sm icon-lg)
+
   slot :inner_block
 
   def questionnaire_submit(assigns) do

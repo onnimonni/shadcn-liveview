@@ -38,6 +38,7 @@ defmodule ShadcnLiveview.Gallery do
       "drawer-left",
       "drawer-right",
       "drawer-nondismissible",
+      "drawer-select",
       "drawer-multiple-instances",
       "sheet",
       "sheet-closed",
@@ -101,6 +102,7 @@ defmodule ShadcnLiveview.Gallery do
       "sidebar-collapsed-icon",
       "sidebar-collapsed-offcanvas",
       "sidebar-multiple",
+      "sidebar-menu-popup",
       "chart",
       "chart-config-theme",
       "chart-label-only",
@@ -117,6 +119,7 @@ defmodule ShadcnLiveview.Gallery do
       "chart-empty-payload",
       "chart-legend",
       "chart-multiple-instances",
+      "chart-area-interactive",
       "message-scroller",
       "message-scroller-start",
       "message-scroller-end",
@@ -281,6 +284,7 @@ defmodule ShadcnLiveview.Gallery do
       "direction",
       "empty",
       "field",
+      "field-separator",
       "input-group",
       "input",
       "item",
@@ -456,6 +460,7 @@ defmodule ShadcnLiveview.Gallery do
         category: "overlay",
         family: "drawer"
       },
+      %{name: "drawer-select", title: "Drawer select", category: "overlay", family: "drawer"},
       %{
         name: "drawer-multiple-instances",
         title: "drawer Multiple Instances",
@@ -739,6 +744,12 @@ defmodule ShadcnLiveview.Gallery do
         category: "navigation",
         family: "sidebar"
       },
+      %{
+        name: "sidebar-menu-popup",
+        title: "Sidebar with a menu popup",
+        category: "navigation",
+        family: "sidebar"
+      },
       %{name: "chart", title: "Chart", category: "data-display", family: "chart"},
       %{
         name: "chart-config-theme",
@@ -827,6 +838,12 @@ defmodule ShadcnLiveview.Gallery do
       %{
         name: "chart-multiple-instances",
         title: "Independent chart styles and canvases",
+        category: "data-display",
+        family: "chart"
+      },
+      %{
+        name: "chart-area-interactive",
+        title: "Stacked natural gradient area chart (dashboard-01)",
         category: "data-display",
         family: "chart"
       },
@@ -1634,6 +1651,7 @@ defmodule ShadcnLiveview.Gallery do
       %{name: "direction", title: "Direction", category: "layout", family: "direction"},
       %{name: "empty", title: "Empty", category: "feedback", family: "empty"},
       %{name: "field", title: "Field", category: "forms", family: "field"},
+      %{name: "field-separator", title: "Field separator", category: "forms", family: "field"},
       %{name: "input-group", title: "Input Group", category: "forms", family: "input-group"},
       %{name: "input", title: "Input", category: "forms", family: "input"},
       %{name: "item", title: "Item", category: "data-display", family: "item"},
@@ -2848,6 +2866,40 @@ defmodule ShadcnLiveview.Gallery do
           <.drawer_footer>
             <.drawer_close context={modal}>Close drawer</.drawer_close>
           </.drawer_footer>
+        </.drawer_content>
+      </:content>
+    </.drawer>
+    """
+  end
+
+  def render_fixture("drawer-select") do
+    assigns = %{}
+
+    ~H"""
+    <.drawer id="drawer-select-root" open={true} direction="bottom">
+      <:content :let={modal}>
+        <.drawer_content
+          context={modal}
+          aria-labelledby="drawer-select-root-title"
+          aria-describedby="drawer-select-root-description"
+        >
+          <.drawer_header>
+            <.drawer_title context={modal}>Drawer Title</.drawer_title>
+            <.drawer_description context={modal}>Drawer Description goes here.</.drawer_description>
+          </.drawer_header>
+          <div class="p-4">
+            <.select id="drawer-select-fruit" name="drawer-fruit" placeholder="Fruit">
+              <:trigger :let={popup}>
+                <.select_trigger context={popup}>
+                  <.select_value placeholder="Fruit" />
+                </.select_trigger>
+              </:trigger><:option id="drawer-select-fruit-apple" value="apple" label="Apple">
+                Apple
+              </:option><:option id="drawer-select-fruit-banana" value="banana" label="Banana">
+                Banana
+              </:option>
+            </.select>
+          </div>
         </.drawer_content>
       </:content>
     </.drawer>
@@ -4286,6 +4338,38 @@ defmodule ShadcnLiveview.Gallery do
     """
   end
 
+  def render_fixture("sidebar-menu-popup") do
+    assigns = %{}
+
+    ~H"""
+    <.sidebar_provider :let={sidebar} id="sidebar-popup">
+      <.sidebar id="sidebar-popup-panel" sidebar={sidebar}>
+        <.sidebar_content>
+          <.sidebar_group>
+            <.sidebar_group_content>
+              <.sidebar_menu>
+                <.sidebar_menu_item>
+                  <.dropdown_menu id="sidebar-popup-menu">
+                    <:trigger :let={popup}>
+                      <.sidebar_menu_button {popup.trigger}>Team</.sidebar_menu_button>
+                    </:trigger><:content :let={popup}>
+                      <.dropdown_menu_content context={popup}>
+                        <.dropdown_menu_item>Acme</.dropdown_menu_item><.dropdown_menu_item>
+                          Globex
+                        </.dropdown_menu_item>
+                      </.dropdown_menu_content>
+                    </:content>
+                  </.dropdown_menu>
+                </.sidebar_menu_item>
+              </.sidebar_menu>
+            </.sidebar_group_content>
+          </.sidebar_group>
+        </.sidebar_content>
+      </.sidebar><.sidebar_inset><.sidebar_trigger sidebar={sidebar} />Main</.sidebar_inset>
+    </.sidebar_provider>
+    """
+  end
+
   def render_fixture("chart") do
     assigns = %{}
 
@@ -4669,6 +4753,78 @@ defmodule ShadcnLiveview.Gallery do
         />
       </.chart_container>
     </section>
+    """
+  end
+
+  def render_fixture("chart-area-interactive") do
+    assigns = %{}
+
+    ~H"""
+    <.chart_container
+      :let={chart}
+      id="visitors"
+      config={[
+        visitors: %{label: "Visitors"},
+        desktop: %{label: "Desktop", color: "var(--primary)"},
+        mobile: %{label: "Mobile", color: "var(--primary)"}
+      ]}
+      class="aspect-auto h-[250px] w-full"
+    >
+      <.chart_canvas
+        id="visitors-chart"
+        context={chart}
+        kind="area"
+        data={[
+          %{date: "2024-06-01", desktop: 178, mobile: 200},
+          %{date: "2024-06-02", desktop: 470, mobile: 410},
+          %{date: "2024-06-03", desktop: 103, mobile: 160},
+          %{date: "2024-06-04", desktop: 439, mobile: 380},
+          %{date: "2024-06-05", desktop: 88, mobile: 140},
+          %{date: "2024-06-06", desktop: 294, mobile: 250},
+          %{date: "2024-06-07", desktop: 323, mobile: 370},
+          %{date: "2024-06-08", desktop: 385, mobile: 320},
+          %{date: "2024-06-09", desktop: 438, mobile: 480},
+          %{date: "2024-06-10", desktop: 155, mobile: 200},
+          %{date: "2024-06-11", desktop: 92, mobile: 150},
+          %{date: "2024-06-12", desktop: 492, mobile: 420},
+          %{date: "2024-06-13", desktop: 81, mobile: 130},
+          %{date: "2024-06-14", desktop: 426, mobile: 380},
+          %{date: "2024-06-15", desktop: 307, mobile: 350},
+          %{date: "2024-06-16", desktop: 371, mobile: 310},
+          %{date: "2024-06-17", desktop: 475, mobile: 520},
+          %{date: "2024-06-18", desktop: 107, mobile: 170},
+          %{date: "2024-06-19", desktop: 341, mobile: 290},
+          %{date: "2024-06-20", desktop: 408, mobile: 450},
+          %{date: "2024-06-21", desktop: 169, mobile: 210},
+          %{date: "2024-06-22", desktop: 317, mobile: 270},
+          %{date: "2024-06-23", desktop: 480, mobile: 530},
+          %{date: "2024-06-24", desktop: 132, mobile: 180},
+          %{date: "2024-06-25", desktop: 141, mobile: 190},
+          %{date: "2024-06-26", desktop: 434, mobile: 380},
+          %{date: "2024-06-27", desktop: 448, mobile: 490},
+          %{date: "2024-06-28", desktop: 149, mobile: 200},
+          %{date: "2024-06-29", desktop: 103, mobile: 160},
+          %{date: "2024-06-30", desktop: 446, mobile: 400}
+        ]}
+        x_key="date"
+        series={[
+          %{key: "mobile", gradient_opacity: [0.8, 0.1]},
+          %{key: "desktop", gradient_opacity: [1.0, 0.1]}
+        ]}
+        stack
+        curve="natural"
+        fill="gradient"
+        grid="horizontal"
+        axis_line={false}
+        tick_line={false}
+        tick_margin={8}
+        min_tick_gap={32}
+        tick_format="date_short"
+        tooltip_label_format="date_short"
+        cursor={false}
+        label="Total visitors"
+      />
+    </.chart_container>
     """
   end
 
@@ -5895,7 +6051,7 @@ defmodule ShadcnLiveview.Gallery do
 
     ~H"""
     <div>
-      <form id="checkbox-external"></form><.checkbox
+      <form id="checkbox-external"><button type="reset">Reset permissions</button></form><.checkbox
         id="permission-read"
         default_checked={true}
         name="permissions[]"
@@ -6078,7 +6234,7 @@ defmodule ShadcnLiveview.Gallery do
 
     ~H"""
     <div>
-      <form id="switch-settings"></form><.switch
+      <form id="switch-settings"><button type="reset">Reset settings</button></form><.switch
         id="switch-mail"
         default_checked={true}
         name="mail"
@@ -7443,6 +7599,19 @@ defmodule ShadcnLiveview.Gallery do
         </.field>
       </.field_group>
     </.field_set>
+    """
+  end
+
+  def render_fixture("field-separator") do
+    assigns = %{}
+
+    ~H"""
+    <.field_group class="w-full max-w-md">
+      <.field_separator />
+      <.field_separator class="*:data-[slot=field-separator-content]:bg-card">
+        Or continue with
+      </.field_separator>
+    </.field_group>
     """
   end
 
@@ -8947,6 +9116,49 @@ defmodule ShadcnLiveview.Gallery do
           <.drawer_footer>
             <.drawer_close context={modal}>Close drawer</.drawer_close>
           </.drawer_footer>
+        </.drawer_content>
+      </:content>
+    </.drawer>
+    """
+  end
+
+  def live_fixture(%{fixture: "drawer-select"} = assigns) do
+    ~H"""
+    <.drawer
+      id="drawer-select-root"
+      open={Map.get(@state, "drawer-select-root", true)}
+      direction="bottom"
+    >
+      <:content :let={modal}>
+        <.drawer_content
+          context={modal}
+          aria-labelledby="drawer-select-root-title"
+          aria-describedby="drawer-select-root-description"
+        >
+          <.drawer_header>
+            <.drawer_title context={modal}>Drawer Title</.drawer_title>
+            <.drawer_description context={modal}>Drawer Description goes here.</.drawer_description>
+          </.drawer_header>
+          <div class="p-4">
+            <.select
+              id="drawer-select-fruit"
+              name="drawer-fruit"
+              placeholder="Fruit"
+              open={Map.get(@state, "drawer-select-fruit-open", false)}
+              value={Map.get(@state, "drawer-select-fruit-value", nil)}
+              on_change="shadcn:popup-change"
+            >
+              <:trigger :let={popup}>
+                <.select_trigger context={popup}>
+                  <.select_value context={popup} placeholder="Fruit" />
+                </.select_trigger>
+              </:trigger><:option id="drawer-select-fruit-apple" value="apple" label="Apple">
+                Apple
+              </:option><:option id="drawer-select-fruit-banana" value="banana" label="Banana">
+                Banana
+              </:option>
+            </.select>
+          </div>
         </.drawer_content>
       </:content>
     </.drawer>
@@ -10667,6 +10879,51 @@ defmodule ShadcnLiveview.Gallery do
     """
   end
 
+  def live_fixture(%{fixture: "sidebar-menu-popup"} = assigns) do
+    ~H"""
+    <.sidebar_provider
+      :let={sidebar}
+      id="sidebar-popup"
+      open={Map.get(@state, "sidebar-popup", true)}
+      mobile_open={Map.get(@state, "sidebar-popup-mobile", false)}
+    >
+      <.sidebar id="sidebar-popup-panel" sidebar={sidebar}>
+        <.sidebar_content>
+          <.sidebar_group>
+            <.sidebar_group_content>
+              <.sidebar_menu>
+                <.sidebar_menu_item>
+                  <.dropdown_menu
+                    id="sidebar-popup-menu"
+                    open={Map.get(@state, "sidebar-popup-menu-open", false)}
+                    on_change="shadcn:popup-change"
+                  >
+                    <:trigger :let={popup}>
+                      <.sidebar_menu_button {popup.trigger}>Team</.sidebar_menu_button>
+                    </:trigger><:content :let={popup}>
+                      <.dropdown_menu_content context={popup}>
+                        <.dropdown_menu_item>Acme</.dropdown_menu_item><.dropdown_menu_item>
+                          Globex
+                        </.dropdown_menu_item>
+                      </.dropdown_menu_content>
+                    </:content>
+                  </.dropdown_menu>
+                </.sidebar_menu_item>
+              </.sidebar_menu>
+            </.sidebar_group_content>
+          </.sidebar_group>
+        </.sidebar_content>
+      </.sidebar><.sidebar_inset>
+        <.sidebar_trigger sidebar={sidebar} />Main<span id="sidebar-popup-ticks">{Map.get(
+          @state,
+          "sidebar-popup-ticks",
+          0
+        )}</span>
+      </.sidebar_inset>
+    </.sidebar_provider>
+    """
+  end
+
   def live_fixture(%{fixture: "chart"} = assigns) do
     ~H"""
     <.chart_container
@@ -11027,6 +11284,76 @@ defmodule ShadcnLiveview.Gallery do
         />
       </.chart_container>
     </section>
+    """
+  end
+
+  def live_fixture(%{fixture: "chart-area-interactive"} = assigns) do
+    ~H"""
+    <.chart_container
+      :let={chart}
+      id="visitors"
+      config={[
+        visitors: %{label: "Visitors"},
+        desktop: %{label: "Desktop", color: "var(--primary)"},
+        mobile: %{label: "Mobile", color: "var(--primary)"}
+      ]}
+      class="aspect-auto h-[250px] w-full"
+    >
+      <.chart_canvas
+        id="visitors-chart"
+        context={chart}
+        kind="area"
+        data={[
+          %{date: "2024-06-01", desktop: 178, mobile: 200},
+          %{date: "2024-06-02", desktop: 470, mobile: 410},
+          %{date: "2024-06-03", desktop: 103, mobile: 160},
+          %{date: "2024-06-04", desktop: 439, mobile: 380},
+          %{date: "2024-06-05", desktop: 88, mobile: 140},
+          %{date: "2024-06-06", desktop: 294, mobile: 250},
+          %{date: "2024-06-07", desktop: 323, mobile: 370},
+          %{date: "2024-06-08", desktop: 385, mobile: 320},
+          %{date: "2024-06-09", desktop: 438, mobile: 480},
+          %{date: "2024-06-10", desktop: 155, mobile: 200},
+          %{date: "2024-06-11", desktop: 92, mobile: 150},
+          %{date: "2024-06-12", desktop: 492, mobile: 420},
+          %{date: "2024-06-13", desktop: 81, mobile: 130},
+          %{date: "2024-06-14", desktop: 426, mobile: 380},
+          %{date: "2024-06-15", desktop: 307, mobile: 350},
+          %{date: "2024-06-16", desktop: 371, mobile: 310},
+          %{date: "2024-06-17", desktop: 475, mobile: 520},
+          %{date: "2024-06-18", desktop: 107, mobile: 170},
+          %{date: "2024-06-19", desktop: 341, mobile: 290},
+          %{date: "2024-06-20", desktop: 408, mobile: 450},
+          %{date: "2024-06-21", desktop: 169, mobile: 210},
+          %{date: "2024-06-22", desktop: 317, mobile: 270},
+          %{date: "2024-06-23", desktop: 480, mobile: 530},
+          %{date: "2024-06-24", desktop: 132, mobile: 180},
+          %{date: "2024-06-25", desktop: 141, mobile: 190},
+          %{date: "2024-06-26", desktop: 434, mobile: 380},
+          %{date: "2024-06-27", desktop: 448, mobile: 490},
+          %{date: "2024-06-28", desktop: 149, mobile: 200},
+          %{date: "2024-06-29", desktop: 103, mobile: 160},
+          %{date: "2024-06-30", desktop: 446, mobile: 400}
+        ]}
+        x_key="date"
+        series={[
+          %{key: "mobile", gradient_opacity: [0.8, 0.1]},
+          %{key: "desktop", gradient_opacity: [1.0, 0.1]}
+        ]}
+        stack
+        curve="natural"
+        fill="gradient"
+        grid="horizontal"
+        axis_line={false}
+        tick_line={false}
+        tick_margin={8}
+        min_tick_gap={32}
+        tick_format="date_short"
+        tooltip_label_format="date_short"
+        cursor={false}
+        label="Total visitors"
+      />
+    </.chart_container>
     """
   end
 
@@ -12384,7 +12711,7 @@ defmodule ShadcnLiveview.Gallery do
   def live_fixture(%{fixture: "checkbox-multiple-external-form"} = assigns) do
     ~H"""
     <div>
-      <form id="checkbox-external"></form><.checkbox
+      <form id="checkbox-external"><button type="reset">Reset permissions</button></form><.checkbox
         id="permission-read"
         checked={Map.get(@state, "permission-read", true)}
         on_change="control_change"
@@ -12562,7 +12889,7 @@ defmodule ShadcnLiveview.Gallery do
   def live_fixture(%{fixture: "switch-multiple-external-form"} = assigns) do
     ~H"""
     <div>
-      <form id="switch-settings"></form><.switch
+      <form id="switch-settings"><button type="reset">Reset settings</button></form><.switch
         id="switch-mail"
         checked={Map.get(@state, "switch-mail", true)}
         on_change="control_change"
@@ -13844,6 +14171,17 @@ defmodule ShadcnLiveview.Gallery do
         </.field>
       </.field_group>
     </.field_set>
+    """
+  end
+
+  def live_fixture(%{fixture: "field-separator"} = assigns) do
+    ~H"""
+    <.field_group class="w-full max-w-md">
+      <.field_separator />
+      <.field_separator class="*:data-[slot=field-separator-content]:bg-card">
+        Or continue with
+      </.field_separator>
+    </.field_group>
     """
   end
 

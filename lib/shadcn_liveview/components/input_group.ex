@@ -1,9 +1,27 @@
 defmodule ShadcnLiveview.Components.InputGroup do
-  @moduledoc false
+  @moduledoc ~S"""
+  Adds addons, buttons and helper text around inputs and textareas.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/input-group
+
+  Components: `input_group/1`, `input_group_addon/1`, `input_group_button/1`, `input_group_text/1`, `input_group_input/1`, `input_group_textarea/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.input_group>
+    <.input_group_addon>https://</.input_group_addon>
+    <.input_group_input placeholder="example.com" />
+  </.input_group>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -29,8 +47,14 @@ defmodule ShadcnLiveview.Components.InputGroup do
     """
   end
 
-  attr :class, :string, default: nil
-  attr :align, :string, default: "inline-start"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :align, :string,
+    default: "inline-start",
+    values: ~w(inline-start inline-end block-start block-end)
 
   attr :rest, :global,
     include:
@@ -71,8 +95,12 @@ defmodule ShadcnLiveview.Components.InputGroup do
     )
   end
 
-  attr :class, :string, default: nil
-  attr :size, :string, default: "xs"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :size, :string, default: "xs", values: ~w(xs sm icon-xs icon-sm)
 
   attr :rest, :global,
     include:
@@ -110,7 +138,10 @@ defmodule ShadcnLiveview.Components.InputGroup do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -135,13 +166,25 @@ defmodule ShadcnLiveview.Components.InputGroup do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
 
   attr :rest, :global,
     include:
       ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
 
+  @doc "Accepts a Phoenix.HTML.FormField via field to infer id, name and value. Explicit HTML attributes win; use form_field for labels, help text and used-field errors."
+
   def input_group_input(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :input)
+
     ~H"""
     <input
       data-slot="input-group-control"
@@ -156,7 +199,15 @@ defmodule ShadcnLiveview.Components.InputGroup do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
 
   attr :rest, :global,
     include:
@@ -168,6 +219,8 @@ defmodule ShadcnLiveview.Components.InputGroup do
   slot :inner_block, required: false
 
   def input_group_textarea(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :textarea)
+
     ~H"""
     <textarea
       data-slot="input-group-control"

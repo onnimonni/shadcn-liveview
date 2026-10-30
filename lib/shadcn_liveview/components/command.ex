@@ -5,13 +5,26 @@ defmodule ShadcnLiveview.Components.Command do
   alias ShadcnLiveview.Components.Icon
 
   @doc "Renders a command root; :let receives its stable IDs and selected value."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, default: ""
   attr :label, :string, default: ""
   attr :loop, :boolean, default: false
   attr :should_filter, :boolean, default: true
-  attr :on_select, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_select, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on select; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -55,9 +68,17 @@ defmodule ShadcnLiveview.Components.Command do
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Command">
         export default {
       sendEvent(event, payload, onReply) {
-      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-      if (target) return this.pushEventTo(target, event, payload, onReply);
-      return this.pushEvent(event, payload, onReply);
+      const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+      const push = target
+        ? this.pushEventTo(target, event, payload).then(results => {
+            const failed = results.find(result => result.status === "rejected");
+            if (failed) throw failed.reason;
+            return results[0]?.value.reply;
+          })
+        : this.pushEvent(event, payload);
+      push.catch(() => {});
+      if (onReply) push.then(onReply, () => {});
+      return push;
       },
       mounted() {
       this.listeners = [];
@@ -184,10 +205,14 @@ defmodule ShadcnLiveview.Components.Command do
       activate(item) {
       this.select(item);
       const value = item.getAttribute("phx-value-value") || item.textContent.trim();
+      const previous = this.el.getAttribute("phx-value-selected");
       this.el.setAttribute("phx-value-selected", value);
       this.el.dispatchEvent(new CustomEvent("shadcn:command-change", {bubbles: true, detail: {id: this.el.id, value}}));
       const event = this.el.getAttribute("phx-value-event");
-      if (event) this.sendEvent(event, {id: this.el.id, value});
+      // The server owns the selected value, so a failed push restores it.
+      if (event) this.sendEvent(event, {id: this.el.id, value}).catch(() => {
+        if (this.el.getAttribute("phx-value-selected") === value) { this.el.setAttribute("phx-value-selected", previous); this.filter(); }
+      });
       },
       updated() { this.filter(); },
       destroyed() { this.listeners.forEach(([node, type, handler]) => node.removeEventListener(type, handler)); }
@@ -198,7 +223,11 @@ defmodule ShadcnLiveview.Components.Command do
 
   attr :context, :map, required: true
   attr :value, :string, default: ""
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -249,7 +278,12 @@ defmodule ShadcnLiveview.Components.Command do
 
   attr :context, :map, required: true
   attr :label, :string, default: "Suggestions"
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -275,7 +309,11 @@ defmodule ShadcnLiveview.Components.Command do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -293,9 +331,18 @@ defmodule ShadcnLiveview.Components.Command do
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :heading, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -324,11 +371,20 @@ defmodule ShadcnLiveview.Components.Command do
   end
 
   @doc "Items are registered by the client hook; disabled items cannot be selected."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, required: true
   attr :keywords, :list, default: []
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -362,7 +418,11 @@ defmodule ShadcnLiveview.Components.Command do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def command_separator(assigns) do
@@ -377,7 +437,11 @@ defmodule ShadcnLiveview.Components.Command do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 

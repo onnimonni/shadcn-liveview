@@ -1,5 +1,6 @@
 import type { ComponentFunctionSpec } from "../generate"
 import type { CvaSpec } from "./cva"
+import { avatarStatusScript } from "./avatar-status"
 
 export function applyComponentMetadata(
   fnSnakeName: string,
@@ -8,8 +9,9 @@ export function applyComponentMetadata(
   hasDataVariant: boolean,
   matchedCva: CvaSpec | undefined,
   staticAttrsList: string[],
-): { tag: string; attrs: ComponentFunctionSpec["attrs"] } {
-  const specialAttrs: { name: string; type: string; default?: string }[] = []
+): { tag: string; attrs: ComponentFunctionSpec["attrs"]; innerMarkup?: string } {
+  const specialAttrs: NonNullable<ComponentFunctionSpec["attrs"]> = []
+  let innerMarkup: string | undefined
   if (fnSnakeName === "attachment") {
     specialAttrs.push({ name: "state", type: "string", default: '"done"' })
     staticAttrsList.push('data-state={@state} data-orientation={@orientation}')
@@ -17,8 +19,24 @@ export function applyComponentMetadata(
   if (fnSnakeName === "input_group_addon") {
     staticAttrsList.push('data-align={@align}')
   }
+  if (fnSnakeName === "avatar") {
+    // Renders nothing: the compiler extracts this side-effect module into the hook bundle.
+    innerMarkup = `{render_slot(@inner_block)}
+    <script :type={Phoenix.LiveView.ColocatedJS}>${avatarStatusScript}    </script>`
+  }
   if (fnSnakeName === "field") {
-    staticAttrsList.push('data-orientation={@orientation}')
+    specialAttrs.push({ name: "invalid", type: "boolean", default: "false", doc: 'Renders `data-invalid="true"` (the `data-[invalid=true]` styles); `data-invalid` passed through attrs still works.' })
+    staticAttrsList.push('data-orientation={@orientation} data-invalid={if @invalid, do: "true"}')
+  }
+  if (fnSnakeName === "field_separator") {
+    // Upstream draws a Separator line and wraps children in a centered, background-masked caption.
+    staticAttrsList.push('data-content={to_string(@inner_block != [])}')
+    innerMarkup = `<ShadcnLiveview.Components.Separator.separator class="absolute inset-0 top-1/2" />
+      <span
+        :if={@inner_block != []}
+        class="relative mx-auto block w-fit bg-background px-2 text-muted-foreground"
+        data-slot="field-separator-content"
+      >{render_slot(@inner_block)}</span>`
   }
   if (fnSnakeName === "chart_container") {
     specialAttrs.push({ name: "config", type: "map", default: "%{}" })
@@ -58,7 +76,8 @@ export function applyComponentMetadata(
     staticAttrsList.push('data-align={@align}')
   }
   if (fnSnakeName === "separator") {
-    specialAttrs.push({ name: "orientation", type: "string", default: '"horizontal"' })
+    // Radix Separator's orientation type is not declared in the vendored file.
+    specialAttrs.push({ name: "orientation", type: "string", default: '"horizontal"', values: ["horizontal", "vertical"] })
     staticAttrsList.push('data-orientation={@orientation} role="none"')
   }
   if (fnSnakeName === "message") {
@@ -88,5 +107,5 @@ export function applyComponentMetadata(
     specialAttrs.push({ name: "pressed", type: "boolean", default: "false" })
     staticAttrsList.push('type="button" aria-pressed={to_string(@pressed)} data-state={if @pressed, do: "on", else: "off"}')
   }
-  return { tag: finalTag, attrs: specialAttrs }
+  return { tag: finalTag, attrs: specialAttrs, innerMarkup }
 }

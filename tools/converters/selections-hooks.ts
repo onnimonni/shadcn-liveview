@@ -1,10 +1,9 @@
+import { sendEventMethod } from "./hook-events"
+import { topLayerMethod } from "./top-layer"
+
 export const selectionHook = String.raw`
       export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
+${sendEventMethod("        ")}
         mounted() {
           this.radio = this.el.dataset.slot === "radio-group";
           this.controlled = this.el.getAttribute("phx-controlled") === "true";
@@ -47,9 +46,13 @@ export const selectionHook = String.raw`
           this.el.addEventListener("keydown", this.key);
           this.el.addEventListener("focusin", this.focus);
           this.form = this.radio ? (document.getElementById(this.el.getAttribute("phx-form")) || this.el.closest("form")) : null;
+          // Reset after the native form reset so native inputs match the restored selection.
           this.reset = () => {
-            if (this.controlled) this.change([...this.initial], null);
-            else { this.values = [...this.initial]; this.paint(); }
+            cancelAnimationFrame(this.resetFrame);
+            this.resetFrame = requestAnimationFrame(() => {
+              if (this.controlled) this.change([...this.initial], null);
+              else { this.values = [...this.initial]; this.paint(); }
+            });
           };
           this.form?.addEventListener("reset", this.reset);
           this.paint();
@@ -59,12 +62,16 @@ export const selectionHook = String.raw`
         tabstop(item) { if (this.el.getAttribute("phx-roving") === "false") return; this.items().forEach(i => i.tabIndex = i === item && !i.disabled ? 0 : -1); },
         change(next, item) {
           if (JSON.stringify(next) === JSON.stringify(this.values)) return;
-          if (!this.controlled) { this.values = next; this.paint(); }
+          // Radio selections are optimistic like checkbox and switch; updated() applies server values.
+          if (!this.controlled || this.radio) { this.values = next; this.paint(); }
           const value = this.radio || this.el.getAttribute("phx-selection-type") === "single" ? (next[0] || "") : next;
           const event = this.el.getAttribute("phx-change-event");
-          if (event) this.sendEvent(event, {id: this.el.id, value});
+          // Controlled values come from the server, so a failed push restores them.
+          if (event) this.sendEvent(event, {id: this.el.id, value}).catch(() => {
+            if (this.controlled) { this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); }
+          });
           this.el.dispatchEvent(new CustomEvent("selection-change", {bubbles: true, detail: {value}}));
-          if (this.radio && !this.controlled) {
+          if (this.radio && item) {
             const input = item.nextElementSibling;
             input?.dispatchEvent(new Event("input", {bubbles: true}));
             input?.dispatchEvent(new Event("change", {bubbles: true}));
@@ -101,17 +108,14 @@ export const selectionHook = String.raw`
           }
         },
         updated() { this.controlled = this.el.getAttribute("phx-controlled") === "true"; if (this.controlled) this.values = JSON.parse(this.el.getAttribute("phx-values")); this.paint(); },
-        destroyed() { this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
+        destroyed() { cancelAnimationFrame(this.resetFrame); this.el.removeEventListener("click", this.click); this.el.removeEventListener("keydown", this.key); this.el.removeEventListener("focusin", this.focus); this.form?.removeEventListener("reset", this.reset); }
       }
 `
 
 export const menubarHook = String.raw`
       export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },
+${sendEventMethod("        ")}
+${topLayerMethod("        ")}
         mounted() {
           this.pendingFocus = null;
           this.click = e => {
@@ -176,8 +180,8 @@ export const menubarHook = String.raw`
           if (value !== this.value) {
             for (const sub of this.el.querySelectorAll('[data-slot="menubar-sub-trigger"][aria-expanded="true"]')) this.submenu(sub, false, false);
           }
-          this.pendingFocus = keyboard ? this.triggers().find(t => t.getAttribute("phx-menu-value") === value)?.getAttribute("phx-content-id") : null;
-          this.sendEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value});
+          const focus = this.pendingFocus = keyboard ? this.triggers().find(t => t.getAttribute("phx-menu-value") === value)?.getAttribute("phx-content-id") : null;
+          this.sendEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value}).catch(() => { if (this.pendingFocus === focus) this.pendingFocus = null; });
         },
         sync() {
           this.value = this.el.getAttribute("phx-value") || "";
@@ -198,6 +202,7 @@ export const menubarHook = String.raw`
         },
         position(menu, anchor) {
           const overlay = menu.parentElement;
+          this.promoteToTopLayer(overlay, true);
           const box = anchor.getBoundingClientRect();
           const sub = anchor.dataset.slot === "menubar-sub-trigger";
           const sideOffset = Number(menu.getAttribute("phx-side-offset") || (sub ? 0 : 8));
@@ -237,8 +242,8 @@ export const menubarHook = String.raw`
         },
         menuItems(menu) { return [...menu.querySelectorAll('[role^="menuitem"]')].filter(i => !i.hasAttribute("data-disabled") && i.closest('[role="menu"]') === menu); },
         submenu(trigger, open, keyboard) {
-          this.pendingFocus = open && keyboard ? trigger.getAttribute("phx-content-id") : null;
-          this.sendEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open});
+          const focus = this.pendingFocus = open && keyboard ? trigger.getAttribute("phx-content-id") : null;
+          this.sendEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open}).catch(() => { if (this.pendingFocus === focus) this.pendingFocus = null; });
         },
         keydown(e) {
           const trigger = e.target.closest('[data-slot="menubar-trigger"]');

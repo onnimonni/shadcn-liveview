@@ -1,10 +1,37 @@
 defmodule ShadcnLiveview.Components.Card do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a card with header, content and footer.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/card
+
+  Components: `card/1`, `card_header/1`, `card_title/1`, `card_description/1`, `card_action/1`, `card_content/1`, `card_footer/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.card>
+    <.card_header>
+      <.card_title>Notifications</.card_title>
+      <.card_description>You have 3 unread messages.</.card_description>
+    </.card_header>
+    <.card_content>
+      <p>Everything looks good today.</p>
+    </.card_content>
+    <.card_footer>
+      <.button class="w-full">Mark all as read</.button>
+    </.card_footer>
+  </.card>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :size, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :size, :string, default: "default", values: ~w(default sm)
 
   attr :rest, :global,
     include:
@@ -30,7 +57,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -55,7 +85,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -80,7 +113,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -100,7 +136,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -120,7 +159,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -140,7 +182,10 @@ defmodule ShadcnLiveview.Components.Card do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

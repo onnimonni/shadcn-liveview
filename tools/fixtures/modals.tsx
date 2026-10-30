@@ -6,6 +6,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle, AlertDialogTrigger } from "../../vendor/shadcn/ui/alert-dialog"
 import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "../../vendor/shadcn/ui/drawer"
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "../../vendor/shadcn/ui/sheet"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../vendor/shadcn/ui/select"
 
 type LiveFixture = ComponentFixture & { liveHeex?: string }
 type Side = "top" | "right" | "bottom" | "left"
@@ -24,6 +25,7 @@ type Options = {
   media?: boolean
   disabledAction?: boolean
   actionVariant?: "default" | "destructive"
+  select?: boolean
 }
 
 function ids(options: Options) {
@@ -125,6 +127,11 @@ ${options.media ? '        <.alert_dialog_media><span aria-hidden="true">!</span
   }
 }
 
+function drawerSelect(live: boolean): string {
+  const state = live ? ` open={Map.get(@state, "drawer-select-fruit-open", false)} value={Map.get(@state, "drawer-select-fruit-value", nil)} on_change="shadcn:popup-change"` : ""
+  return `      <div class="p-4"><.select id="drawer-select-fruit" name="drawer-fruit" placeholder="Fruit"${state}><:trigger :let={popup}><.select_trigger context={popup}><.select_value${live ? " context={popup}" : ""} placeholder="Fruit" /></.select_trigger></:trigger><:option id="drawer-select-fruit-apple" value="apple" label="Apple">Apple</:option><:option id="drawer-select-fruit-banana" value="banana" label="Banana">Banana</:option></.select></div>\n`
+}
+
 function drawerFixture(name: string, options: Options): LiveFixture {
   const value = ids(options)
   const heex = (live: boolean) => `<.drawer ${rootAttrs(options, live)} direction="${options.direction ?? "bottom"}">
@@ -134,7 +141,7 @@ ${options.trigger ? '  <:trigger :let={modal}><.drawer_trigger context={modal}>O
         <.drawer_title context={modal}>Drawer Title</.drawer_title>
         <.drawer_description context={modal}>Drawer Description goes here.</.drawer_description>
       </.drawer_header>
-${options.trigger ? '      <.drawer_footer><.drawer_close context={modal}>Close drawer</.drawer_close></.drawer_footer>\n' : ""}    </.drawer_content>
+${options.select ? drawerSelect(live) : ""}${options.trigger ? '      <.drawer_footer><.drawer_close context={modal}>Close drawer</.drawer_close></.drawer_footer>\n' : ""}    </.drawer_content>
   </:content>
 </.drawer>`
   return {
@@ -146,6 +153,7 @@ ${options.trigger ? '      <.drawer_footer><.drawer_close context={modal}>Close 
           <DrawerTitle id={value.title}>Drawer Title</DrawerTitle>
           <DrawerDescription id={value.description}>Drawer Description goes here.</DrawerDescription>
         </DrawerHeader>
+        {options.select && <div className="p-4"><Select name="drawer-fruit"><SelectTrigger id="drawer-select-fruit-trigger"><SelectValue placeholder="Fruit" /></SelectTrigger><SelectContent><SelectItem value="apple">Apple</SelectItem><SelectItem value="banana">Banana</SelectItem></SelectContent></Select></div>}
         {options.trigger && <DrawerFooter><DrawerClose>Close drawer</DrawerClose></DrawerFooter>}
       </DrawerContent>
     </Drawer>,
@@ -209,6 +217,7 @@ export const fixtures: LiveFixture[] = [
   drawerFixture("drawer-open-custom-ids", { id: "drawer-custom", trigger: true, customIds: true }),
   ...(["top", "left", "right"] as const).map(direction => drawerFixture(`drawer-${direction}`, { id: `drawer-${direction}-panel`, trigger: true, direction })),
   drawerFixture("drawer-nondismissible", { id: "drawer-nondismissible-root", trigger: true, dismissible: false }),
+  drawerFixture("drawer-select", { id: "drawer-select-root", select: true }),
   twoInstances("drawer", drawerFixture),
   sheetFixture("sheet", { id: "sheet-demo" }),
   sheetFixture("sheet-closed", { id: "sheet-closed-root", open: false, trigger: true }),

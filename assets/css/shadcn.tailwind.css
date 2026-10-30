@@ -1,0 +1,30 @@
+/*
+ * Source of priv/static/shadcn.tailwind.css (built by tools/build-assets.sh), the entry for
+ * apps with their own Tailwind v4 build. Consumers import it directly after
+ * `@import "tailwindcss"` so the components compile into the app's own layers: one
+ * preflight, one theme, one utilities layer where app classes can override component ones.
+ * assets/css/shadcn.css and app.css import this file too, so all builds share it.
+ */
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./theme.css";
+
+/* Relative to this file, so the shipped copy in priv/static scans the package's own lib. */
+@source "../../lib/shadcn_liveview/components";
+@source "../../lib/shadcn_liveview/form.ex";
+@source "../../lib/shadcn_liveview/data_table.ex";
+
+/*
+ * Radix Avatar shows the image only once it has loaded and the fallback until then or after
+ * an error. The avatar's bundled script mirrors the load into data-status. The pending image
+ * stays in the layout (absolute, transparent) so loading="lazy" still loads it. Unlayered, so
+ * these states win over the components' own `flex`/position utilities.
+ */
+[data-slot="avatar-image"]:not([data-status="loaded"]) {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+[data-slot="avatar"]:has(> [data-slot="avatar-image"][data-status="loaded"]) > [data-slot="avatar-fallback"] {
+  display: none;
+}

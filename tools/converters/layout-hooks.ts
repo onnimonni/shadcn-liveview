@@ -1,9 +1,8 @@
+import { sendEventMethod } from "./hook-events"
+
+// Carousel, resizable and sidebar state is client-owned; their pushes only notify the server.
 const targetAwareHookPreamble = `      export default {
-        sendEvent(event, payload, onReply) {
-          const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
-        },`
+${sendEventMethod("        ")}`
 
 export const carouselHook = `      import EmblaCarousel from "embla-carousel";
 ${targetAwareHookPreamble}
@@ -245,6 +244,9 @@ export const resizableHook = `${targetAwareHookPreamble}
         destroyed() { this.abort.abort(); this.observer.disconnect(); this.drag = null; }
       }`
 
+// Upstream SheetOverlay classes (vendor/shadcn/ui/sheet.tsx): the mobile sidebar is a Sheet upstream.
+export const sheetOverlayClasses = "fixed inset-0 z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+
 export const sidebarHook = `${targetAwareHookPreamble}
         mounted() {
           this.abort = new AbortController(); this.open = this.el.getAttribute("phx-value-open") === "true"; this.serverOpen = this.open;
@@ -264,13 +266,15 @@ export const sidebarHook = `${targetAwareHookPreamble}
               if (owner === this.el) { event.preventDefault(); this.toggle(document.activeElement); }
             }
             if (!this.mobileOpen) return;
-            if (event.key === "Escape") { event.preventDefault(); this.closeMobile(); }
+            const container = this.containers()[0]; if (!container) return;
+            // Escape belongs to the innermost layer: a popup opened from the sheet closes first (it marks
+            // the event handled when focused; otherwise its own document listener closes it).
+            if (event.key === "Escape" && !event.defaultPrevented && !this.popups(container).length) { event.preventDefault(); this.closeMobile(); }
             if (event.key === "Tab") {
-              const container = this.containers()[0]; if (!container) return;
               const targets = [...container.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(node => node.getClientRects().length);
               const first = targets[0] || container, last = targets[targets.length-1] || container;
               if (event.shiftKey && (document.activeElement === first || document.activeElement === container)) { event.preventDefault(); last.focus(); }
-              else if (!event.shiftKey && (document.activeElement === last || !container.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+              else if (!event.shiftKey && (document.activeElement === last || !this.owns(container, document.activeElement))) { event.preventDefault(); first.focus(); }
             }
           });
           on(this.media,"change",() => { this.closeMobile(); this.paint(); });
@@ -278,6 +282,9 @@ export const sidebarHook = `${targetAwareHookPreamble}
         },
         roots() { return [...this.el.querySelectorAll('[data-slot="sidebar"]')].filter(node => node.closest('[data-slot="sidebar-wrapper"]') === this.el && node.hasAttribute("data-collapsible")); },
         containers() { return this.roots().map(root => root.querySelector('[data-slot="sidebar-container"]')); },
+        // Open popup contents whose triggers live in the sheet; their focus counts as inside the sheet.
+        popups(container) { return [...container.querySelectorAll("[phx-popup-content-id]")].map(trigger => document.getElementById(trigger.getAttribute("phx-popup-content-id"))).filter(Boolean); },
+        owns(container, node) { return Boolean(node) && node !== document.body && (container.contains(node) || this.popups(container).some(content => content.contains(node))); },
         closeMobile() {
           if (!this.mobileOpen) return;
           this.mobileOpen = false; this.sendEvent("shadcn:sidebar-change", {id:this.el.id+"-mobile",open:false}); this.paint();
@@ -295,6 +302,7 @@ export const sidebarHook = `${targetAwareHookPreamble}
         },
         paint() {
           const mobile = this.media.matches;
+          (this.inertNodes || []).forEach(node => node.removeAttribute("inert")); this.inertNodes = [];
           this.roots().forEach(root => {
             const container = root.querySelector('[data-slot="sidebar-container"]');
             const mode = root.getAttribute("phx-value-collapsible") || "offcanvas";
@@ -311,17 +319,23 @@ export const sidebarHook = `${targetAwareHookPreamble}
               root.style.removeProperty("display");
               root.querySelector('[data-slot="sidebar-gap"]').style.removeProperty("display");
               Object.entries(this.original.get(container)).forEach(([name,value]) => {if(value===null) container.removeAttribute(name);else container.setAttribute(name,value);});
+              if (!this.open && mode === "offcanvas") this.hideOffcanvas(container);
             }
           });
           this.el.querySelectorAll('[data-sidebar="trigger"],[data-sidebar="rail"]').forEach(trigger => {
             if (trigger.closest('[data-slot="sidebar-wrapper"]') !== this.el) return;
             const target = this.containers()[0]; if (target) trigger.setAttribute("aria-controls",target.id);
             trigger.setAttribute("aria-expanded",String(mobile ? this.mobileOpen : this.open));
+            // Upstream's trigger has no expanded state, so its ghost button never paints aria-expanded:* styles.
+            if (trigger.dataset.sidebar === "trigger") trigger.classList.remove(...[...trigger.classList].filter(name => name.startsWith("aria-expanded:")));
           });
-          if (mobile && this.mobileOpen && !this.backdrop) {
-            this.backdrop = document.createElement("div"); this.backdrop.style.cssText="position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:50";
+          const opening = mobile && this.mobileOpen && !this.backdrop;
+          if (opening) {
+            // Upstream renders the mobile sidebar inside a Sheet; reuse its overlay styles.
+            this.backdrop = document.createElement("div"); this.backdrop.dataset.state = "open";
+            this.backdrop.className = ${JSON.stringify(sheetOverlayClasses)};
             this.backdrop.addEventListener("click",() => this.closeMobile(),{signal:this.abort.signal});
-            this.el.append(this.backdrop); this.containers()[0]?.focus();
+            this.el.append(this.backdrop);
             this.locked = true; this.previousOverflow = document.body.style.overflow; document.body.style.overflow = "hidden";
           } else if (mobile && this.mobileOpen && !this.backdrop.isConnected) {
             this.el.append(this.backdrop);
@@ -329,9 +343,26 @@ export const sidebarHook = `${targetAwareHookPreamble}
             this.backdrop.remove(); this.backdrop=null; this.unlock(); this.returnFocus?.focus();
           }
           if (mobile && this.mobileOpen) {
-            const container = this.containers()[0];
-            if (container && !container.contains(document.activeElement)) container.focus();
+            // Focus the sheet when it opens or when a patch dropped focus to the body; never take
+            // focus from the sheet's own popups or from other layers opened on top of it.
+            const container = this.containers()[0], active = document.activeElement;
+            if (container && (opening || !active || active === document.body) && !this.owns(container, active)) container.focus();
           }
+        },
+        hideOffcanvas(container) {
+          // A collapsed offcanvas sidebar sits off-screen: keep its contents out of the tab order and
+          // accessibility tree. The rail stays live because it peeks in from the edge to expand it.
+          const rails = [...container.querySelectorAll('[data-sidebar="rail"]')];
+          if (container.contains(document.activeElement) && !rails.includes(document.activeElement)) {
+            const trigger = [...this.el.querySelectorAll('[data-sidebar="trigger"]')].find(node => node.closest('[data-slot="sidebar-wrapper"]') === this.el && !container.contains(node) && node.getClientRects().length);
+            trigger ? trigger.focus() : document.activeElement.blur();
+          }
+          const hide = node => [...node.children].forEach(child => {
+            if (rails.includes(child)) return;
+            if (rails.some(rail => child.contains(rail))) hide(child);
+            else if (!child.hasAttribute("inert")) { child.setAttribute("inert",""); this.inertNodes.push(child); }
+          });
+          hide(container);
         },
         unlock() { if (this.locked) { document.body.style.overflow=this.previousOverflow;this.locked=false; } },
         beforeUpdate() { this.backdrop?.remove(); },

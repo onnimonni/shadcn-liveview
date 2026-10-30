@@ -1,9 +1,24 @@
 defmodule ShadcnLiveview.Components.Kbd do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays keyboard input such as shortcuts.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/kbd
+
+  Components: `kbd/1`, `kbd_group/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.kbd>Ctrl + K</.kbd>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -28,7 +43,10 @@ defmodule ShadcnLiveview.Components.Kbd do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

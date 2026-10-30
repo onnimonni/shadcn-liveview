@@ -15,13 +15,30 @@ defmodule ShadcnLiveview.Components.Menubar do
   import ShadcnLiveview.Helpers
   import ShadcnLiveview.Components.Icon, only: [icon: 1]
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, default: nil
-  attr :default_value, :string, default: ""
+
+  attr :default_value, :string,
+    default: "",
+    doc: "Uncontrolled initial `value`; ignored once `value` is supplied."
+
   attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :loop, :boolean, default: true
-  attr :on_value_change, :string, default: "shadcn:menubar-change"
-  attr :class, :string, default: nil
+
+  attr :on_value_change, :string,
+    default: "shadcn:menubar-change",
+    doc:
+      "LiveView event name pushed on value change; the payload is described in the module docs."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -52,8 +69,26 @@ defmodule ShadcnLiveview.Components.Menubar do
       export default {
         sendEvent(event, payload, onReply) {
           const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
-          if (target) return this.pushEventTo(target, event, payload, onReply);
-          return this.pushEvent(event, payload, onReply);
+          const push = target
+            ? this.pushEventTo(target, event, payload).then(results => {
+                const failed = results.find(result => result.status === "rejected");
+                if (failed) throw failed.reason;
+                return results[0]?.value.reply;
+              })
+            : this.pushEvent(event, payload);
+          push.catch(() => {});
+          if (onReply) push.then(onReply, () => {});
+          return push;
+        },
+        promoteToTopLayer(el, bare) {
+          if (!el || typeof el.showPopover !== "function") return;
+          if (!el.hasAttribute("popover")) {
+            this.js().ignoreAttributes(el, ["popover", "style"]);
+            el.setAttribute("popover", "manual");
+            Object.assign(el.style, {inset: "auto", margin: "0"});
+            if (bare) Object.assign(el.style, {border: "0", padding: "0", overflow: "visible", background: "transparent", color: "inherit"});
+          }
+          if (!el.matches(":popover-open")) el.showPopover();
         },
         mounted() {
           this.pendingFocus = null;
@@ -119,8 +154,8 @@ defmodule ShadcnLiveview.Components.Menubar do
           if (value !== this.value) {
             for (const sub of this.el.querySelectorAll('[data-slot="menubar-sub-trigger"][aria-expanded="true"]')) this.submenu(sub, false, false);
           }
-          this.pendingFocus = keyboard ? this.triggers().find(t => t.getAttribute("phx-menu-value") === value)?.getAttribute("phx-content-id") : null;
-          this.sendEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value});
+          const focus = this.pendingFocus = keyboard ? this.triggers().find(t => t.getAttribute("phx-menu-value") === value)?.getAttribute("phx-content-id") : null;
+          this.sendEvent(this.el.getAttribute("phx-change-event"), {id: this.el.id, value}).catch(() => { if (this.pendingFocus === focus) this.pendingFocus = null; });
         },
         sync() {
           this.value = this.el.getAttribute("phx-value") || "";
@@ -141,6 +176,7 @@ defmodule ShadcnLiveview.Components.Menubar do
         },
         position(menu, anchor) {
           const overlay = menu.parentElement;
+          this.promoteToTopLayer(overlay, true);
           const box = anchor.getBoundingClientRect();
           const sub = anchor.dataset.slot === "menubar-sub-trigger";
           const sideOffset = Number(menu.getAttribute("phx-side-offset") || (sub ? 0 : 8));
@@ -180,8 +216,8 @@ defmodule ShadcnLiveview.Components.Menubar do
         },
         menuItems(menu) { return [...menu.querySelectorAll('[role^="menuitem"]')].filter(i => !i.hasAttribute("data-disabled") && i.closest('[role="menu"]') === menu); },
         submenu(trigger, open, keyboard) {
-          this.pendingFocus = open && keyboard ? trigger.getAttribute("phx-content-id") : null;
-          this.sendEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open});
+          const focus = this.pendingFocus = open && keyboard ? trigger.getAttribute("phx-content-id") : null;
+          this.sendEvent(trigger.getAttribute("phx-change-event"), {id: trigger.getAttribute("phx-sub-id"), value: open}).catch(() => { if (this.pendingFocus === focus) this.pendingFocus = null; });
         },
         keydown(e) {
           const trigger = e.target.closest('[data-slot="menubar-trigger"]');
@@ -261,7 +297,11 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :context, :map, required: true
   attr :value, :string, required: true
   attr :trigger_id, :string, default: nil
@@ -292,7 +332,12 @@ defmodule ShadcnLiveview.Components.Menubar do
   attr :context, :map, required: true
   attr :id, :string, default: nil
   attr :disabled, :boolean, default: false
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -326,11 +371,16 @@ defmodule ShadcnLiveview.Components.Menubar do
 
   attr :context, :map, required: true
   attr :id, :string, default: nil
-  attr :align, :string, default: "start"
-  attr :side, :string, default: "bottom"
+  attr :align, :string, default: "start", values: ["start", "center", "end"]
+  attr :side, :string, default: "bottom", values: ["top", "right", "bottom", "left"]
   attr :side_offset, :integer, default: 8
   attr :align_offset, :integer, default: -4
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -376,7 +426,12 @@ defmodule ShadcnLiveview.Components.Menubar do
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
   attr :variant, :string, default: "default", values: ["default", "destructive"]
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -407,12 +462,25 @@ defmodule ShadcnLiveview.Components.Menubar do
   defp inset_value(nil), do: nil
   defp inset_value(value), do: to_string(value)
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :checked, :any, default: false
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
-  attr :on_checked_change, :string, default: "shadcn:menu-check-change"
-  attr :class, :string, default: nil
+
+  attr :on_checked_change, :string,
+    default: "shadcn:menu-check-change",
+    doc:
+      "LiveView event name pushed on checked change; the payload is described in the module docs."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -456,9 +524,18 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, default: nil
-  attr :on_value_change, :string, default: "shadcn:menu-radio-change"
+
+  attr :on_value_change, :string,
+    default: "shadcn:menu-radio-change",
+    doc:
+      "LiveView event name pushed on value change; the payload is described in the module docs."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -477,11 +554,21 @@ defmodule ShadcnLiveview.Components.Menubar do
   end
 
   attr :context, :map, required: true
-  attr :id, :string, required: true
+
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :value, :string, required: true
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -518,10 +605,18 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :id, :string, required: true
-  attr :dir, :string, default: "ltr"
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
+  attr :dir, :string, default: "ltr", values: ["ltr", "rtl"]
   attr :open, :boolean, default: false
-  attr :on_open_change, :string, default: "shadcn:menubar-sub-change"
+
+  attr :on_open_change, :string,
+    default: "shadcn:menubar-sub-change",
+    doc: "LiveView event name pushed on open change; the payload is described in the module docs."
+
   slot :trigger, required: true
   slot :content, required: true
 
@@ -547,7 +642,12 @@ defmodule ShadcnLiveview.Components.Menubar do
   attr :context, :map, required: true
   attr :disabled, :boolean, default: false
   attr :inset, :boolean, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -584,7 +684,12 @@ defmodule ShadcnLiveview.Components.Menubar do
   end
 
   attr :context, :map, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -632,7 +737,10 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global
   slot :inner_block
@@ -645,7 +753,11 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :inset, :boolean, default: nil
   attr :rest, :global
   slot :inner_block
@@ -663,7 +775,10 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global
   slot :inner_block
@@ -682,7 +797,10 @@ defmodule ShadcnLiveview.Components.Menubar do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global
   slot :inner_block

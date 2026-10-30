@@ -1,10 +1,27 @@
 defmodule ShadcnLiveview.Components.Sonner do
-  @moduledoc false
+  @moduledoc ~S"""
+  Toast notifications pushed from the server with `push_event/3`.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/sonner
+
+  Components: `toaster/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.toaster />
+  ```
+  """
   use Phoenix.Component
 
   @doc "Mount with a stable id. push_event(socket, \"shadcn:toast\", %{toaster: id, message: text, description: text, duration: milliseconds}) displays escaped notifications. Zero duration persists until dismissed; omitted duration is 4000ms."
   attr :id, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def toaster(assigns) do

@@ -1,5 +1,19 @@
 defmodule ShadcnLiveview.Components.Direction do
-  @moduledoc false
+  @moduledoc ~S"""
+  Sets the text direction (`ltr`/`rtl`) for a subtree.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/direction
+
+  Components: `direction_provider/1`, `use_direction/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.direction_provider dir="ltr">
+    <div class="p-2 text-sm">Left to right layout</div>
+  </.direction_provider>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
@@ -15,7 +29,10 @@ defmodule ShadcnLiveview.Components.Direction do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

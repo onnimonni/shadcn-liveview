@@ -1,10 +1,29 @@
 defmodule ShadcnLiveview.Components.Alert do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a callout for user attention.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/alert
+
+  Components: `alert/1`, `alert_title/1`, `alert_description/1`, `alert_action/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.alert>
+    <.alert_title>Heads up!</.alert_title>
+    <.alert_description>You can add components to your app using the cli.</.alert_description>
+  </.alert>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
-  attr :variant, :string, default: "default"
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :variant, :string, default: "default", values: ~w(default destructive)
 
   attr :rest, :global,
     include:
@@ -35,7 +54,10 @@ defmodule ShadcnLiveview.Components.Alert do
     )
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -60,7 +82,10 @@ defmodule ShadcnLiveview.Components.Alert do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -85,7 +110,10 @@ defmodule ShadcnLiveview.Components.Alert do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

@@ -4,6 +4,169 @@ Native Phoenix LiveView components converted from shadcn/ui's **Radix Nova** reg
 
 Current coverage: **61 component families, 309 SSR fixtures**. React and Phoenix initial HTML are compared with strict generated-ID reference checks. SSR parity is not proof of every browser interaction; connected browser verification is also required for interactive changes.
 
+## Use in a Phoenix app
+
+Consumers use the generated Elixir and shipped assets; they do **not** install this repository's Bun dependencies, React, Tailwind CLI or conversion tools.
+
+### Installer (recommended)
+
+The package ships an [Igniter](https://hexdocs.pm/igniter) installer that turns a stock Phoenix 1.8 `mix phx.new` app into a shadcn_liveview app:
+
+```sh
+mix archive.install hex igniter_new   # once, provides mix igniter.install / igniter.new
+
+# existing app
+mix igniter.install shadcn_liveview
+# local checkout as a path dependency
+mix igniter.install shadcn_liveview@path:../shadcn-liveview
+# new app
+mix igniter.new my_app --with phx.new --with-args="--database sqlite3" --install shadcn_liveview
+# dependency already in mix.exs (and igniter available)
+mix shadcn_liveview.install
+```
+
+It shows a diff and asks before writing (`--yes` skips the prompt). Running it again changes nothing. It:
+
+- imports `shadcn_liveview/priv/static/shadcn.tailwind.css` right after `@import "tailwindcss"` in `assets/css/app.css`, deletes phx.new's `@custom-variant dark` line (the entry covers `.dark` and `[data-theme=dark]`, so the stock theme toggle keeps working) and deletes the daisyUI `@plugin` blocks plus the `:daisyui` dependency (or `assets/vendor/daisyui*.js` in apps from Phoenix 1.8.0/1.8.1); the heroicons plugin stays;
+- imports the bundled hooks in `assets/js/app.js` and merges them after the colocated hooks;
+- for path dependencies only, adds `Path.join(Mix.Project.build_path(), "lib")` to the esbuild and tailwind `NODE_PATH` (path deps are not copied into `deps/`);
+- adds `use ShadcnLiveview, except: [button: 1, input: 1, table: 1, icon: 1]` next to `import MyAppWeb.CoreComponents` in `html_helpers/0`;
+- replaces the daisyUI `CoreComponents` and `Layouts` with shadcn-styled versions that keep Phoenix's API: `<.button variant="primary" navigate=…>` (plus every shadcn variant and size), `<.input field type label options prompt multiple>` (text types, select, textarea, checkbox, hidden), `<.table rows row_id row_click>` with `:col`/`:action`, `<.header>`, `<.list>`, `<.icon name="hero-…">` or Lucide names, `flash`, `show`/`hide`, `translate_error(s)` (Gettext when the app has it), `Layouts.app`, `flash_group` and the `data-theme` `theme_toggle`. `phx.gen.html` and `phx.gen.live` output compiles under `--warnings-as-errors` and renders with shadcn styles;
+- maps the stock home page's daisyUI color classes to shadcn tokens.
+
+Options: `--no-core-components` keeps your `CoreComponents`/`Layouts` (they still use daisyUI classes), `--keep-daisyui` keeps daisyUI (its `--border` width variable clashes with shadcn's `--border` color token). A file that no longer matches the Phoenix default is left untouched and the installer prints the manual step.
+
+After installing, `<.button>`, `<.input>`, `<.table>` and `<.icon>` are your CoreComponents wrappers over the library; every other component (`dialog`, `card`, `form_field`, …) comes from `use ShadcnLiveview`. Call the library versions of the four wrapped names by module (`<ShadcnLiveview.Components.Button.button>`).
+
+### Manual setup
+
+Add `{:shadcn_liveview, "~> 0.1"}` (or `path: "../shadcn-liveview"` for a local checkout), then run `mix deps.get`. Pick the stylesheet that matches your app:
+
+| Your app | CSS | Hooks |
+| --- | --- | --- |
+| Tailwind v4 build (stock `mix phx.new`) | `@import "shadcn_liveview/priv/static/shadcn.tailwind.css";` right after `@import "tailwindcss"` in `assets/css/app.css` | `import {hooks as shadcnHooks} from "shadcn_liveview/priv/static/shadcn-hooks.js"` in `app.js` |
+| No Tailwind | serve prebuilt `priv/static/shadcn.css` (Plug.Static, below) | `/shadcn/shadcn-hooks.js` |
+
+The Tailwind entry compiles the components into your own build, so your classes override component defaults and token utilities (`bg-primary/10`) work in app markup. Never import both stylesheets.
+
+```css
+/* assets/css/app.css */
+@import "tailwindcss" source(none);
+@import "shadcn_liveview/priv/static/shadcn.tailwind.css";
+/* delete phx.new's @custom-variant dark line; the entry covers .dark and [data-theme=dark] */
+```
+
+```js
+// assets/js/app.js
+import {hooks as shadcnHooks} from "shadcn_liveview/priv/static/shadcn-hooks.js"
+// LiveSocket options: hooks: {...colocatedHooks, ...shadcnHooks}
+```
+
+Path dependencies also need `Path.join(Mix.Project.build_path(), "lib")` in the esbuild and tailwind `NODE_PATH`. Import the components with CoreComponents coexistence:
+
+```elixir
+# lib/my_app_web.ex, html_helpers/0
+import MyAppWeb.CoreComponents, except: [button: 1, input: 1, table: 1, icon: 1]
+use ShadcnLiveview  # its icon/1 renders hero-* like CoreComponents plus Lucide names
+```
+
+`use ShadcnLiveview` accepts `only:`/`except:` like `import`. The full verified recipe (phx.gen-compatible variant, dark mode via `data-theme`, daisyUI caveats) is in [`usage-rules/phoenix.md`](usage-rules/phoenix.md). Apps without Tailwind can instead serve `priv/static` with `plug Plug.Static, at: "/shadcn", from: :shadcn_liveview, only: ~w(shadcn.css shadcn-hooks.js)`, link `/shadcn/shadcn.css` and import `/shadcn/shadcn-hooks.js` (marked external in esbuild), as `examples/consumer` does. The hook bundle includes all colocated hooks and the carousel's Embla dependency, not React or Phoenix's client.
+
+### For AI coding agents
+
+The package ships agent rules: [`usage-rules.md`](usage-rules.md) plus [`usage-rules/`](usage-rules/) (generated [`components.md`](usage-rules/components.md) index of every family's functions, enum values, state attrs and events; `phoenix.md`, `forms.md`, `overlays.md`, `data-tables.md`). Sync them into your app's `AGENTS.md`/`CLAUDE.md` with [usage_rules](https://hexdocs.pm/usage_rules):
+
+```elixir
+# mix.exs project/0, with {:usage_rules, "~> 1.2", only: :dev} in deps
+usage_rules: [
+  file: "AGENTS.md",
+  usage_rules: [
+    # sync rewrites the whole block: keep phx.new's Phoenix rules explicitly
+    "phoenix:elixir", "phoenix:phoenix", "phoenix:html", "phoenix:liveview",
+    {:shadcn_liveview, sub_rules: []},
+    {:shadcn_liveview, sub_rules: :all, main: false, link: :markdown}
+  ]
+]
+```
+
+Then run `mix usage_rules.sync`, or point your agent at `deps/shadcn_liveview/usage-rules.md` directly. Component modules carry moduledocs, attr `values:` (invalid literals warn at compile time) and `doc:` text for `h`, ExDoc and Tidewave.
+
+### Phoenix forms
+
+Pass a `Phoenix.HTML.FormField` directly to `input`, `textarea`, `native_select`, `checkbox` or `switch`. IDs, names and current values are inferred; explicit control attributes take precedence. Compose accessible labels, descriptions and errors with `form_field`:
+
+```heex
+<.form for={@form} phx-change="validate" phx-submit="save">
+  <.form_field field={@form[:email]} label="Email" description="Used for receipts." required :let={attrs}>
+    <.input {attrs} type="email" autocomplete="email" />
+  </.form_field>
+  <.form_field field={@form[:notifications]} label="Email notifications" orientation="horizontal" :let={attrs}>
+    <.checkbox {attrs} />
+  </.form_field>
+  <.button type="submit">Save</.button>
+</.form>
+```
+
+Assign `@form` with Phoenix `to_form/2`; applications using Ecto changesets also need `phoenix_ecto`. `form_field` shows errors only for used fields, connects help/error IDs through `aria-describedby`, and sets `aria-invalid`. Pass `translate_error={&MyAppWeb.CoreComponents.translate_error/1}` only if your application exposes that function; otherwise provide your own public Gettext translation callback. Without a callback, validation placeholders are interpolated. Field-bound binary controls submit `"false"` when unchecked and `"true"` when checked; explicit `value` can override the checked value. Native multiple selects infer an array-valued form name.
+
+Horizontal checkbox/switch fields place the control first and group label, description and errors beside it. Keep LiveView `_unused_*` parameters when normalizing form input so validation does not expose errors on untouched fields.
+
+For stateful LiveComponents, place `phx-target={@myself}` on the form and explicit action buttons. The native control hooks honor the form owner. Controlled field values reconcile server patches; validation, persistence and reset policy remain owned by your application.
+
+The prebuilt `shadcn.css` (for apps without Tailwind) provides tokens, base styles and the utilities the components use, not arbitrary application utilities; use ordinary CSS for layout, as `examples/consumer` does. Tailwind apps use `shadcn.tailwind.css` instead and get every utility from their own build. Override theme tokens in your own CSS.
+
+### Data tables
+
+`ShadcnLiveview.DataTable` (hand-written, imported by `use ShadcnLiveview`) is a server-side replacement for TanStack Table: `data_table` with `:col` slots, `data_table_search`, `data_table_view_options` and `data_table_pagination`, driven by a `DataTable.State` assign. It covers sorting with `aria-sort`, text and facet filters, page size and paging, per-page select-all with an indeterminate state and selection that survives paging, a column visibility menu, row action menus and focus after deleting a row. `DataTable.from_params/2`/`to_params/1` keep the query in the URL, `apply/2` handles in-memory lists, and `offset/1`/`order_by/1`/`put_total/2` feed Ecto queries. See [`usage-rules/data-tables.md`](usage-rules/data-tables.md); the converter maps TanStack-based templates onto it. A local `data_table/1` function in a module that `use`s the library clashes with the import: rename it or add `except: [data_table: 1]`.
+
+### Credo checks
+
+Apps that use [Credo](https://hex.pm/packages/credo) get two checks from this library (the installer adds them to an existing `.credo.exs`):
+
+```elixir
+# .credo.exs, inside the config map
+checks: %{extra: [{ShadcnLiveview.Credo.ComposerFormClears, []}, {ShadcnLiveview.Credo.ChatUsesMessageScroller, []}]}
+```
+
+- `ComposerFormClears`: a chat composer (`phx-submit` form with one text control in a template that renders `message`/`bubble`/`message_scroller`) whose control keeps the same DOM id across sends never clears: the blank form re-renders the same `""`. The fix is a per-message control id, e.g. `id={"composer-text-#{@sent_count}"}` plus `phx-mounted={@sent_count > 0 && JS.focus()}`.
+- `ChatUsesMessageScroller`: a looped `message`/`bubble` thread in a `message_group`/`bubble_group`, stream container or `overflow-*`/`max-h-*` box without `message_scroller` does not follow new messages.
+
+Both scan `~H` sigils, the colocated `<module>.html.heex` and literal `embed_templates` matches; findings in a `.heex` file are reported on its module, with the template path and line in the message. Run `mix credo explain <file>:<line>` for the full rationale. The checks compile only when Credo is a dependency of the app; if you add Credo later, run `mix deps.compile shadcn_liveview --force`. Exclude files from a check with Credo's usual params, e.g. `{ShadcnLiveview.Credo.ChatUsesMessageScroller, files: %{excluded: ["lib/my_app_web/live/transcript_live.ex"]}}`.
+
+### Independent consumer example
+
+With the declared toolchain available, run `bash examples/consumer/scripts/dev.sh`. Open **`http://127.0.0.1:4001/shop`** for Northline: an eight-product storefront with search/category/sort/pagination, product options, saved items, a quantity-aware bag, `WELCOME10` discounts, delivery selection, validated checkout, order receipts and browser-owned order history. `/` also opens the storefront. Original SVG product illustrations work offline.
+
+The hero’s “Explore the collection” link smoothly scrolls to the catalog with a 24px top offset. Smooth scrolling is scoped to that in-page link; product navigation starts at the top immediately, and Back restores the previous catalog position without a scroll animation. Scrolling remains instant when the browser’s reduced-motion preference is enabled.
+
+Commerce data uses a single-node DETS store. Carts do not reserve stock; checkout checks and decrements inventory atomically, saves server-authoritative prices, and reuses the signed request token to avoid duplicate orders. Carts, saved items, inventory and orders survive application restarts. The default file is `${XDG_DATA_HOME:-$HOME/.local/share}/shadcn-consumer/shop.dets`; set `SHOP_DATA_PATH` to choose another file. Use a new file path for a fresh catalog rather than deleting active storage.
+
+This is explicitly a **local demo store**: no payment collection, emails or goods dispatch. Customer/address fields are stored locally. Orders belong to the signed browser session, not a user account; clearing cookies loses access to that browser’s history. DETS and a single supervised store process are not a multi-node or production commerce architecture.
+
+Open `/settings` or `/settings/component` for the same validated form in a LiveView or stateful LiveComponent. These existing examples demonstrate confirmation dialogs, toasts, unchecked submission, reset to saved values, server-driven control updates, cross-tab saved-state notifications and genuine Phoenix reconnect form recovery. Saved settings are session-isolated and held in memory: reconnects/reloads retain them, application restarts do not.
+
+Run `mix assets.build && mix test` inside `examples/consumer` for unit, LiveView and real-browser tests. Its test endpoint starts automatically on port 4101; no development server is needed. Browser tests use PhoenixTestPlaywright and capture initial, invalid, confirmation-dialog and saved states with Excessibility. Run `MIX_ENV=test mix excessibility --viewports 390x844,1100x900` there to scan those snapshots. Browser tooling is a test dependency, not a consumer runtime dependency.
+
+The development/release scripts isolate the consumer build directory. When running Mix commands manually from the repository's devenv shell, first `export MIX_BUILD_ROOT="$PWD/_build"` inside `examples/consumer`.
+
+Development/test serve uncompressed assets so old release `.gz` files cannot shadow rebuilt JavaScript or CSS. Production enables gzip serving for release-built assets.
+
+Build a production release with `bash examples/consumer/scripts/release.sh`. Set `SECRET_KEY_BASE` (at least 64 bytes), `PHX_HOST`, `PHX_SERVER=true` and optionally `CONSUMER_PORT` when starting the release. Production expects HTTPS termination by a trusted reverse proxy. Library maintainers regenerate components, then run `mix assets.package` and retain the refreshed `priv/static/shadcn.css`, `shadcn.tailwind.css` and `shadcn-hooks.js` in source control (`test/tailwind-entry.test.ts` fails if the entry and prebuilt CSS diverge). `mix hex.build` includes these public assets while excluding gallery/preview modules and reference/conversion tooling.
+
+### Converting shadcn/ui templates
+
+`priv/shadcn-to-liveview.mjs` converts shadcn/ui blocks, examples and registry items (React/TSX)
+into a LiveView module using these components, marking anything it cannot convert with
+`TODO(shadcn-to-liveview)` comments and a report:
+
+```sh
+node deps/shadcn_liveview/priv/shadcn-to-liveview.mjs https://ui.shadcn.com/r/styles/radix-nova/login-03.json \
+  --module MyAppWeb.LoginLive --out lib/my_app_web/live/login_live.ex --report login_live.md
+```
+
+Agents: follow `usage-rules/skills/shadcn-template-to-liveview/SKILL.md`. `mix assets.package`
+rebuilds the converter bundle with the other packaged assets.
+
 ## Development
 
 Recommended: install [devenv](https://devenv.sh/getting-started/) and enter the declared toolchain:
@@ -11,8 +174,8 @@ Recommended: install [devenv](https://devenv.sh/getting-started/) and enter the 
 ```sh
 devenv shell
 setup-project
-test-components
 setup-browser
+test-components
 test-browser-components
 ```
 
@@ -22,22 +185,31 @@ Available shell commands:
 
 | Command | Action |
 | --- | --- |
-| `setup-project` | Install Hex, fetch Mix dependencies and install Bun dependencies. |
+| `setup-project` | Install Hex, fetch root/consumer Mix dependencies and install Bun dependencies. |
 | `generate-components` | Regenerate and format native components. |
 | `check-components` | Run `mix quality`. |
 | `test-components` | Run the generation/quality/test/SSR-parity pipeline. |
-| `setup-browser` | Install pinned Playwright Chromium on macOS; Linux uses Nix Chromium. |
-| `test-browser-components` | Launch an isolated preview and run connected browser regressions. |
+| `setup-browser` | Install pinned Playwright Chromium; Linux browser tests can use Nix Chromium. |
+| `test-browser-components` | Run Elixir component/consumer browser tests and retained React/visual comparisons. |
+| `test-accessibility` | Capture connected HTML, then scan both projects with Excessibility; findings exit nonzero. |
 | `update-shadcn` | Refresh the live upstream registry snapshot; follow the review procedure below. |
 | `preview-components` | Build assets and launch the connected preview on port 4000. |
 
-Without devenv, provide Elixir 1.18+ (within 1.x), matching Erlang/OTP, Rebar3, Bun, the `tsx` compatibility runtime and Bash, then run `mix local.hex --force`, `mix deps.get`, `bun install` and `bun run test`. Git/GitHub CLI are needed for repository maintenance.
+Without devenv, provide Elixir 1.18+ (within 1.x), matching Erlang/OTP, Rebar3, Bun, the `tsx` compatibility runtime and Bash, then run `mix local.hex --force`, `mix deps.get`, `bun install`, `bunx playwright install chromium` and `bun run test`. Fetch the example's dependencies with `(cd examples/consumer && mix deps.get)` before combined browser/accessibility commands. Git/GitHub CLI are needed for repository maintenance.
 
 `bun run test` regenerates components, formats generated Elixir, checks formatting and warning-free HEEx/Elixir compilation, runs strict Credo, runs converter/comparator and ExUnit tests, builds assets, and compares all SSR fixtures. Any failed case or family exits nonzero.
 
-`bun run test:browser` starts/stops its own preview on port 4000; stop other previews first. It verifies native form values, uncontrolled patches/reset, controlled updates/transitions, LiveComponent event routing, textarea escaping/patches, disabled combobox input, nested disclosure ownership and ScrollArea wheel/touch/keyboard scrolling. Paired regressions cover controlled tabs, independent instances, frame-contained dialogs, post-patch slider focus, disabled slider submission, external-form resets, separator sizing/reset, centered looping carousels and repeated questionnaire answers. Outside devenv, first run `bunx playwright install chromium` (Linux also needs Playwright's browser system libraries), or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed Chromium.
+`bun run test:browser` runs PhoenixTestPlaywright ExUnit suites and the consumer browser flows, then starts/stops a preview on port 4000 for retained React/visual comparisons; stop other previews first. Elixir test endpoints use ports 4100 and 4101. Tests exercise native form values, patches/reset, controlled transitions, LiveComponent targeting, keyboard/pointer actions, popup focus/dismissal, scrolling and responsive layouts. Outside devenv, install Chromium with `bunx playwright install chromium`; Linux also needs the browser's system libraries. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an installed Chromium for the browser driver.
 
-`test/browser/components-{basic,controls,layout,popups}.spec.ts` gives every one of the 61 implemented component families a named Phoenix Playwright check. Interactive checks use connected LiveView events, keyboard/pointer actions, form values and acknowledged state; static checks compare actual browser layout with React. These checks supplement, not replace, the regression suites.
+Generated-component browser tests live in `test/browser/*_test.exs` and use [PhoenixTestPlaywright](https://phoenix-test-playwright.hexdocs.pm/readme.html). Shared helpers observe browser state and send real Playwright input actions; they do not replace component hooks with mocks. TypeScript remains for React-reference and screenshot-audit tooling.
+
+### Accessibility tests
+
+[Excessibility](https://github.com/lessthanseventy/excessibility) captures connected browser DOM, including selected/open/error states, rather than only initial server HTML. Snapshots live in ignored `test/excessibility/html_snapshots/` directories in each project. Static assets resolve from the application or library package; both projects reuse the root Playwright and axe-core installation.
+
+Run `bun run test:a11y --viewports 390x844,1100x900` after setup. This runs browser tests, then scans all existing snapshots in both projects with axe-core and LiveView-aware rules. It checks overwritten snapshots too; it does not rely on the package's combined test command, which scans only newly named files. Findings and scanner failures exit nonzero; no rules are disabled or baselines automatically approved. Snapshots cannot prove keyboard behavior or every interaction state: functional browser tests remain required.
+
+Current snapshots report missing accessible control names/labels, contrast failures and LiveView-aware click/live-region findings. The accessibility command intentionally remains nonzero until those findings are resolved.
 
 ### Static scan and dependency patch
 
@@ -68,7 +240,7 @@ Standalone connected preview: <http://127.0.0.1:4000/live-preview/accordion>. Ch
 
 ### Screenshot anomaly audit
 
-With the preview running, `devenv shell -- bun run audit:visual` captures every fixture in React and LiveView at 390px and 1100px widths. It writes a paired-image HTML report, PNG differences, measurements, and structured JSON under `parity/visual-audit/`.
+With the preview running, `devenv shell -- bun run audit:visual` captures every fixture in React and LiveView at 390px and 1100px widths. It writes a ranked likely-broken review queue, paired screenshots, PNG differences, geometry/hit-test evidence, and structured JSON under `parity/visual-audit/`.
 
 ```sh
 # Focus on reported examples; serve the report through the preview endpoint.
@@ -79,15 +251,25 @@ devenv shell -- bun run audit:visual \
 
 Open `/preview/visual-audit/index.html` for that output. `--url` selects the preview endpoint, `--widths` changes the viewport list, and `--strict` exits nonzero on warning/error findings, not informational differences. The default run reports findings (including capture failures) for review without treating every intentional demo state as a failure; always check its coverage counts.
 
-Capture readiness follows React commits (including portal-only fixtures) or the connected LiveView socket, then loaded fonts/images and settled chart geometry. Render crashes and readiness timeouts are recorded as failed captures, never successful blank screenshots. The React gallery control adapter preserves single-element `asChild` triggers while binding interactive state.
+Capture readiness follows React commits (including portal-only fixtures) or the connected LiveView socket, then loaded fonts/images and settled chart geometry. Render crashes and readiness timeouts are recorded as failed captures, never successful blank screenshots. The React gallery control adapter preserves single-element `asChild` triggers while binding interactive state. Gallery family height floors live on a document-level CSS variable so LiveView connection and subsequent patches cannot discard them.
 
-This is a heuristic audit, not aesthetic certification: it compares actual rendered images and flags overflow/clipping and suspicious controls. Identical bad React and Phoenix layouts can pass pixel comparison, so geometry and label checks run independently. Initial captures do not prove every interaction state; behavioral Playwright tests remain required.
+Independent checks cover overflow/clipping, intersecting menu/listbox panels (including nested panels), overlapping controls, nine-point control occlusion, horizontal navigation cross-axis misalignment, and crowded controls. Hit tests include expanded pseudo-element click areas that extend beyond border boxes. Shared edges/subpixel overlap are ignored; minor panel contact and spacing remain low-confidence evidence. Label/backing-input relationships, compound control groups, and intentional modal coverage are excluded where applicable.
+
+Occlusion samples are evidence, not exhaustive coverage: one or two intercepted points are retained as informational findings; three to five are warnings; six or more are errors. Unsampled thin hit areas can still be missed, so a clean scan does not prove every clickable pixel works.
+
+Clipping and occlusion sampling share containing-block-aware overflow rules: viewport-positioned popups can escape intermediate overflow ancestors, while transformed/contained positioned ancestors and ordinary scroll/hidden content retain applicable clipping. Paired geometry separately flags stage differences above 1px and uniquely named control differences above 4px; ambiguous repeated names are not matched. This catches sparse demos shifting despite a low changed-pixel ratio.
+
+`report.json` retains every result and adds `rankedSuspects`: scores prioritize capture failures, blocked controls and layout geometry over pixel differences and label heuristics. Repeated DOM descendants/ancestor-clipping cascades cannot inflate priority. Each suspect links the paired images, raw evidence and live fixtures; shared React/LiveView signals retain priority. Scores are review priorities, not probabilities or accessibility certification.
+
+This is a heuristic audit, not aesthetic certification. Both implementations can reproduce a bad locally authored fixture; matching React is not proof of correct presentation. Initial states can also differ, so changed pixels alone are not proven regressions. The audit captures initial demo states, including explicitly open-state fixtures; it does not crawl clicks or keyboard transitions. Review interactions separately and inspect coverage/capture failures before concluding a component is sound.
 
 ### Component integration
 
-Use `use ShadcnLiveview` in a Phoenix component/LiveView module to import the components. Component module docs describe controlled state and event payloads. Consumers must register the compiled colocated `hooks` with their `LiveSocket`; `assets/js/preview.js` demonstrates this integration. Build/include the project's CSS as well as the hook bundle. The carousel uses vanilla `embla-carousel` 8.6.0, not React; include that dependency when bundling the hooks in another asset project.
+Use `use ShadcnLiveview` in a Phoenix component/LiveView module to import the components. `ShadcnLiveview.Form` documents Phoenix field bindings and accessible composition; compound component modules document controlled state and event payloads. Consumers can use the shipped CSS/hooks described above. Custom asset builds can instead register the compiled colocated `hooks` manifest with their `LiveSocket`, as shown in `assets/js/preview.js`; bundle vanilla `embla-carousel` 8.6.0 when doing so.
 
 Checkbox, switch and slider `default_checked`/`default_value` initialize uncontrolled state once. Local state survives unrelated patches and later default changes; explicit `checked`/`value` assigns remain authoritative. Reset matches each vendored primitive: switch/slider restore mounted defaults; a checkbox resets its visual state through its nearest wrapping form, while an externally associated checkbox resets submitted values without changing its visual check. Hook-generated events honor the nearest `phx-target`, including `@myself` in stateful LiveComponents; absent targets route to the owning LiveView. Wrapperless popup/modal/combobox roots forward their supplied target to native hook owners.
+
+Hook-generated events never raise unhandled rejections when LiveView is disconnected or the server fails the push. Server-controlled widgets keep their last rendered state: accordion, tabs, collapsible, toggle, popups, modals, menubar, navigation menu and calendar months simply do not change, while controlled checkbox, switch, slider, radio/toggle group, command and combobox selections roll back their optimistic repaint. Client-owned state (uncontrolled controls, typed OTP/questionnaire input, carousel, resizable and sidebar) stays local; only the server notification is lost. Interactions retry normally after reconnecting.
 
 Textarea `value` renders escaped content, not an HTML `value` attribute; explicit values (including `""`) override the slot. Missing values use slot content and otherwise remain truly empty. ScrollArea enables native scrolling on connection without requiring a root ID.
 
@@ -161,7 +343,7 @@ The source is the [live Radix Nova registry](https://ui.shadcn.com/r/styles/radi
 
 5. **Verify the real browser behavior.** Start the connected preview after the successful asset build. Exercise changed families with actual keyboard/pointer actions and server patches. Check disabled/required boundaries, form data, independent instances, focus/scroll restoration, responsive layout and listener/DOM cleanup. For layout changes, compare the React and Phoenix static galleries with JavaScript disabled; compare animations at the same phase.
 
-6. **Commit one reviewed update.** Include vendored source and registry lock, dependency changes, conversion rules/helpers, fixtures/tests, regenerated Elixir and generated SSR artifacts. Update affected component docs in the generator/converter and this README if the workflow or coverage changes. Do not commit `node_modules`, `deps`, `_build` or built asset bundles.
+6. **Commit one reviewed update.** Include vendored source and registry lock, dependency changes, conversion rules/helpers, fixtures/tests, regenerated Elixir and generated SSR artifacts. Rebuild and retain the shipped `priv/static/shadcn.css`, `shadcn.tailwind.css` and `shadcn-hooks.js`; exclude preview bundles. Update affected component docs in the generator/converter and this README if the workflow or coverage changes. Do not commit `node_modules`, `deps`, `_build` or other built asset bundles.
 
 An upstream refresh is **not** a promise of automatic compatibility: React/Radix/Base UI behavioral changes need an explicit native LiveView implementation and verification. The gates identify drift; they do not replace that work.
 

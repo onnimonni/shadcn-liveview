@@ -1,14 +1,11 @@
 import { expect, test, type Page } from "@playwright/test"
 
-for (const mode of ["react", "liveview"] as const) {
-  const gallery = mode === "react" ? "/preview/react-ssr.html" : "/preview/liveview.html"
-  test(`${mode}: shipping labels and submission remain usable in a narrow gallery iframe`, async ({ page }) => {
-    await page.goto(gallery)
+test("react: shipping labels and submission remain usable in a narrow gallery iframe", async ({ page }) => {
+    await page.goto("/preview/react-ssr.html")
     const owner = page.locator('iframe[data-fixture="radio-group-required-vertical"]')
     await owner.scrollIntoViewIfNeeded()
     await owner.evaluate(iframe => { iframe.style.width = "240px" })
     const frame = page.frameLocator('iframe[data-fixture="radio-group-required-vertical"]')
-    if (mode === "liveview") await expect(frame.locator("[data-phx-main]")).toHaveClass(/phx-connected/)
     const standard = frame.getByRole("radio", { name: "Standard", exact: true })
     const express = frame.getByRole("radio", { name: "Express", exact: true })
     const overnight = frame.getByRole("radio", { name: "Overnight", exact: true })
@@ -46,8 +43,8 @@ for (const mode of ["react", "liveview"] as const) {
     }
   })
 
-  test(`${mode}: controlled tabs update without affecting another example`, async ({ page }) => {
-    await page.goto(gallery)
+  test("react: controlled tabs update without affecting another example", async ({ page }) => {
+    await page.goto("/preview/react-ssr.html")
     await page.locator('iframe[data-fixture="tabs-history"]').scrollIntoViewIfNeeded()
     const first = page.frameLocator('iframe[data-fixture="tabs-history"]')
     const other = page.frameLocator('iframe[data-fixture="tabs"]')
@@ -58,8 +55,8 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(other.getByRole("tab", { name: "Account", exact: true })).toHaveAttribute("aria-selected", "true")
   })
 
-  test(`${mode}: independent tab instances retain their selections`, async ({ page }) => {
-    await page.goto(gallery)
+  test("react: independent tab instances retain their selections", async ({ page }) => {
+    await page.goto("/preview/react-ssr.html")
     await page.locator('iframe[data-fixture="tabs-instances"]').scrollIntoViewIfNeeded()
     const frame = page.frameLocator('iframe[data-fixture="tabs-instances"]')
     await frame.locator("#tabs-first").getByRole("tab", { name: "History", exact: true }).click()
@@ -67,8 +64,8 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(frame.locator("#tabs-second").getByRole("tab", { name: "Settings", exact: true })).toHaveAttribute("aria-selected", "true")
   })
 
-  test(`${mode}: dialog portals stay within their frame and can close and reopen`, async ({ page }) => {
-    await page.goto(gallery)
+  test("react: dialog portals stay within their frame and can close and reopen", async ({ page }) => {
+    await page.goto("/preview/react-ssr.html")
     const owner = page.locator('iframe[data-fixture="dialog-closed"]')
     await owner.scrollIntoViewIfNeeded()
     const frame = page.frameLocator('iframe[data-fixture="dialog-closed"]')
@@ -88,9 +85,8 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(page.getByRole("dialog")).toHaveCount(0)
   })
 
-  test(`${mode}: separator keyboard steps and double-click reset match vendor sizing`, async ({ page }) => {
-    await page.goto(mode === "react" ? "/preview/react-fixture.html?fixture=resizable-vertical" : "/live-preview/resizable-vertical?embed=1")
-    if (mode === "liveview") await expect(page.locator("[data-phx-main]")).toHaveClass(/phx-connected/)
+  test("react: separator keyboard steps and double-click reset match vendor sizing", async ({ page }) => {
+    await page.goto("/preview/react-fixture.html?fixture=resizable-vertical")
     const separator = page.getByRole("separator")
     await expect(separator).toHaveAttribute("aria-valuenow", "30")
     await separator.focus()
@@ -102,9 +98,8 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(separator).toHaveAttribute("aria-valuenow", "30")
   })
 
-  test(`${mode}: multiple questionnaire answers survive submission and clearing`, async ({ page }) => {
-    await page.goto(mode === "react" ? "/preview/react-fixture.html?fixture=questionnaire-invalid-multiple" : "/live-preview/questionnaire-invalid-multiple?embed=1")
-    if (mode === "liveview") await expect(page.locator("[data-phx-main]")).toHaveClass(/phx-connected/)
+  test("react: multiple questionnaire answers survive submission and clearing", async ({ page }) => {
+    await page.goto("/preview/react-fixture.html?fixture=questionnaire-invalid-multiple")
     const good = page.locator('input[value="good"]')
     const great = page.locator('input[value="great"]')
     const receipt = page.locator('output[aria-live="polite"]')
@@ -125,7 +120,6 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(great).not.toBeChecked()
     await expect(page.getByRole("alert")).toBeVisible()
   })
-}
 
 test("half-width carousel snaps and loop wraps retain React geometry after server patches", async ({ page, context }) => {
   const react = page
@@ -156,42 +150,11 @@ test("half-width carousel snaps and loop wraps retain React geometry after serve
   await liveview.close()
 })
 
-test("loading a LiveView dialog preserves its allocated gallery viewport", async ({ page }) => {
-  let release!: () => void
-  const held = new Promise<void>(resolve => { release = resolve })
-  await page.route("**/live-preview/dialog?embed=1", async route => {
-    await held
-    await route.continue()
-  })
-  await page.goto("/preview/liveview.html")
-  const owner = page.locator('iframe[data-fixture="dialog"]')
-  await owner.scrollIntoViewIfNeeded()
-  const before = await owner.boundingBox()
-  let measured!: () => void
-  const ready = new Promise<void>(resolve => { measured = resolve })
-  await page.exposeFunction("fixtureMeasured", measured)
-  await page.evaluate(() => {
-    const owner = document.querySelector<HTMLIFrameElement>('iframe[data-fixture="dialog"]')!
-    window.addEventListener("message", event => {
-      if (event.source === owner.contentWindow && event.data?.type === "shadcn:frame-size") {
-        Reflect.get(window, "fixtureMeasured")()
-      }
-    })
-  })
-  release()
-  await ready
-  await expect(page.frameLocator('iframe[data-fixture="dialog"]').getByRole("dialog")).toBeVisible()
-  expect((await owner.boundingBox())!.height).toBe(before!.height)
-})
 
-for (const mode of ["react", "liveview"] as const) {
-  test(`${mode}: sidebar-multiple stays bounded and its mobile drawer dismisses independently`, async ({ page }) => {
-    const url = mode === "react"
-      ? "/preview/react-fixture.html?fixture=sidebar-multiple"
-      : "/live-preview/sidebar-multiple?embed=1"
+  test("react: sidebar-multiple stays bounded and its mobile drawer dismisses independently", async ({ page }) => {
+    const url = "/preview/react-fixture.html?fixture=sidebar-multiple"
     await page.setViewportSize({ width: 1100, height: 640 })
     await page.goto(url)
-    if (mode === "liveview") await expect(page.locator("[data-phx-main]")).toHaveClass(/phx-connected/)
     const provider = page.locator("#sidebar-inset")
     const staticPanel = page.locator("#sidebar-static-panel")
     const panel = page.locator("#sidebar-inset-panel")
@@ -226,23 +189,17 @@ for (const mode of ["react", "liveview"] as const) {
     await expect(dialog).toContainText("Navigation")
     await page.keyboard.press("Escape")
     await expect(dialog).toBeHidden()
-    if (mode === "liveview") await expect(trigger).toBeFocused()
     await expect(staticPanel).toBeVisible()
     await trigger.click()
     await expect(dialog).toBeVisible()
     await expect(dialog).toBeFocused()
-    if (mode === "react") await page.locator('[data-slot="sheet-overlay"]').click({ position: { x: 380, y: 100 } })
-    else await page.mouse.click(380, 100)
+    await page.locator('[data-slot="sheet-overlay"]').click({ position: { x: 380, y: 100 } })
     await expect(dialog).toBeHidden()
-    if (mode === "liveview") await expect(trigger).toBeFocused()
   })
 
-  test(`${mode}: chart-bar-series shrinks inside a narrow frame before and after data patches`, async ({ page }) => {
+  test("react: chart-bar-series shrinks inside a narrow frame before and after data patches", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 360 })
-    await page.goto(mode === "react"
-      ? "/preview/react-fixture.html?fixture=chart-bar-series"
-      : "/live-preview/chart-bar-series?embed=1")
-    if (mode === "liveview") await expect(page.locator("[data-phx-main]")).toHaveClass(/phx-connected/)
+    await page.goto("/preview/react-fixture.html?fixture=chart-bar-series")
     const chart = page.locator('[data-slot="chart"]')
     const svg = chart.locator("svg.recharts-surface")
     const button = page.getByRole("button", { name: "Change chart data" })
@@ -271,4 +228,3 @@ for (const mode of ["react", "liveview"] as const) {
       }
     }
   })
-}

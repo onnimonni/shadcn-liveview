@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="760" viewBox="0 0 640 760" fill="none">
+  <defs><linearGradient id="wool" x1="204" y1="255" x2="447" y2="576" gradientUnits="userSpaceOnUse"><stop stop-color="#849575"/><stop offset=".5" stop-color="#657b57"/><stop offset="1" stop-color="#405c3f"/></linearGradient><pattern id="rib" width="12" height="10" patternUnits="userSpaceOnUse"><path d="M3 0v10" stroke="#a5b58d" stroke-width="2" stroke-opacity=".4"/><path d="M8 0v10" stroke="#304d31" stroke-width="2" stroke-opacity=".35"/></pattern><filter id="shadow"><feDropShadow dx="3" dy="17" stdDeviation="13" flood-color="#2c422a" flood-opacity=".2"/></filter><clipPath id="hat"><path d="M165 500c-1-162 32-270 155-270s156 108 155 270l-7 62c-70 32-227 32-296 0Z"/></clipPath></defs>
+  <ellipse cx="320" cy="632" rx="158" ry="18" fill="#b4bca7" opacity=".3"/>
+  <g filter="url(#shadow)"><path d="M165 500c-1-162 32-270 155-270s156 108 155 270l-7 62c-70 32-227 32-296 0Z" fill="url(#wool)" stroke="#415b3c" stroke-width="2"/>
+  <g clip-path="url(#hat)" stroke="#a4b68b" stroke-width="2" opacity=".5"><path d="M319 230v345m-14-343-8 343m-10-340-11 340m-11-336-9 336m-16-330-6 330m-20-320v320m-20-297 1 297m-20-258 2 258M333 232l8 343m10-340 11 340m11-336 9 336m16-330 6 330m20-320v320m20-297-1 297m20-258-2 258"/></g>
+  <path d="M161 470c76 29 242 29 318 0l-5 116c-72 29-236 29-308 0Z" fill="#607954" stroke="#3c5837" stroke-width="2"/>
+  <path d="M161 470c76 29 242 29 318 0l-5 116c-72 29-236 29-308 0Z" fill="url(#rib)"/>
+  <path d="M168 579c84 25 220 25 302 0m-307-99c80 27 231 27 312 0" stroke="#93a780" stroke-width="2" opacity=".6"/>
+  <path d="M355 524h58v36h-58z" fill="#e4d9ba" stroke="#c9bc9b"/><path d="M365 536h38m-33 7h28m-22 6h15" stroke="#576948" stroke-width="1.6"/>
+  <path d="M300 235c12-6 29-6 40 0" stroke="#a5b18d" stroke-width="2"/>
+  </g>
+</svg>

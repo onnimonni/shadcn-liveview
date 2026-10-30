@@ -1,15 +1,39 @@
 defmodule ShadcnLiveview.Components.Input do
-  @moduledoc false
+  @moduledoc ~S"""
+  Displays a native form input, optionally bound to a `Phoenix.HTML.FormField`.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/input
+
+  Components: `input/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.input type="email" placeholder="Email" />
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
+  attr :field, Phoenix.HTML.FormField,
+    default: nil,
+    doc:
+      "Form field such as `@form[:email]`; supplies id, name and value. Explicit attributes win."
 
   attr :rest, :global,
     include:
       ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
 
+  @doc "Accepts a Phoenix.HTML.FormField via field to infer id, name and value. Explicit HTML attributes win; use form_field for labels, help text and used-field errors."
+
   def input(assigns) do
+    assigns = ShadcnLiveview.Form.bind(assigns, :input)
+
     ~H"""
     <input
       data-slot="input"

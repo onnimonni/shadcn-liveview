@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="760" viewBox="0 0 640 760" fill="none">
+  <defs><linearGradient id="glaze" x1="165" y1="290" x2="447" y2="534" gradientUnits="userSpaceOnUse"><stop stop-color="#fffaf0"/><stop offset=".42" stop-color="#e9e1d1"/><stop offset="1" stop-color="#c7bca5"/></linearGradient><linearGradient id="handle" x1="409" y1="340" x2="518" y2="474" gradientUnits="userSpaceOnUse"><stop stop-color="#f1eadd"/><stop offset="1" stop-color="#b8ac94"/></linearGradient><radialGradient id="inside"><stop stop-color="#aba18c"/><stop offset=".8" stop-color="#d0c5ad"/><stop offset="1" stop-color="#e4dac4"/></radialGradient><filter id="shadow"><feDropShadow dx="8" dy="17" stdDeviation="13" flood-color="#5a5140" flood-opacity=".16"/></filter></defs>
+  <ellipse cx="315" cy="592" rx="175" ry="23" fill="#b7b09e" opacity=".26"/>
+  <g filter="url(#shadow)"><path d="M420 340c105-27 147 45 106 120-16 29-53 47-101 33" stroke="#b5a98f" stroke-width="37"/><path d="M420 336c105-27 147 45 106 120-16 29-53 47-101 33" stroke="url(#handle)" stroke-width="29"/>
+  <path d="M163 291h284l-12 220c-4 52-63 65-131 65-71 0-127-15-132-65Z" fill="url(#glaze)" stroke="#b9ad94" stroke-width="2"/>
+  <ellipse cx="305" cy="291" rx="142" ry="46" fill="#f4ecdc" stroke="#c5b79b" stroke-width="2"/>
+  <ellipse cx="305" cy="291" rx="124" ry="32" fill="url(#inside)"/>
+  <path d="M185 281c44-22 154-21 213-2" stroke="#e7deca" stroke-width="5" stroke-linecap="round"/>
+  <path d="m188 334 9 166c2 26 13 38 31 43" stroke="#fffaf0" stroke-width="12" stroke-linecap="round" opacity=".37"/>
+  <path d="M178 527c60 27 191 26 252-1" stroke="#b9ad95" stroke-width="2" opacity=".5"/>
+  <g fill="#a99c83" opacity=".5"><circle cx="233" cy="373" r="1.5"/><circle cx="290" cy="459" r="1.2"/><circle cx="366" cy="394" r="1.3"/><circle cx="334" cy="517" r="1.5"/><circle cx="210" cy="498" r="1.1"/><circle cx="411" cy="441" r="1.3"/><circle cx="285" cy="362" r="1.3"/><circle cx="371" cy="478" r="1.1"/><circle cx="257" cy="523" r="1.2"/></g>
+  </g>
+</svg>

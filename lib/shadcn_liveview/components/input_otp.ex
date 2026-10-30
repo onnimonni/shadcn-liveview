@@ -6,7 +6,11 @@ defmodule ShadcnLiveview.Components.InputOtp do
 
   @no_script_css "\n[data-input-otp] {\n  --nojs-bg: white !important;\n  --nojs-fg: black !important;\n\n  background-color: var(--nojs-bg) !important;\n  color: var(--nojs-fg) !important;\n  caret-color: var(--nojs-fg) !important;\n  letter-spacing: .25em !important;\n  text-align: center !important;\n  border: 1px solid var(--nojs-fg) !important;\n  border-radius: 4px !important;\n  width: 100% !important;\n}\n@media (prefers-color-scheme: dark) {\n  [data-input-otp] {\n    --nojs-bg: black !important;\n    --nojs-fg: white !important;\n  }\n}"
   @doc "Render indexed cells with :let and context; id belongs to the native input."
-  attr :id, :string, required: true
+  attr :id, :string,
+    required: true,
+    doc:
+      "Stable, unique DOM id, constant across renders; the colocated hook and event payloads use it."
+
   attr :max_length, :integer, required: true
   attr :value, :string, default: ""
   attr :disabled, :boolean, default: false
@@ -15,9 +19,22 @@ defmodule ShadcnLiveview.Components.InputOtp do
   attr :input_mode, :string, default: "numeric"
   attr :text_align, :string, default: "left"
   attr :paste_transform, :string, default: nil, values: [nil, "strip-separators"]
-  attr :on_change, :string, default: nil
-  attr :on_complete, :string, default: nil
-  attr :class, :string, default: nil
+
+  attr :on_change, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on change; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :on_complete, :string,
+    default: nil,
+    doc:
+      "LiveView event name pushed on complete; the payload is described in the module docs. `nil` pushes no event."
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :container_class, :string, default: nil
   attr :no_script_css, :string, default: @no_script_css
 
@@ -67,9 +84,17 @@ defmodule ShadcnLiveview.Components.InputOtp do
     <script :type={Phoenix.LiveView.ColocatedHook} name=".InputOTP">
         export default {
       sendEvent(event, payload, onReply) {
-      const target = this.el.closest('[phx-target]')?.getAttribute('phx-target');
-      if (target) return this.pushEventTo(target, event, payload, onReply);
-      return this.pushEvent(event, payload, onReply);
+      const target = this.el.closest('[phx-target]')?.getAttribute("phx-target");
+      const push = target
+        ? this.pushEventTo(target, event, payload).then(results => {
+            const failed = results.find(result => result.status === "rejected");
+            if (failed) throw failed.reason;
+            return results[0]?.value.reply;
+          })
+        : this.pushEvent(event, payload);
+      push.catch(() => {});
+      if (onReply) push.then(onReply, () => {});
+      return push;
       },
       mounted() {
       this.container = this.el.closest("[data-input-otp-container]"); this.listeners = []; this.lastValue = this.el.value;
@@ -136,7 +161,10 @@ defmodule ShadcnLiveview.Components.InputOtp do
       if (event) {
         this.pendingValues.push(value);
         // Complete only after the change reply releases LiveView's input lock.
-        this.sendEvent(event, detail, () => { if (complete) this.sendEvent(complete, detail); });
+        // Typed text stays local like a native input; a failed push only drops its acknowledgement.
+        this.sendEvent(event, detail, () => { if (complete) this.sendEvent(complete, detail); }).catch(() => {
+          const index = this.pendingValues.indexOf(value); if (index >= 0) this.pendingValues.splice(index, 1);
+        });
       }
       if (completed) {
         this.el.dispatchEvent(new CustomEvent("shadcn:otp-complete", {bubbles: true, detail}));
@@ -176,7 +204,11 @@ defmodule ShadcnLiveview.Components.InputOtp do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
   slot :inner_block, required: true
 
@@ -199,7 +231,12 @@ defmodule ShadcnLiveview.Components.InputOtp do
 
   attr :context, :map, required: true
   attr :index, :integer, required: true
-  attr :class, :string, default: nil
+
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def input_otp_slot(assigns) do
@@ -221,7 +258,11 @@ defmodule ShadcnLiveview.Components.InputOtp do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
+
   attr :rest, :global
 
   def input_otp_separator(assigns) do

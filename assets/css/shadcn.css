@@ -1,0 +1,6 @@
+@import "tailwindcss" source(none);
+@import "./shadcn.tailwind.css";
+
+/* Compile native components and the independent integration example, not React sources. */
+@source "../../lib/shadcn_liveview";
+@source "../../examples/consumer/lib";

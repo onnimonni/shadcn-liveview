@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="760" viewBox="0 0 640 760" fill="none">
+  <defs><linearGradient id="canvas" x1="191" y1="311" x2="454" y2="617" gradientUnits="userSpaceOnUse"><stop stop-color="#ede3c7"/><stop offset=".55" stop-color="#d9ccb0"/><stop offset="1" stop-color="#b7a587"/></linearGradient><linearGradient id="strap" x1="244" y1="130" x2="362" y2="355" gradientUnits="userSpaceOnUse"><stop stop-color="#53654d"/><stop offset="1" stop-color="#233e31"/></linearGradient><pattern id="weave" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M1 0v6M0 2h6" stroke="#827959" stroke-opacity=".13" stroke-width=".8"/></pattern><filter id="shadow"><feDropShadow dx="4" dy="16" stdDeviation="12" flood-color="#4f4631" flood-opacity=".18"/></filter></defs>
+  <ellipse cx="320" cy="650" rx="150" ry="18" fill="#bcb5a0" opacity=".3"/>
+  <g filter="url(#shadow)"><path d="M230 348V217c0-104 153-104 153 0v131" stroke="#1f362a" stroke-width="27"/><path d="M230 348V217c0-104 153-104 153 0v131" stroke="url(#strap)" stroke-width="22"/>
+  <path d="m180 294 17 318c72 33 175 33 246 0l17-318Z" fill="url(#canvas)" stroke="#a99a7b" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M180 294c79 15 200 15 280 0l-1 28c-82 15-197 15-278 0Z" fill="#e8dcc0" stroke="#baab8c" stroke-width="1.5"/>
+  <path d="m181 325 16 287 22-19-11-266m251-2-16 287-22-19 11-266" fill="#bfae8d" opacity=".6"/>
+  <path d="M233 169c-28 24-27 62-27 102v86m171-188c28 24 27 62 27 102v86" stroke="#3b523e" stroke-width="25"/>
+  <path d="M233 169c-28 24-27 62-27 102v86m171-188c28 24 27 62 27 102v86" stroke="#768060" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <path d="m191 338 17 263c62 27 160 27 222 0l17-263" stroke="#877e62" stroke-width="1.2" stroke-dasharray="3 4"/>
+  <path d="m180 294 17 318c72 33 175 33 246 0l17-318Z" fill="url(#weave)"/>
+  <path d="M269 454h103v55H269z" fill="#eee5cc" stroke="#b8ac8e"/><path d="M282 468h76m-65 9h54m-41 13h28" stroke="#627053" stroke-width="2"/><path d="m231 407 7 110m163-112-8 127" stroke="#9a8d70" stroke-width="2" opacity=".22"/>
+  </g>
+</svg>

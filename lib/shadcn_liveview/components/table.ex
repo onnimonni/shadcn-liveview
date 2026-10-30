@@ -1,9 +1,39 @@
 defmodule ShadcnLiveview.Components.Table do
-  @moduledoc false
+  @moduledoc ~S"""
+  A responsive table with header, body, footer, rows and cells.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/table
+
+  Components: `table/1`, `table_header/1`, `table_body/1`, `table_footer/1`, `table_row/1`, `table_head/1`, `table_cell/1`, `table_caption/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <.table>
+    <.table_header>
+      <.table_row>
+        <.table_head class="w-[100px]">Invoice</.table_head>
+        <.table_head>Status</.table_head>
+        <.table_head class="text-right">Amount</.table_head>
+      </.table_row>
+    </.table_header>
+    <.table_body>
+      <.table_row>
+        <.table_cell class="font-medium">INV001</.table_cell>
+        <.table_cell>Paid</.table_cell>
+        <.table_cell class="text-right">$250.00</.table_cell>
+      </.table_row>
+    </.table_body>
+  </.table>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -25,7 +55,10 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -45,7 +78,10 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -65,7 +101,10 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -85,7 +124,10 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
@@ -110,11 +152,14 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
-      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+      ~w(abbr accept alt autocomplete autofocus checked cols colspan disabled download for form formaction formenctype formmethod formnovalidate formtarget headers height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows rowspan scope selected src step target type value width)
 
   slot :inner_block, required: false
 
@@ -135,11 +180,14 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
-      ~w(accept alt autocomplete autofocus checked cols disabled download for form formaction formenctype formmethod formnovalidate formtarget height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows selected src step target type value width)
+      ~w(accept alt autocomplete autofocus checked cols colspan disabled download for form formaction formenctype formmethod formnovalidate formtarget headers height href list max maxlength min minlength multiple name pattern placeholder readonly rel required rows rowspan selected src step target type value width)
 
   slot :inner_block, required: false
 
@@ -155,7 +203,10 @@ defmodule ShadcnLiveview.Components.Table do
     """
   end
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:

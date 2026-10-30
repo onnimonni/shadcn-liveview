@@ -1,9 +1,24 @@
 defmodule ShadcnLiveview.Components.Label do
-  @moduledoc false
+  @moduledoc ~S"""
+  Renders an accessible label associated with a control.
+
+  Upstream: https://ui.shadcn.com/docs/components/radix/label
+
+  Components: `label/1`.
+
+  Example (locally authored, rendered by the SSR parity fixtures):
+
+  ```heex
+  <div><.label for="test-input">Your email address</.label><.input id="test-input" type="email" /></div>
+  ```
+  """
   use Phoenix.Component
   import ShadcnLiveview.Helpers
 
-  attr :class, :string, default: nil
+  attr :class, :any,
+    default: nil,
+    doc:
+      "Extra classes appended to the defaults: a string or a HEEx-style list whose `nil` and `false` entries are dropped."
 
   attr :rest, :global,
     include:
