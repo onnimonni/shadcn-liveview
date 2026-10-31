@@ -32,9 +32,11 @@ It shows a diff and asks before writing (`--yes` skips the prompt). Running it a
 - for path dependencies only, adds `Path.join(Mix.Project.build_path(), "lib")` to the esbuild and tailwind `NODE_PATH` (path deps are not copied into `deps/`);
 - adds `use ShadcnLiveview, except: [button: 1, input: 1, table: 1, icon: 1]` next to `import MyAppWeb.CoreComponents` in `html_helpers/0`;
 - replaces the daisyUI `CoreComponents` and `Layouts` with shadcn-styled versions that keep Phoenix's API: `<.button variant="primary" navigate=…>` (plus every shadcn variant and size), `<.input field type label options prompt multiple>` (text types, select, textarea, checkbox, hidden), `<.table rows row_id row_click>` with `:col`/`:action`, `<.header>`, `<.list>`, `<.icon name="hero-…">` or Lucide names, `flash`, `show`/`hide`, `translate_error(s)` (Gettext when the app has it), `Layouts.app`, `flash_group` and the `data-theme` `theme_toggle`. `phx.gen.html` and `phx.gen.live` output compiles under `--warnings-as-errors` and renders with shadcn styles;
-- maps the stock home page's daisyUI color classes to shadcn tokens.
+- maps the stock home page's daisyUI color classes to shadcn tokens;
+- adds Credo (`{:credo, "~> 1.7", only: [:dev, :test], runtime: false}`) when the app has none and enables this library's [Credo checks](#credo-checks): in an existing `.credo.exs`, or in a new one that keeps Credo's default checks and lists both under `checks.extra`. After adding Credo it runs `mix deps.compile credo --include-children` and `mix deps.compile shadcn_liveview --force`, because the checks compile only when Credo is loaded and Mix does not rebuild an already compiled shadcn_liveview by itself;
+- adds [usage_rules](https://hexdocs.pm/usage_rules) (`{:usage_rules, "~> 1.3", only: [:dev]}`) with the [config below](#for-ai-coding-agents) and runs `mix usage_rules.sync --yes`, which writes this library's rules into `AGENTS.md` (`CLAUDE.md` when only that exists) and its `shadcn-template-to-liveview` skill into `.claude/skills/`. A new config keeps every section already synced into the file (phx.new's `phoenix:*` rules); an existing config keeps its settings and only gets the shadcn_liveview entries (`usage_rules: :all` already covers the rules).
 
-Options: `--no-core-components` keeps your `CoreComponents`/`Layouts` (they still use daisyUI classes), `--keep-daisyui` keeps daisyUI (its `--border` width variable clashes with shadcn's `--border` color token). A file that no longer matches the Phoenix default is left untouched and the installer prints the manual step.
+Options: `--no-core-components` keeps your `CoreComponents`/`Layouts` (they still use daisyUI classes), `--keep-daisyui` keeps daisyUI (its `--border` width variable clashes with shadcn's `--border` color token), `--no-credo` and `--no-usage-rules` skip those steps. A file that no longer matches the Phoenix default is left untouched and the installer prints the manual step.
 
 After installing, `<.button>`, `<.input>`, `<.table>` and `<.icon>` are your CoreComponents wrappers over the library; every other component (`dialog`, `card`, `form_field`, …) comes from `use ShadcnLiveview`. Call the library versions of the four wrapped names by module (`<ShadcnLiveview.Components.Button.button>`).
 
@@ -74,22 +76,25 @@ use ShadcnLiveview  # its icon/1 renders hero-* like CoreComponents plus Lucide 
 
 ### For AI coding agents
 
-The package ships agent rules: [`usage-rules.md`](usage-rules.md) plus [`usage-rules/`](usage-rules/) (generated [`components.md`](usage-rules/components.md) index of every family's functions, enum values, state attrs and events; `phoenix.md`, `forms.md`, `overlays.md`, `data-tables.md`). Sync them into your app's `AGENTS.md`/`CLAUDE.md` with [usage_rules](https://hexdocs.pm/usage_rules):
+The package ships agent rules: [`usage-rules.md`](usage-rules.md) plus [`usage-rules/`](usage-rules/) (generated [`components.md`](usage-rules/components.md) index of every family's functions, enum values, state attrs and events; `phoenix.md`, `forms.md`, `overlays.md`, `data-tables.md`) and the package skill [`usage-rules/skills/shadcn-template-to-liveview`](usage-rules/skills/shadcn-template-to-liveview/SKILL.md). The installer syncs them into your app with [usage_rules](https://hexdocs.pm/usage_rules); in a stock phx.new app it writes:
 
 ```elixir
-# mix.exs project/0, with {:usage_rules, "~> 1.2", only: :dev} in deps
+# mix.exs project/0, with {:usage_rules, "~> 1.3", only: [:dev]} in deps
 usage_rules: [
   file: "AGENTS.md",
   usage_rules: [
     # sync rewrites the whole block: keep phx.new's Phoenix rules explicitly
-    "phoenix:elixir", "phoenix:phoenix", "phoenix:html", "phoenix:liveview",
+    "phoenix:elixir", "phoenix:phoenix", "phoenix:ecto", "phoenix:html", "phoenix:liveview",
+    # inline the main rules, link the topic rules
     {:shadcn_liveview, sub_rules: []},
     {:shadcn_liveview, sub_rules: :all, main: false, link: :markdown}
-  ]
+  ],
+  # copies usage-rules/skills/* to .claude/skills/ (usage_rules' default location)
+  skills: [package_skills: [:shadcn_liveview]]
 ]
 ```
 
-Then run `mix usage_rules.sync`, or point your agent at `deps/shadcn_liveview/usage-rules.md` directly. Component modules carry moduledocs, attr `values:` (invalid literals warn at compile time) and `doc:` text for `h`, ExDoc and Tidewave.
+Rerun `mix usage_rules.sync` after upgrading shadcn_liveview, or point your agent at `deps/shadcn_liveview/usage-rules.md` directly. Agents that read skills elsewhere (e.g. `.agents/skills`) need `skills: [location: ...]`. Component modules carry moduledocs, attr `values:` (invalid literals warn at compile time) and `doc:` text for `h`, ExDoc and Tidewave.
 
 ### Phoenix forms
 
@@ -121,7 +126,7 @@ The prebuilt `shadcn.css` (for apps without Tailwind) provides tokens, base styl
 
 ### Credo checks
 
-Apps that use [Credo](https://hex.pm/packages/credo) get two checks from this library (the installer adds them to an existing `.credo.exs`):
+Apps that use [Credo](https://hex.pm/packages/credo) get two checks from this library (the installer adds Credo, and the checks to `.credo.exs`):
 
 ```elixir
 # .credo.exs, inside the config map
@@ -131,7 +136,7 @@ checks: %{extra: [{ShadcnLiveview.Credo.ComposerFormClears, []}, {ShadcnLiveview
 - `ComposerFormClears`: a chat composer (`phx-submit` form with one text control in a template that renders `message`/`bubble`/`message_scroller`) whose control keeps the same DOM id across sends never clears: the blank form re-renders the same `""`. The fix is a per-message control id, e.g. `id={"composer-text-#{@sent_count}"}` plus `phx-mounted={@sent_count > 0 && JS.focus()}`.
 - `ChatUsesMessageScroller`: a looped `message`/`bubble` thread in a `message_group`/`bubble_group`, stream container or `overflow-*`/`max-h-*` box without `message_scroller` does not follow new messages.
 
-Both scan `~H` sigils, the colocated `<module>.html.heex` and literal `embed_templates` matches; findings in a `.heex` file are reported on its module, with the template path and line in the message. Run `mix credo explain <file>:<line>` for the full rationale. The checks compile only when Credo is a dependency of the app; if you add Credo later, run `mix deps.compile shadcn_liveview --force`. Exclude files from a check with Credo's usual params, e.g. `{ShadcnLiveview.Credo.ChatUsesMessageScroller, files: %{excluded: ["lib/my_app_web/live/transcript_live.ex"]}}`.
+Both scan `~H` sigils, the colocated `<module>.html.heex` and literal `embed_templates` matches; findings in a `.heex` file are reported on its module, with the template path and line in the message. Run `mix credo explain <file>:<line>` for the full rationale. The checks compile only when Credo is loaded while shadcn_liveview compiles; if you add Credo yourself after shadcn_liveview was built, run `mix deps.compile shadcn_liveview --force` (the installer does this when it adds Credo). Exclude files from a check with Credo's usual params, e.g. `{ShadcnLiveview.Credo.ChatUsesMessageScroller, files: %{excluded: ["lib/my_app_web/live/transcript_live.ex"]}}`.
 
 ### Independent consumer example
 
@@ -197,7 +202,7 @@ Available shell commands:
 
 Without devenv, provide Elixir 1.18+ (within 1.x), matching Erlang/OTP, Rebar3, Bun, the `tsx` compatibility runtime and Bash, then run `mix local.hex --force`, `mix deps.get`, `bun install`, `bunx playwright install chromium` and `bun run test`. Fetch the example's dependencies with `(cd examples/consumer && mix deps.get)` before combined browser/accessibility commands. Git/GitHub CLI are needed for repository maintenance.
 
-`bun run test` regenerates components, formats generated Elixir, checks formatting and warning-free HEEx/Elixir compilation, runs strict Credo, runs converter/comparator and ExUnit tests, builds assets, and compares all SSR fixtures. Any failed case or family exits nonzero.
+`bun run test` regenerates components, formats generated Elixir, checks formatting and warning-free HEEx/Elixir compilation, runs strict Credo, validates the references in the shipped agent rules (`mix usage_rules.validate`), runs converter/comparator and ExUnit tests, builds assets, and compares all SSR fixtures. Any failed case or family exits nonzero.
 
 `bun run test:browser` runs PhoenixTestPlaywright ExUnit suites and the consumer browser flows, then starts/stops a preview on port 4000 for retained React/visual comparisons; stop other previews first. Elixir test endpoints use ports 4100 and 4101. Tests exercise native form values, patches/reset, controlled transitions, LiveComponent targeting, keyboard/pointer actions, popup focus/dismissal, scrolling and responsive layouts. Outside devenv, install Chromium with `bunx playwright install chromium`; Linux also needs the browser's system libraries. `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` selects an installed Chromium for the browser driver.
 
@@ -220,7 +225,7 @@ Run `bunx aislop scan`. `.aislop/config.yml` classifies only intentional CLI out
 Version-based audits still report the upstream advisory despite the local mitigation; it is deliberately not suppressed. Replace the patch with an audited upstream release when available.
 
 ```sh
-mix quality                 # formatter, compiler and strict Credo
+mix quality                 # formatter, compiler, strict Credo, agent-rule references
 bun run generate            # local vendored source → formatted Elixir/HEEx
 bun run test:parity          # asset build + React/Phoenix SSR comparison
 SHADCN_PREVIEW=1 mix run --no-halt

@@ -218,15 +218,30 @@ recognizes stock files by daisyUI fingerprints, so re-verify them against every 
 `phx.new` release:
 
 1. Regenerate the stock fixtures from the new version and copy the same file list over
-   `test/fixtures/phx_new/`:
+   `test/fixtures/phx_new/` (the generated `AGENTS.md` stays out of the fixtures: its class
+   examples would leak into the preview CSS build; update the marker skeleton `@agents` in
+   the installer test instead):
    `MIX_ARCHIVES=/tmp/phx-archives mix archive.install hex phx_new <version> --force`, then
    `MIX_ARCHIVES=/tmp/phx-archives mix phx.new my_app --database sqlite3 --no-install` in
    `/private/tmp`.
 2. `mix test test/mix/tasks/shadcn_liveview_install_test.exs` (patches, idempotency, flags,
-   skip warnings, and rendering of the generated CoreComponents).
+   skip warnings, Credo/usage_rules config, and rendering of the generated CoreComponents).
 3. In a fresh installed `mix phx.new --database sqlite3` app: `mix igniter.install
    shadcn_liveview@path:<checkout> --yes` (twice: the second run must change nothing),
    `mix phx.gen.live Accounts User users name:string age:integer active:boolean bio:text`,
    `mix compile --warnings-as-errors`, `mix precommit`, `mix assets.build` and
    `MIX_ENV=prod mix assets.deploy`, then browser-check the generated pages at 390px and
    1280px (forms with errors, flash, table, theme toggle, no daisyUI classes).
+4. Credo and usage_rules integration, on new Credo, usage_rules or phx.new versions: in that
+   app, `AGENTS.md` must still hold phx.new's `phoenix:*` sections plus the inlined
+   `shadcn_liveview` section and links to the `shadcn_liveview:*` sub-rules, and
+   `.claude/skills/shadcn-template-to-liveview/SKILL.md` must exist. Add a looped
+   `<.bubble :for=...>` inside a `max-h-96 overflow-y-auto` div to a LiveView: `mix credo
+   --strict` must report it next to Credo's default checks (e.g. an `IO.inspect` call).
+   Re-check the usage_rules config keys (`sub_rules`, `main`, `link`,
+   `skills: [package_skills: ...]`, the default `.claude/skills` location) against its
+   README and the Credo `checks: %{extra: ...}` shape against Credo's config docs.
+
+`mix quality` runs `mix usage_rules.validate` over `usage-rules.md`, `usage-rules/*.md` and the
+package skill: references such as `Module.fun/arity` must resolve against documented API, so
+write fully qualified module names in the rules.

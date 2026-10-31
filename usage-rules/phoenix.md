@@ -12,7 +12,14 @@ mix shadcn_liveview.install                    # dep (and igniter) already in mi
 The installer applies every step of the manual recipe below, removes daisyUI, and replaces the
 app's daisyUI `CoreComponents` and `Layouts` with shadcn-styled versions. Re-running it changes
 nothing; files that differ from the Phoenix defaults are skipped with a printed manual step.
-Flags: `--no-core-components` (keep your CoreComponents/Layouts), `--keep-daisyui`.
+It also adds Credo (`only: [:dev, :test]`) when missing and enables this library's two Credo
+checks (a new `.credo.exs` keeps Credo's defaults and lists them under `checks.extra`), and adds
+`usage_rules` (`only: [:dev]`) plus a `usage_rules:` config in `mix.exs`, then runs
+`mix usage_rules.sync`: these rules land in `AGENTS.md` (phx.new's `phoenix:*` sections are
+kept) and the `shadcn-template-to-liveview` skill in `.claude/skills/`. Rerun
+`mix usage_rules.sync` after upgrading shadcn_liveview.
+Flags: `--no-core-components` (keep your CoreComponents/Layouts), `--keep-daisyui`,
+`--no-credo`, `--no-usage-rules`.
 If `mix igniter.install` fails in an already-compiled app with `protocol Enumerable not
 implemented for type Rewrite` (an Igniter protocol-consolidation issue; nothing but the
 `:igniter` dep is written), run `mix deps.get && mix compile && mix shadcn_liveview.install`.
@@ -38,6 +45,9 @@ What you get afterwards:
 
 Hand-written UI may use either the wrappers or the library components with `form_field`
 (see forms.md); generated code keeps using the wrappers.
+
+With Credo added by hand later, run `mix deps.compile shadcn_liveview --force`: the checks only
+compile when Credo is loaded, and Mix does not rebuild shadcn_liveview by itself.
 
 ## Manual recipe
 

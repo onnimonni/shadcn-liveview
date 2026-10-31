@@ -50,11 +50,26 @@ defmodule Mix.Tasks.ShadcnLiveview.Install.Docs do
       * The stock home page's daisyUI color classes become shadcn token classes.
       * The root layout's `<body>` gets the `antialiased` class that every shadcn/ui
         template assumes (Next.js layouts set it), so text renders like the originals.
-      * `.credo.exs` (when present): enables the library's Credo checks
+      * Credo: adds `{:credo, "~> 1.7", only: [:dev, :test], runtime: false}` when the app
+        has no `:credo` dependency and enables the library's Credo checks
         `ShadcnLiveview.Credo.ComposerFormClears` and
-        `ShadcnLiveview.Credo.ChatUsesMessageScroller` in the first config
-        (`checks.enabled` if the config lists enabled checks, else `checks.extra`).
-        Without `.credo.exs` the task prints the snippet instead.
+        `ShadcnLiveview.Credo.ChatUsesMessageScroller`. An existing `.credo.exs` gets them in
+        its first config (`checks.enabled` if the config lists enabled checks, else
+        `checks.extra`); without one the task creates a `.credo.exs` that keeps Credo's
+        default checks and adds both under `checks.extra`. When it adds Credo it also
+        queues `mix deps.compile credo --include-children` and
+        `mix deps.compile shadcn_liveview --force`: the checks only compile when Credo is
+        loaded, and Mix does not recompile an already built shadcn_liveview by itself.
+      * Agent rules ([usage_rules](https://hexdocs.pm/usage_rules)): adds
+        `{:usage_rules, "~> 1.3", only: [:dev]}` and a `usage_rules:` project config that
+        writes to `AGENTS.md` (or `CLAUDE.md` when only that exists). A new config keeps
+        every section already synced into that file (phx.new's `phoenix:*` rules), inlines
+        shadcn_liveview's main rules, links its sub-rules and installs its package skill
+        `shadcn-template-to-liveview` (`skills: [package_skills: [:shadcn_liveview]]`,
+        written to usage_rules' default `.claude/skills`). An existing config keeps its
+        settings and only gets the shadcn_liveview entries (and `file:` when it has none);
+        `usage_rules: :all` already covers the rules. Then it queues
+        `mix usage_rules.sync --yes`, unless a rerun finds nothing to change.
 
     ## Options
 
@@ -63,6 +78,8 @@ defmodule Mix.Tasks.ShadcnLiveview.Install.Docs do
         combine with `--keep-daisyui`).
       * `--keep-daisyui` - keep daisyUI. Its `--border` width variable clashes
         with shadcn's `--border` color token, so daisy borders render thicker.
+      * `--no-credo` - leave Credo, its dependency and `.credo.exs` alone.
+      * `--no-usage-rules` - leave usage_rules, its config and `AGENTS.md` alone.
     """
   end
 
@@ -94,7 +111,7 @@ if Code.ensure_loaded?(Igniter) do
     alias Igniter.Code.Common
     alias Igniter.Code.Function, as: Fun
     alias Igniter.Libs.Phoenix
-    alias Igniter.Project.{Config, Deps}
+    alias Igniter.Project.{Config, Deps, MixProject}
     alias Igniter.Project.Module, as: ProjectModule
     alias Sourceror.Zipper
 
@@ -143,8 +160,13 @@ if Code.ensure_loaded?(Igniter) do
         group: :shadcn_liveview,
         example: __MODULE__.Docs.example(),
         only: nil,
-        schema: [core_components: :boolean, keep_daisyui: :boolean],
-        defaults: [core_components: true, keep_daisyui: false]
+        schema: [
+          core_components: :boolean,
+          keep_daisyui: :boolean,
+          credo: :boolean,
+          usage_rules: :boolean
+        ],
+        defaults: [core_components: true, keep_daisyui: false, credo: true, usage_rules: true]
       }
     end
 
@@ -164,8 +186,9 @@ if Code.ensure_loaded?(Igniter) do
       |> maybe_replace_components(web, opts[:core_components])
       |> maybe_restyle_home(web, keep_daisy?)
       |> add_body_antialiased(web)
-      |> add_credo_checks()
-      |> Igniter.add_notice(final_notice())
+      |> maybe_add_credo(opts[:credo])
+      |> maybe_add_usage_rules(opts[:usage_rules])
+      |> Igniter.add_notice(final_notice(opts[:usage_rules]))
     end
 
     ## assets/css/app.css
@@ -630,7 +653,28 @@ if Code.ensure_loaded?(Igniter) do
       "#{path}: add the `antialiased` class to <body> by hand (shadcn/ui templates assume it)."
     end
 
-    ## .credo.exs
+    ## Credo
+
+    defp maybe_add_credo(igniter, false), do: igniter
+
+    defp maybe_add_credo(igniter, true) do
+      igniter
+      |> add_credo_dep()
+      |> add_credo_checks()
+    end
+
+    # The checks compile only when Credo is loaded while shadcn_liveview compiles. Mix
+    # does not rebuild an already compiled shadcn_liveview when Credo appears later.
+    defp add_credo_dep(igniter) do
+      if Deps.has_dep?(igniter, :credo) do
+        igniter
+      else
+        igniter
+        |> Deps.add_dep({:credo, "~> 1.7", only: [:dev, :test], runtime: false})
+        |> Igniter.add_task("deps.compile", ["credo", "--include-children"])
+        |> Igniter.add_task("deps.compile", ["shadcn_liveview", "--force"])
+      end
+    end
 
     defp add_credo_checks(igniter) do
       if Igniter.exists?(igniter, @credo_path) do
@@ -641,14 +685,20 @@ if Code.ensure_loaded?(Igniter) do
           missing -> Igniter.update_elixir_file(igniter, @credo_path, &enable_checks(&1, missing))
         end
       else
-        Igniter.add_notice(igniter, """
-        Credo checks: shadcn_liveview ships #{Enum.map_join(@credo_checks, " and ", &inspect/1)}
-        (chat composers that keep the sent text, chat threads that don't follow new messages).
-        With Credo installed, run `mix credo gen.config` and rerun this task, or add to your config:
-
-            checks: %{extra: #{credo_entries_code(@credo_checks)}}
-
-        If Credo was added after shadcn_liveview was compiled: `mix deps.compile shadcn_liveview --force`.
+        Igniter.create_new_file(igniter, @credo_path, """
+        # Credo's default checks plus shadcn_liveview's (`mix credo explain` describes each).
+        %{
+          configs: [
+            %{
+              name: "default",
+              checks: %{
+                extra: [
+        #{Enum.map_join(@credo_checks, ",\n", &"          {#{inspect(&1)}, []}")}
+                ]
+              }
+            }
+          ]
+        }
         """)
       end
     end
@@ -720,16 +770,132 @@ if Code.ensure_loaded?(Igniter) do
     defp credo_entries_code(checks),
       do: "[" <> Enum.map_join(checks, ", ", &"{#{inspect(&1)}, []}") <> "]"
 
+    ## usage_rules: AGENTS.md and the package skill
+
+    @agent_files ["AGENTS.md", "CLAUDE.md"]
+    # Inline the main rules (small, always relevant), link the long sub-rules.
+    @rule_entries [
+      "{:shadcn_liveview, sub_rules: []}",
+      "{:shadcn_liveview, sub_rules: :all, main: false, link: :markdown}"
+    ]
+
+    defp maybe_add_usage_rules(igniter, false), do: igniter
+
+    defp maybe_add_usage_rules(igniter, true) do
+      mix_exs = read_text(igniter, "mix.exs")
+      file = agent_file(igniter)
+      synced = synced_sections(igniter, file)
+
+      igniter =
+        igniter
+        |> Deps.add_dep({:usage_rules, "~> 1.3", only: [:dev]}, on_exists: :skip)
+        |> MixProject.update(:project, [:usage_rules, :file], fn
+          nil -> {:ok, {:code, inspect(file)}}
+          zipper -> {:ok, zipper}
+        end)
+        |> MixProject.update(
+          :project,
+          [:usage_rules, :usage_rules],
+          &add_rule_entries(&1, synced)
+        )
+        |> MixProject.update(:project, [:usage_rules, :skills, :package_skills], fn
+          nil -> {:ok, {:code, "[:shadcn_liveview]"}}
+          zipper -> add_package_skill(zipper)
+        end)
+
+      # Sync when the config changed or the rules never made it into the file; a rerun
+      # of an installed app queues nothing.
+      if read_text(igniter, "mix.exs") != mix_exs or not rules_synced?(igniter) do
+        Igniter.add_task(igniter, "usage_rules.sync", ["--yes"])
+      else
+        igniter
+      end
+    end
+
+    # phx.new 1.8 writes AGENTS.md; usage_rules has no default file.
+    defp agent_file(igniter),
+      do: Enum.find(@agent_files, "AGENTS.md", &Igniter.exists?(igniter, &1))
+
+    # `mix usage_rules.sync` replaces everything between the usage-rules markers with what
+    # the config lists, so a new config must keep the sections already synced there
+    # (phx.new's `phoenix:elixir`, `phoenix:phoenix`, `phoenix:ecto`, ...).
+    defp synced_sections(igniter, file) do
+      with true <- Igniter.exists?(igniter, file),
+           [_, block] <-
+             Regex.run(
+               ~r/<!-- usage-rules-start -->(.*?)<!-- usage-rules-end -->/s,
+               read_text(igniter, file)
+             ) do
+        ~r/<!-- ([\w-]+(?::[\w-]+)?)-start -->/
+        |> Regex.scan(block, capture: :all_but_first)
+        |> List.flatten()
+        |> Enum.reject(&String.starts_with?(&1, "shadcn_liveview"))
+        |> Enum.uniq()
+        |> Enum.map(&if(String.contains?(&1, ":"), do: inspect(&1), else: ":" <> &1))
+      else
+        _ -> []
+      end
+    end
+
+    defp add_rule_entries(nil, synced) do
+      {:ok, {:code, "[" <> Enum.join(synced ++ @rule_entries, ", ") <> "]"}}
+    end
+
+    defp add_rule_entries(zipper, _synced) do
+      cond do
+        zipper.node |> Sourceror.to_string() |> String.contains?("shadcn_liveview") ->
+          {:ok, zipper}
+
+        Igniter.Code.List.list?(zipper) ->
+          append_all(zipper, Enum.map(@rule_entries, &Sourceror.parse_string!/1))
+
+        # `usage_rules: :all` already inlines every dependency's rules.
+        Common.nodes_equal?(zipper, :all) ->
+          {:ok, zipper}
+
+        true ->
+          {:warning,
+           "mix.exs: the `usage_rules:` list of the usage_rules config is not a literal list; " <>
+             "add #{Enum.join(@rule_entries, " and ")} to it by hand."}
+      end
+    end
+
+    defp add_package_skill(zipper) do
+      if Igniter.Code.List.list?(zipper) do
+        Igniter.Code.List.append_new_to_list(zipper, :shadcn_liveview)
+      else
+        {:warning,
+         "mix.exs: usage_rules `skills: [package_skills: ...]` is not a literal list; " <>
+           "add :shadcn_liveview to it by hand."}
+      end
+    end
+
+    defp rules_synced?(igniter) do
+      Enum.any?(@agent_files, fn file ->
+        Igniter.exists?(igniter, file) and
+          read_text(igniter, file) =~ "<!-- shadcn_liveview-start -->"
+      end)
+    end
+
     ## Notices and helpers
 
-    defp final_notice do
+    defp final_notice(usage_rules?) do
+      rules = "#{__MODULE__.Docs.dep_path()}/usage-rules.md"
+
+      rules =
+        if usage_rules?,
+          do:
+            "#{rules}, synced into your agent file and .claude/skills by `mix usage_rules.sync`\n" <>
+              "    (rerun it after upgrading shadcn_liveview).",
+          else: "#{rules} (sync them with `usage_rules`)."
+
       """
       shadcn_liveview is installed.
 
         * `<.button>`, `<.input>`, `<.table>` and `<.icon>` are your CoreComponents wrappers
           (Phoenix API, shadcn markup); every other shadcn_liveview component comes from
           `use ShadcnLiveview` in html_helpers/0.
-        * Agent rules: #{__MODULE__.Docs.dep_path()}/usage-rules.md (sync them with `usage_rules`).
+        * Agent rules: #{rules}
         * Rebuild assets (`mix assets.build`) or restart `mix phx.server`.
       """
     end

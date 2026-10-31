@@ -19,7 +19,8 @@ defmodule ShadcnLiveview.MixProject do
         quality: [
           "format --check-formatted",
           "compile --force --warnings-as-errors",
-          "credo --strict"
+          "credo --strict",
+          "usage_rules.validate usage-rules.md usage-rules/*.md usage-rules/skills/*/SKILL.md"
         ]
       ]
     ]
@@ -76,6 +77,8 @@ defmodule ShadcnLiveview.MixProject do
       {:igniter, "~> 0.8.4", optional: true},
       {:esbuild, "~> 0.10", only: :dev, runtime: false},
       {:ex_doc, "~> 0.40", only: :dev, runtime: false},
+      # `mix usage_rules.validate` checks the shipped agent rules in `mix quality`.
+      {:usage_rules, "~> 1.3", only: :dev, runtime: false},
       # Optional: apps that use Credo get the ShadcnLiveview.Credo.* checks compiled in.
       {:credo, "~> 1.7", optional: true, runtime: false},
       {:floki, "~> 0.38", only: :test},

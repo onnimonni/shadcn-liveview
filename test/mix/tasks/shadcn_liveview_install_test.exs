@@ -6,6 +6,38 @@ defmodule Mix.Tasks.ShadcnLiveview.InstallTest do
   import Phoenix.Component, only: [to_form: 2]
   alias ShadcnLiveview.Components.Input
 
+  # phx.new 1.8.14's AGENTS.md with the guideline bodies elided: the full text holds Tailwind
+  # class examples that the repo's preview CSS build would pick up from test/fixtures.
+  @agents """
+  This is a web application written using the Phoenix web framework.
+
+  ## Project guidelines
+
+  <!-- usage-rules-start -->
+
+  <!-- phoenix:elixir-start -->
+  ## Elixir guidelines
+  <!-- phoenix:elixir-end -->
+
+  <!-- phoenix:phoenix-start -->
+  ## Phoenix guidelines
+  <!-- phoenix:phoenix-end -->
+
+  <!-- phoenix:ecto-start -->
+  ## Ecto Guidelines
+  <!-- phoenix:ecto-end -->
+
+  <!-- phoenix:html-start -->
+  ## Phoenix HTML guidelines
+  <!-- phoenix:html-end -->
+
+  <!-- phoenix:liveview-start -->
+  ## Phoenix LiveView guidelines
+  <!-- phoenix:liveview-end -->
+
+  <!-- usage-rules-end -->
+  """
+
   # Files from an unmodified `mix phx.new my_app --database sqlite3` (Phoenix 1.8.14).
   @fixture_root Path.expand("../../fixtures/phx_new", __DIR__)
   @fixtures @fixture_root
@@ -13,6 +45,7 @@ defmodule Mix.Tasks.ShadcnLiveview.InstallTest do
             |> Path.wildcard(match_dot: true)
             |> Enum.reject(&File.dir?/1)
             |> Map.new(&{Path.relative_to(&1, @fixture_root), File.read!(&1)})
+            |> Map.put("AGENTS.md", @agents)
 
   @css "assets/css/app.css"
   @js "assets/js/app.js"
@@ -207,8 +240,10 @@ defmodule Mix.Tasks.ShadcnLiveview.InstallTest do
     assert css =~ "shadcn.tailwind.css"
     refute css =~ "@custom-variant dark"
 
+    assert content(igniter, "mix.exs") =~ "{:daisyui,"
+
     igniter
-    |> assert_unchanged(["mix.exs", @home])
+    |> assert_unchanged(@home)
     |> assert_has_notice(&(&1 =~ "daisyUI was kept"))
   end
 
@@ -247,10 +282,46 @@ defmodule Mix.Tasks.ShadcnLiveview.InstallTest do
   describe ".credo.exs" do
     @credo_checks "{ShadcnLiveview.Credo.ComposerFormClears, []}, {ShadcnLiveview.Credo.ChatUsesMessageScroller, []}"
 
-    test "without one, the notice carries the snippet" do
-      project()
-      |> install()
-      |> assert_has_notice(&(&1 =~ "checks: %{extra: [#{@credo_checks}]}"))
+    test "without one, adds Credo and a config that keeps the default checks" do
+      igniter = project() |> install()
+
+      assert content(igniter, "mix.exs") =~
+               ~s|{:credo, "~> 1.7", only: [:dev, :test], runtime: false}|
+
+      assert {%{configs: [%{name: "default", checks: checks} = config]}, _} =
+               igniter |> content(".credo.exs") |> Code.eval_string()
+
+      assert checks == %{
+               extra: [
+                 {ShadcnLiveview.Credo.ComposerFormClears, []},
+                 {ShadcnLiveview.Credo.ChatUsesMessageScroller, []}
+               ]
+             }
+
+      assert config |> Map.keys() |> Enum.sort() == [:checks, :name]
+
+      # The checks only compile when Credo is loaded before shadcn_liveview compiles.
+      igniter
+      |> assert_has_task("deps.compile", ["credo", "--include-children"])
+      |> assert_has_task("deps.compile", ["shadcn_liveview", "--force"])
+    end
+
+    test "an app that already has Credo keeps its dependency and needs no recompile" do
+      igniter =
+        project(%{}, dep: ~s({:shadcn_liveview, "~> 0.1"},\n      {:credo, "~> 1.6", only: :dev}))
+        |> install()
+
+      mix_exs = content(igniter, "mix.exs")
+      assert mix_exs =~ ~s|{:credo, "~> 1.6", only: :dev}|
+      refute mix_exs =~ ~s|{:credo, "~> 1.7"|
+      assert {"deps.compile", ["shadcn_liveview", "--force"]} not in igniter.tasks
+    end
+
+    test "--no-credo leaves Credo alone" do
+      igniter = project() |> install(["--no-credo"])
+      refute content(igniter, "mix.exs") =~ ":credo"
+      refute_creates(igniter, ".credo.exs")
+      assert Enum.all?(igniter.tasks, &(elem(&1, 0) != "deps.compile"))
     end
 
     test "mix credo gen.config style: appends to checks.enabled once" do
@@ -334,6 +405,136 @@ defmodule Mix.Tasks.ShadcnLiveview.InstallTest do
       |> install()
       |> assert_unchanged(".credo.exs")
       |> assert_has_warning(&(&1 =~ "add `[#{@credo_checks}]` to its checks by hand"))
+    end
+  end
+
+  describe "usage_rules" do
+    @shadcn_entries [
+      {:shadcn_liveview, sub_rules: []},
+      {:shadcn_liveview, sub_rules: :all, main: false, link: :markdown}
+    ]
+
+    defp usage_rules_config(igniter) do
+      {:defmodule, _, [_, [do: {:__block__, _, body}]]} =
+        igniter |> content("mix.exs") |> Code.string_to_quoted!()
+
+      project =
+        Enum.find_value(body, fn
+          {:def, _, [{:project, _, _}, [do: config]]} -> config
+          _ -> nil
+        end)
+
+      case Keyword.fetch(project, :usage_rules) do
+        {:ok, quoted} -> quoted |> Code.eval_quoted() |> elem(0)
+        :error -> nil
+      end
+    end
+
+    test "a stock app keeps phx.new's synced Phoenix rules and adds the library's rules and skill" do
+      igniter = project() |> install()
+
+      assert content(igniter, "mix.exs") =~ ~s|{:usage_rules, "~> 1.3", only: [:dev]}|
+
+      assert usage_rules_config(igniter) == [
+               file: "AGENTS.md",
+               usage_rules:
+                 ~w(phoenix:elixir phoenix:phoenix phoenix:ecto phoenix:html phoenix:liveview) ++
+                   @shadcn_entries,
+               skills: [package_skills: [:shadcn_liveview]]
+             ]
+
+      igniter
+      |> assert_unchanged("AGENTS.md")
+      |> assert_has_task("usage_rules.sync", ["--yes"])
+      |> assert_has_notice(&(&1 =~ "`mix usage_rules.sync`"))
+    end
+
+    test "a synced app is left alone on the next run" do
+      igniter = project() |> install() |> apply_igniter!()
+
+      # What `mix usage_rules.sync` writes for the library's main rules.
+      agents =
+        String.replace(
+          @fixtures["AGENTS.md"],
+          "<!-- usage-rules-end -->",
+          "<!-- shadcn_liveview-start -->\n## shadcn_liveview usage\n<!-- shadcn_liveview-end -->\n<!-- usage-rules-end -->"
+        )
+
+      igniter =
+        Igniter.update_file(igniter, "AGENTS.md", &Rewrite.Source.update(&1, :content, agents))
+        |> apply_igniter!()
+        |> install()
+
+      assert_unchanged(igniter)
+      assert igniter.tasks == []
+    end
+
+    test "an existing config keeps its file and entries and gets the library's appended" do
+      config = """
+      usage_rules: [
+        file: "CLAUDE.md",
+        usage_rules: [:ash, {~r/^ash_/, link: :markdown}],
+        skills: [location: ".agents/skills", package_skills: [:ash]]
+      ]
+      """
+
+      igniter =
+        project(%{
+          "mix.exs" =>
+            String.replace(
+              @fixtures["mix.exs"],
+              "listeners: [Phoenix.CodeReloader]",
+              "listeners: [Phoenix.CodeReloader],\n" <> config
+            )
+        })
+        |> install()
+
+      assert [
+               file: "CLAUDE.md",
+               usage_rules: [:ash, {regex, [link: :markdown]} | shadcn],
+               skills: [location: ".agents/skills", package_skills: [:ash, :shadcn_liveview]]
+             ] = usage_rules_config(igniter)
+
+      assert regex.source == "^ash_"
+      assert shadcn == @shadcn_entries
+      assert_has_task(igniter, "usage_rules.sync", ["--yes"])
+
+      igniter |> apply_igniter!() |> install() |> assert_unchanged("mix.exs")
+    end
+
+    test "usage_rules: :all already covers the library; only the skill is added" do
+      igniter =
+        project(%{
+          "mix.exs" =>
+            String.replace(
+              @fixtures["mix.exs"],
+              "listeners: [Phoenix.CodeReloader]",
+              ~s|listeners: [Phoenix.CodeReloader],\nusage_rules: [file: "AGENTS.md", usage_rules: :all]|
+            )
+        })
+        |> install()
+
+      assert usage_rules_config(igniter) == [
+               file: "AGENTS.md",
+               usage_rules: :all,
+               skills: [package_skills: [:shadcn_liveview]]
+             ]
+    end
+
+    test "an app with only CLAUDE.md syncs into it" do
+      igniter =
+        project(%{"AGENTS.md" => nil, "CLAUDE.md" => @fixtures["AGENTS.md"]})
+        |> install()
+
+      assert [file: "CLAUDE.md", usage_rules: ["phoenix:elixir" | _], skills: _] =
+               usage_rules_config(igniter)
+    end
+
+    test "--no-usage-rules leaves usage_rules alone" do
+      igniter = project() |> install(["--no-usage-rules"])
+      refute content(igniter, "mix.exs") =~ "usage_rules"
+      assert Enum.all?(igniter.tasks, &(elem(&1, 0) != "usage_rules.sync"))
+      assert_has_notice(igniter, &(&1 =~ "(sync them with `usage_rules`)"))
     end
   end
 

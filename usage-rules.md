@@ -95,13 +95,14 @@ manual recipe: `usage-rules/phoenix.md`); afterwards `<.button>`, `<.input>`, `<
   `<.input field={@form[:text]} id={"composer-text-#{@sent_count}"} phx-mounted={@sent_count > 0 && JS.focus()} />`.
   With Credo, enable `ShadcnLiveview.Credo.ComposerFormClears` and
   `ShadcnLiveview.Credo.ChatUsesMessageScroller` (`checks: %{extra: [{..., []}]}`); the
-  installer adds them to an existing `.credo.exs`.
+  installer adds Credo and both checks (`mix credo --strict` reports them).
 - Badge variants are neutral (`default/secondary/destructive/outline/ghost/link`); add status
   colors with your own classes on `badge`.
 - `sidebar_inset` renders the page's `<main>`; do not nest another `<main>` inside it.
 - `progress` sets the visual value only; add `aria-valuenow`/`aria-label` yourself.
 - `use ShadcnLiveview` imports function components only. Module helpers are called by module:
-  `ShadcnLiveview.Components.Accordion.accordion_next_value/4`, `Calendar.shift_month/2`, …
+  `ShadcnLiveview.Components.Accordion.accordion_next_value/4`,
+  `ShadcnLiveview.Components.Calendar.shift_month/2`, …
 
 ## Never
 
