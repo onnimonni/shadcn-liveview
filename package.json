@@ -58,6 +58,7 @@
     "typescript": "~6.0.2"
   },
   "patchedDependencies": {
-    "braces@3.0.3": "patches/braces@3.0.3.patch"
+    "braces@3.0.3": "patches/braces@3.0.3.patch",
+    "@radix-ui/react-portal@1.1.18": "patches/@radix-ui%2Freact-portal@1.1.18.patch"
   }
 }

@@ -90,6 +90,11 @@ using that hook, not just the component where the bug was first observed.
 - Run the project's checks for implementation changes: `bun run test`
   regenerates components, runs `mix quality`, tool tests, ExUnit, and SSR parity.
   Use targeted checks during development and inspect regeneration changes.
+- CI (`.github/workflows/ci.yml`) runs this pipeline plus `bun run test:browser` from a fresh
+  `bun install --frozen-lockfile` on Linux. Never edit `node_modules` in place: it passes locally
+  and fails CI. Change dependencies with `bun patch <pkg>` / `bun patch --commit` (see
+  `patchedDependencies`; the React SSR reference relies on the `@radix-ui/react-portal` patch
+  rendering open portals inline).
 - Add connected browser regressions for changed hook behavior. Render-only
   ExUnit tests and SSR parity cannot prove JavaScript lifecycle correctness.
   Earlier findings reproduced despite passing tests and strict compilation;
