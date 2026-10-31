@@ -216,27 +216,30 @@ defmodule ShadcnLiveview.BrowserHelpers do
                  timeout: @timeout
                )
 
-      try do
-        response =
-          PlaywrightEx.send(
-            %{
-              guid: session,
-              method: :send,
-              params: %{
-                method: "Input.synthesizeScrollGesture",
-                params: %{
-                  x: bounds["x"] + bounds["width"] / 2,
-                  y: bounds["y"] + bounds["height"] / 2,
-                  yDistance: -180,
-                  gestureSourceType: "touch",
-                  speed: 600
-                }
-              }
-            },
-            timeout: @timeout
-          )
+      # Real touch input (start, moves, end) through Input.dispatchTouchEvent; native
+      # touch scrolling must handle it. Input.synthesizeScrollGesture did not scroll in
+      # headless Chromium on Linux CI.
+      x = bounds["x"] + bounds["width"] / 2
+      y = bounds["y"] + bounds["height"] * 0.8
+      moves = for step <- 1..12, do: {"touchMove", [%{x: x, y: y - step * 15}]}
 
-        assert {:ok, _} = PlaywrightEx.ChannelResponse.unwrap(response, &Function.identity/1)
+      try do
+        for {type, points} <- [{"touchStart", [%{x: x, y: y}]}] ++ moves ++ [{"touchEnd", []}] do
+          response =
+            PlaywrightEx.send(
+              %{
+                guid: session,
+                method: :send,
+                params: %{
+                  method: "Input.dispatchTouchEvent",
+                  params: %{type: type, touchPoints: points}
+                }
+              },
+              timeout: @timeout
+            )
+
+          assert {:ok, _} = PlaywrightEx.ChannelResponse.unwrap(response, &Function.identity/1)
+        end
       after
         PlaywrightEx.send(%{guid: session, method: :detach, params: %{}}, timeout: @timeout)
       end
