@@ -1,8 +1,10 @@
 # shadcn-liveview
 
+[![CI](https://github.com/onnimonni/shadcn-liveview/actions/workflows/ci.yml/badge.svg)](https://github.com/onnimonni/shadcn-liveview/actions/workflows/ci.yml)
+
 Native Phoenix LiveView components converted from shadcn/ui's **Radix Nova** registry. Elixir function components use explicit attrs, slots and caller-owned state; interactive behavior uses Phoenix colocated hooks, not a React browser runtime.
 
-Current coverage: **61 component families, 309 SSR fixtures**. React and Phoenix initial HTML are compared with strict generated-ID reference checks. SSR parity is not proof of every browser interaction; connected browser verification is also required for interactive changes.
+Current coverage: **61 component families, 313 SSR fixtures**. React and Phoenix initial HTML are compared with strict generated-ID reference checks. SSR parity is not proof of every browser interaction; connected browser verification is also required for interactive changes.
 
 ## Use in a Phoenix app
 

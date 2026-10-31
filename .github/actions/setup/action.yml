@@ -1,0 +1,34 @@
+name: Setup devenv toolchain and dependencies
+description: Installs Nix + devenv, restores dependency caches and runs the setup-project script.
+
+runs:
+  using: composite
+  steps:
+    - uses: cachix/install-nix-action@v31
+    - uses: cachix/cachix-action@v16
+      with:
+        name: devenv
+    - name: Install devenv
+      shell: bash
+      run: nix profile install nixpkgs#devenv
+
+    - name: Restore Mix, build and Bun caches
+      uses: actions/cache@v4
+      with:
+        # devenv.nix sets MIX_BUILD_ROOT to .devenv/state/mix-build; the consumer example
+        # builds into its own _build. Keyed on the toolchain lock and every dependency lock.
+        path: |
+          deps
+          .devenv/state/mix-build
+          examples/consumer/deps
+          examples/consumer/_build
+          ~/.bun/install/cache
+          ~/.mix
+          ~/.hex
+        key: deps-${{ runner.os }}-${{ hashFiles('devenv.lock', 'mix.lock', 'examples/consumer/mix.lock', 'bun.lock') }}
+        restore-keys: |
+          deps-${{ runner.os }}-
+
+    - name: Fetch dependencies (devenv setup-project)
+      shell: bash
+      run: devenv shell -- setup-project
