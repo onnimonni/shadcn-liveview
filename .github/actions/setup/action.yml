@@ -32,3 +32,17 @@ runs:
     - name: Fetch dependencies (devenv setup-project)
       shell: bash
       run: devenv shell -- setup-project
+
+    # Use the Chromium build matching the locked Playwright release instead of the Nix
+    # chromium devenv.nix exports on Linux: the version mismatch broke synthesized touch
+    # gestures. Jobs unset PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH so both runners use it.
+    - name: Restore Playwright browser cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+    - name: Install Playwright Chromium
+      shell: bash
+      run: |
+        devenv shell -- bunx playwright install chromium
+        devenv shell -- bash -c 'sudo env "PATH=$PATH" bunx playwright install-deps chromium'

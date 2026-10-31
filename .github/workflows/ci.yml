@@ -25,11 +25,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Library pipeline (bun run test)
-        run: devenv shell -- bun run test
+        run: devenv shell -- env -u PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH bun run test
       - name: Generated files are committed
         run: git diff --exit-code -- lib usage-rules priv/static/shadcn.css priv/static/shadcn.tailwind.css priv/static/shadcn-hooks.js
       - name: Consumer example tests
-        run: devenv shell -- bash -c 'cd examples/consumer && export MIX_BUILD_ROOT="$PWD/_build" && mix compile --warnings-as-errors && mix assets.build && mix test'
+        run: devenv shell -- env -u PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH bash -c 'cd examples/consumer && export MIX_BUILD_ROOT="$PWD/_build" && mix compile --warnings-as-errors && mix assets.build && mix test'
 
   browser:
     name: Connected browser tests
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Browser suites (ExUnit + consumer + Playwright incl. console errors)
-        run: devenv shell -- bun run test:browser
+        run: devenv shell -- env -u PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH bun run test:browser
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
